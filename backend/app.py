@@ -2,10 +2,16 @@
 REST API and HTTP Web Server for Legal Hub.
 """
 import os
+import sys
 import json
 import urllib.parse
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from typing import Optional
+
+# Setup sys.path so direct execution works
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
 from backend.storage import LegalStorage, StorageError
 from backend.models import ValidationError
