@@ -206,10 +206,11 @@ class LegalApiHandler(BaseHTTPRequestHandler):
         self.wfile.write(content)
 
 
-def run_server(port: int = 8080, host: str = "127.0.0.1"):
+def run_server(port: int = 8080, host: str = "0.0.0.0"):
     server_address = (host, port)
     httpd = HTTPServer(server_address, LegalApiHandler)
     print(f"Legal Hub Server running at http://{host}:{port}/")
+    print(f"LAN Access for Mobile Phone: http://192.168.1.103:{port}/")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

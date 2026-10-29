@@ -28,6 +28,7 @@ build/
 downloads/
 temp/
 data/cache/
+data/ChLaw.json
 
 # OS & Editor specific files
 .DS_Store
