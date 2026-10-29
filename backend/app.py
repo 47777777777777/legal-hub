@@ -206,7 +206,9 @@ class LegalApiHandler(BaseHTTPRequestHandler):
         self.wfile.write(content)
 
 
-def run_server(port: int = 8080, host: str = "0.0.0.0"):
+def run_server(port: int = None, host: str = "0.0.0.0"):
+    if port is None:
+        port = int(os.environ.get("PORT", 8080))
     server_address = (host, port)
     httpd = HTTPServer(server_address, LegalApiHandler)
     print(f"Legal Hub Server running at http://{host}:{port}/")

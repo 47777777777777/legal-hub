@@ -1,0 +1,2 @@
+# Python requirements for Legal Hub
+# Zero external heavy packages needed (uses Python standard library SQLite3, HTTP server, zipfile)
