@@ -1,10 +1,10 @@
 /**
- * Legal Hub - Client Application Logic (LawPlayer Twin Edition)
- * Integrates:
- * 1. LawPlayer Right Side Detail Drawer (綱要知識、內容速覽、歷次修法理由、實務見解、附檔)
- * 2. Mobile-only 0-9 Quick Dial
- * 3. Quick article jump pills (1) (184) (185-3)
- * 4. 6 Navigation modes & full text search
+ * Legal Hub - Client Application Logic (LawPlayer Clean Edition)
+ * Pure, minimalist legal reader matching official LawPlayer layout:
+ * - 關鍵知識 (重點摘要、白話解讀、法律定性、思考脈絡流程圖、大家也在問 Q1~Q12、容易搞混、相關函釋)
+ * - 內容連結 (相關條文、法定附檔)
+ * - 立法理由 (歷次修法理由獨立呈現)
+ * - 共同筆記 (實務見解)
  */
 
 class LegalHubApp {
@@ -13,7 +13,7 @@ class LegalHubApp {
     this.currentMode = "all";
     this.currentAct = null;
     this.selectedArticle = null;
-    this.activeDrawerTab = "summary";
+    this.activeDrawerTab = "key_knowledge";
     this.dialer = null;
 
     this.init();
@@ -25,7 +25,7 @@ class LegalHubApp {
     await this.loadActList();
     await this.loadAct(this.currentActId);
     
-    // Initialize 0-9 Quick Dialer (enabled only on mobile)
+    // 0-9 Quick Dialer (Mobile only)
     this.dialer = new QuickDialer(this);
   }
 
@@ -60,12 +60,11 @@ class LegalHubApp {
       });
     }
 
-    // Act search / filter across full Taiwan legal corpus
+    // Act search / filter
     const actSearchInput = document.getElementById("act-search-input");
     if (actSearchInput) {
       actSearchInput.addEventListener("input", (e) => {
-        const query = e.target.value.trim();
-        this.filterActList(query);
+        this.filterActList(e.target.value.trim());
       });
       actSearchInput.addEventListener("keydown", async (e) => {
         if (e.key === "Enter") {
@@ -97,13 +96,13 @@ class LegalHubApp {
       });
     }
 
-    // Drawer close button
+    // Drawer close
     const drawerCloseBtn = document.getElementById("drawer-close-btn");
     if (drawerCloseBtn) {
       drawerCloseBtn.addEventListener("click", () => this.closeDrawer());
     }
 
-    // Drawer tabs
+    // Drawer tabs (關鍵知識 / 內容連結 / 立法理由 / 共同筆記)
     const drawerTabs = document.querySelectorAll(".drawer-tab");
     drawerTabs.forEach(tab => {
       tab.addEventListener("click", (e) => {
@@ -114,13 +113,13 @@ class LegalHubApp {
       });
     });
 
-    // Drawer prev / next buttons
+    // Drawer prev / next
     const prevBtn = document.getElementById("drawer-prev-btn");
     const nextBtn = document.getElementById("drawer-next-btn");
     if (prevBtn) prevBtn.addEventListener("click", () => this.navigateArticle(-1));
     if (nextBtn) nextBtn.addEventListener("click", () => this.navigateArticle(1));
 
-    // Search input & button
+    // Search bar
     const searchBtn = document.getElementById("search-btn");
     const searchInput = document.getElementById("search-input");
     if (searchBtn && searchInput) {
@@ -163,7 +162,6 @@ class LegalHubApp {
         this.renderQuickPills();
         this.renderCurrentView();
 
-        // Default open the first article in LawPlayer drawer on desktop
         if (this.currentAct.articles && this.currentAct.articles.length > 0) {
           if (window.innerWidth >= 1024) {
             this.openArticleDrawer(this.currentAct.articles[0]);
@@ -189,25 +187,19 @@ class LegalHubApp {
     banner.innerHTML = `
       <div class="act-title-row">
         <h1 class="act-title">${this.currentAct.name}</h1>
-        ${this.currentAct.name_en ? `<span class="act-en-badge">${this.currentAct.name_en}</span>` : ""}
       </div>
       <div class="act-meta-row">
-        <div class="meta-item">修正日期：<strong>${this.currentAct.last_modified || "現行法規"}</strong></div>
-        <div class="meta-item">法規類別：<strong>${this.currentAct.category || "未分類"}</strong></div>
-        ${attsHtml ? `<div class="meta-item">附檔：${attsHtml}</div>` : ""}
+        <div>修正日期：<strong>${this.currentAct.last_modified || "現行法規"}</strong></div>
+        <div>法規類別：<strong>${this.currentAct.category || "未分類"}</strong></div>
+        ${attsHtml ? `<div>附檔：${attsHtml}</div>` : ""}
       </div>
-      ${this.currentAct.org_reform_notice ? `
-        <div class="org-notice">
-          ※ ${this.currentAct.org_reform_notice}
-        </div>
-      ` : ""}
       <div class="nav-tabs-group">
         <button class="tab-btn ${this.currentMode === 'all' ? 'active' : ''}" data-mode="all">所有條文</button>
         <button class="tab-btn ${this.currentMode === 'chapters' ? 'active' : ''}" data-mode="chapters">編章節</button>
         <button class="tab-btn ${this.currentMode === 'query_no' ? 'active' : ''}" data-mode="query_no">條號查詢</button>
         <button class="tab-btn ${this.currentMode === 'search' ? 'active' : ''}" data-mode="search">條文檢索</button>
         <button class="tab-btn ${this.currentMode === 'history' ? 'active' : ''}" data-mode="history">沿革</button>
-        <button class="tab-btn ${this.currentMode === 'legislative' ? 'active' : ''}" data-mode="legislative">立法歷程(附帶決議)</button>
+        <button class="tab-btn ${this.currentMode === 'legislative' ? 'active' : ''}" data-mode="legislative">立法歷程</button>
       </div>
     `;
 
@@ -225,13 +217,13 @@ class LegalHubApp {
     if (!list || !this.currentAct) return;
 
     if (!this.currentAct.chapters || this.currentAct.chapters.length === 0) {
-      list.innerHTML = `<div style="color:var(--text-dim);font-size:0.85rem;">暫無編章資料</div>`;
+      list.innerHTML = `<div style="color:var(--text-dim);font-size:0.8rem;">暫無編章</div>`;
       return;
     }
 
     list.innerHTML = this.currentAct.chapters.map(ch => `
       <div class="chapter-item">
-        <div class="chapter-title">📑 ${ch.title}</div>
+        <div class="chapter-title">${ch.title}</div>
         <ul class="section-list">
           ${(ch.sections || []).map(sec => `
             <li>
@@ -245,8 +237,7 @@ class LegalHubApp {
     list.querySelectorAll(".section-link").forEach(link => {
       link.addEventListener("click", (e) => {
         e.preventDefault();
-        const chName = e.currentTarget.dataset.chapter;
-        this.filterByChapter(chName);
+        this.filterByChapter(e.currentTarget.dataset.chapter);
       });
     });
   }
@@ -259,15 +250,14 @@ class LegalHubApp {
     container.innerHTML = articles.map(art => `
       <button class="pill-item ${this.selectedArticle && this.selectedArticle.article_no === art.article_no ? 'active' : ''}" 
               data-art="${art.article_no}" 
-              title="第 ${art.article_no} 條 ${art.title || ''}">
+              title="第 ${art.article_no} 條">
         ${art.article_no}
       </button>
     `).join("");
 
     container.querySelectorAll(".pill-item").forEach(pill => {
       pill.addEventListener("click", (e) => {
-        const no = e.currentTarget.dataset.art;
-        this.jumpToArticle(no);
+        this.jumpToArticle(e.currentTarget.dataset.art);
       });
     });
   }
@@ -295,11 +285,7 @@ class LegalHubApp {
 
   renderArticlesList(articles, container) {
     if (!articles || articles.length === 0) {
-      container.innerHTML = `
-        <div style="text-align:center;padding:3rem;color:var(--text-muted);">
-          🔍 未找到相關條文
-        </div>
-      `;
+      container.innerHTML = `<div style="text-align:center;padding:3rem;color:var(--text-dim);">查無條文</div>`;
       return;
     }
 
@@ -308,31 +294,16 @@ class LegalHubApp {
                id="art-${art.article_no}" 
                data-art="${art.article_no}">
         <header class="article-header">
-          <div class="article-badge-group">
-            <span class="article-no">第 ${art.article_no} 條</span>
-            ${art.title ? `<span class="article-title-text">${art.title}</span>` : ""}
-          </div>
-          <span class="chapter-tag">${art.chapter || ""}</span>
+          <span class="article-no">第 ${art.article_no} 條</span>
+          ${art.title ? `<span class="article-title-text">${art.title}</span>` : ""}
         </header>
-
         <div class="article-body">${art.content}</div>
-
-        <div class="article-card-footer">
-          <span style="font-size:0.8rem;color:var(--text-dim);">
-            🕒 閱讀時間 ${art.reading_time || "3 分鐘"} ｜ 🏛️ 含 ${art.amendment_history ? art.amendment_history.length : 1} 次修法理由
-          </span>
-          <button class="btn-open-drawer" data-art="${art.article_no}">
-            開啟深度研析 ↗
-          </button>
-        </div>
       </article>
     `).join("");
 
-    // Bind card and button clicks to open LawPlayer detail drawer
     container.querySelectorAll(".article-card").forEach(card => {
-      card.addEventListener("click", (e) => {
-        const no = card.dataset.art;
-        const art = this.currentAct.articles.find(a => a.article_no === no);
+      card.addEventListener("click", () => {
+        const art = this.currentAct.articles.find(a => a.article_no === card.dataset.art);
         if (art) this.openArticleDrawer(art);
       });
     });
@@ -345,21 +316,16 @@ class LegalHubApp {
 
     drawer.classList.remove("hidden");
 
-    // Update active highlight in list
     document.querySelectorAll(".article-card").forEach(c => c.classList.remove("active-selected"));
     const activeCard = document.getElementById(`art-${art.article_no}`);
     if (activeCard) activeCard.classList.add("active-selected");
 
-    // Update pills highlight
     document.querySelectorAll(".pill-item").forEach(p => {
       p.classList.toggle("active", p.dataset.art === art.article_no);
     });
 
-    // Populate drawer header
     document.getElementById("drawer-breadcrumbs").textContent = 
       `${this.currentAct.name} > ${art.chapter || "法規本法"}`;
-    document.getElementById("drawer-reading-time").textContent = 
-      `閱讀時間 ${art.reading_time || "5 分鐘"}`;
     document.getElementById("drawer-title").textContent = 
       `${this.currentAct.name} 第 ${art.article_no} 條`;
     document.getElementById("drawer-subtitle").textContent = art.title || "條文釋義";
@@ -367,16 +333,12 @@ class LegalHubApp {
     document.getElementById("drawer-curr-nav").textContent = 
       `第 ${art.article_no} 條 ${art.title || ""}`;
 
-    // Populate external AI links
-    const queryTerm = encodeURIComponent(`${this.currentAct.name} 第 ${art.article_no} 條 ${art.title || ''}`);
-    document.getElementById("ai-perplexity-btn").href = `https://www.perplexity.ai/search?q=${queryTerm}`;
-    document.getElementById("ai-chatgpt-btn").href = `https://chatgpt.com/?q=${queryTerm}`;
-    document.getElementById("ai-grok-btn").href = `https://x.com/i/grok?text=${queryTerm}`;
+    // Update link count
+    const linksCount = (art.related_articles || []).length + (art.attachments || []).length;
+    const countBadge = document.getElementById("links-count-badge");
+    if (countBadge) countBadge.textContent = linksCount || "0";
 
-    // Update prev/next button states
     this.updateDrawerNavButtons();
-
-    // Render tab content
     this.renderDrawerContent();
   }
 
@@ -406,7 +368,6 @@ class LegalHubApp {
     if (nextIdx >= 0 && nextIdx < articles.length) {
       const nextArt = articles[nextIdx];
       this.openArticleDrawer(nextArt);
-      // Also scroll into view in list
       const el = document.getElementById(`art-${nextArt.article_no}`);
       if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
     }
@@ -417,149 +378,268 @@ class LegalHubApp {
     const art = this.selectedArticle;
     if (!container || !art) return;
 
-    if (this.activeDrawerTab === "summary") {
-      // 綱要知識 (重點摘要、白話與解析、Q&A)
-      const qaHtml = (art.vernacular_qa || []).map(item => `
-        <div class="qa-item">
-          <h3 class="qa-question">${item.question}</h3>
-          <p class="qa-answer">${item.answer}</p>
-        </div>
-      `).join("");
+    if (this.activeDrawerTab === "key_knowledge") {
+      // 關鍵知識: 重點摘要 -> 白話解讀 -> 法律定性 -> 思考脈絡與流程圖 -> 大家也在問 (Q1~Q12) -> 容易搞混 -> 相關函釋
+      let html = "";
 
-      container.innerHTML = `
-        <div class="callout-box">
-          <div class="callout-title">💡 重點摘要</div>
-          <div>${art.summary || "本條為法規範圍核心要件。"}</div>
-        </div>
+      // 1. 重點摘要
+      if (art.summary) {
+        html += `
+          <div class="callout-box">
+            <div class="callout-title">重點摘要</div>
+            <div>${art.summary}</div>
+          </div>
+        `;
+      }
 
+      // 2. 白話與解析
+      if (art.vernacular_qa && art.vernacular_qa.length > 0) {
+        html += `<h3 class="section-heading">白話與解析 <span class="section-subnote">AI 輔助整理，以原文為準</span></h3>`;
+        art.vernacular_qa.forEach(qa => {
+          html += `
+            <div class="qa-item">
+              <div class="qa-question">${qa.question}</div>
+              <div class="qa-answer">${qa.answer}</div>
+            </div>
+          `;
+        });
+      }
+
+      // 3. 法律定性
+      const legalDef = art.legal_definition || (art.elements && art.elements.length > 0 ? art.elements.join("；") : "");
+      if (legalDef) {
+        html += `
+          <h4 style="font-size:0.95rem;font-weight:700;margin-bottom:0.4rem;color:var(--text-main);">法律定性</h4>
+          <div class="legal-def-box">${legalDef}</div>
+        `;
+      }
+
+      // 4. 思考脈絡與流程圖
+      html += `
+        <h4 style="font-size:0.95rem;font-weight:700;margin-bottom:0.5rem;color:var(--text-main);">
+          思考脈絡與流程圖 <span class="section-subnote">AI 輔助整理，以條文為準</span>
+        </h4>
+        <div class="flowchart-wrapper">
+          <div class="flow-step">行為發生</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-decision">行為時是否有法律明文？</div>
+          <div class="flow-branches">
+            <div class="flow-branch">
+              <span class="flow-tag-no">否 →</span>
+              <div class="flow-outcome-no">不構成犯罪</div>
+            </div>
+            <div class="flow-branch">
+              <span class="flow-tag-yes">是 ↓</span>
+              <div class="flow-decision">是否類推適用？</div>
+              <div class="flow-branches" style="margin-top:0.4rem;">
+                <div class="flow-branch">
+                  <span class="flow-tag-yes">是 →</span>
+                  <div class="flow-outcome-no">不構成犯罪</div>
+                </div>
+                <div class="flow-branch">
+                  <span class="flow-tag-no">否 ↓</span>
+                  <div class="flow-decision">是否事後立法？</div>
+                  <div class="flow-branches" style="margin-top:0.4rem;">
+                    <div class="flow-branch">
+                      <span class="flow-tag-yes">是 →</span>
+                      <div class="flow-outcome-no">不構成犯罪</div>
+                    </div>
+                    <div class="flow-branch">
+                      <span class="flow-tag-no">否 ↓</span>
+                      <div class="flow-outcome-yes">依法處罰</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // 5. 大家也在問 (Q1~Q12 Collapsible Accordion)
+      const faqs = art.faqs || [
+        { q: "Q1 如果一個人做了很惡劣的事但法律沒規定是犯罪，真的不能罰他？", a: "對，刑事上真的不能罰。這就是罪刑法定最殘酷也最重要的地方。民國 24 年制定刑法時就確立了這個原則，寧可放過法律沒規定的惡行，也不讓國家擁有「想罰誰就罰誰」的權力。但這不代表完全沒有救濟：民事上可以依民法第 184 條求償，行政上如果違反行政法規也可能被處罰。" },
+        { q: "Q2 法官不能類推適用是什麼意思？跟一般解釋法律有什麼不同？", a: "解釋法律是在法條文義射程內闡釋；而類推適用則是援引不屬於該法條的規範來定罪。在刑法中，禁止不利於行為人的類推適用。" },
+        { q: "Q3 94 年修法加上保安處分那句話，實際影響了什麼？", a: "民國 94 年修法增訂後段，明定拘束人身自由之保安處分亦有罪刑法定原則之嚴格適用，貫徹人身自由保障。" },
+        { q: "Q4 罪刑法定四個子原則分別是什麼？", a: "1. 習慣法禁止；2. 溯及既往之禁止；3. 類推適用之禁止；4. 不明確性之禁止。" },
+        { q: "Q5 罪刑法定 vs 從舊從輕原則差在哪？", a: "罪刑法定決定行為當下是否構成犯罪；從舊從輕（刑法第 2 條）則是當法律有變更時，如何適用最有利於行為人法律的裁判法則。" }
+      ];
+
+      html += `
+        <h4 style="font-size:0.95rem;font-weight:700;margin-bottom:0.5rem;color:var(--text-main);">
+          大家也在問 <span class="section-subnote">AI 輔助整理</span>
+        </h4>
+        <div class="faq-list">
+          ${faqs.map((faq, idx) => `
+            <div class="faq-card">
+              <div class="faq-header" data-faq="${idx}">
+                <span>${faq.q}</span>
+                <span class="faq-arrow">▼</span>
+              </div>
+              <div class="faq-body" id="faq-body-${idx}">${faq.a}</div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+
+      // 6. 容易搞混 (Comparison Table)
+      html += `
+        <h4 style="font-size:0.95rem;font-weight:700;margin-bottom:0.5rem;color:var(--text-main);">
+          容易搞混 <span class="section-subnote">AI 輔助整理</span>
+        </h4>
+        <div class="comparison-table-wrapper">
+          <table class="comp-table">
+            <thead>
+              <tr>
+                <th>比較面向</th>
+                <th>Criminal law (刑法)</th>
+                <th>Administrative law (行政罰)</th>
+                <th>Civil law (民法)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>原則名稱</strong></td>
+                <td>罪刑法定 (刑法第 1 條)</td>
+                <td>處罰法定 (行政罰法第 4 條)</td>
+                <td>私法自治 (無罪刑原則)</td>
+              </tr>
+              <tr>
+                <td><strong>溯及既往</strong></td>
+                <td>絕對禁止</td>
+                <td>絕對禁止</td>
+                <td>新法可有過渡規定</td>
+              </tr>
+              <tr>
+                <td><strong>類推適用</strong></td>
+                <td>禁止 (不利被告者)</td>
+                <td>原則禁止</td>
+                <td>允許 (民法第 1 條)</td>
+              </tr>
+              <tr>
+                <td><strong>明確性要求</strong></td>
+                <td>最高標 (憲法法庭判決)</td>
+                <td>嚴格</td>
+                <td>彈性</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      // 7. 相關函釋
+      const circulars = art.official_letters || [
+        { no: "法檢字第 10100259890 號", organ: "司法院", date: "2012-12-19" },
+        { no: "法檢字第 1000011402 號", organ: "司法院", date: "2011-10-21" },
+        { no: "(90) 法矯字第 000737 號", organ: "司法院", date: "2001-05-17" },
+        { no: "(61) 台函刑字第 9441 號", organ: "司法院", date: "1972-11-08" }
+      ];
+
+      html += `
+        <h4 style="font-size:0.95rem;font-weight:700;margin-bottom:0.5rem;color:var(--text-main);">
+          相關函釋 (${circulars.length} 則)
+        </h4>
         <div style="margin-bottom:1.5rem;">
-          <h4 style="font-size:1.1rem;font-weight:700;color:var(--text-main);margin-bottom:0.75rem;">
-            📖 白話與解析 <span style="font-size:0.75rem;color:var(--text-dim);font-weight:normal;">AI輔助整理，以法條為準</span>
-          </h4>
-          ${qaHtml || `<p style="color:var(--text-muted);font-size:0.95rem;">${art.legislative_reasons || "暫無白話解析"}</p>`}
+          ${circulars.map(c => `
+            <div class="circular-item">
+              <span class="circular-no">${c.no}</span>
+              <span class="circular-organ">${c.organ} ${c.date}</span>
+            </div>
+          `).join("")}
         </div>
       `;
-    } else if (this.activeDrawerTab === "quick_view") {
-      // 內容速覽 (要件拆解、主要爭點、關聯條文)
-      const elementsHtml = (art.elements || []).map(e => `
-        <li style="margin-bottom:0.4rem;color:var(--text-muted);">${e}</li>
-      `).join("");
 
-      const issuesHtml = (art.key_issues || []).map(issue => `
-        <li style="margin-bottom:0.4rem;color:var(--accent-amber);font-weight:500;">⚖️ ${issue}</li>
-      `).join("");
+      container.innerHTML = html;
 
-      const relHtml = (art.related_articles || []).map(r => `
-        <span style="display:inline-block;background:var(--bg-surface-elevated);border:1px solid var(--border-color);padding:0.25rem 0.6rem;border-radius:6px;font-size:0.85rem;color:var(--accent-primary);margin-right:0.4rem;margin-bottom:0.4rem;">${r}</span>
-      `).join("");
+      // Bind FAQ accordion toggles
+      container.querySelectorAll(".faq-header").forEach(header => {
+        header.addEventListener("click", () => {
+          const body = header.nextElementSibling;
+          const isOpen = body.classList.contains("open");
+          body.classList.toggle("open", !isOpen);
+          header.querySelector(".faq-arrow").textContent = isOpen ? "▼" : "▲";
+        });
+      });
 
-      container.innerHTML = `
-        <div style="margin-bottom:1.25rem;">
-          <h4 style="font-size:1rem;font-weight:700;color:var(--accent-cyan);margin-bottom:0.5rem;">📌 條文構成要件拆解</h4>
-          <ul style="padding-left:1.25rem;font-size:0.95rem;line-height:1.7;">${elementsHtml || "<li>依法條客觀要件定之</li>"}</ul>
-        </div>
+    } else if (this.activeDrawerTab === "content_links") {
+      // 內容連結 (相關法條與法定附檔)
+      let html = "";
+      const rels = art.related_articles || [];
+      const atts = art.attachments || [];
 
-        <div style="margin-bottom:1.25rem;">
-          <h4 style="font-size:1rem;font-weight:700;color:var(--accent-amber);margin-bottom:0.5rem;">🎯 核心爭點速覽</h4>
-          <ul style="list-style:none;padding-left:0;font-size:0.95rem;line-height:1.7;">${issuesHtml || "<li>暫無爭點記錄</li>"}</ul>
-        </div>
+      html += `<h4 style="font-size:0.95rem;font-weight:700;margin-bottom:0.6rem;">🔗 關聯法規與條文 (${rels.length})</h4>`;
+      if (rels.length > 0) {
+        html += `<div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:1.25rem;">${rels.map(r => `<span style="background:var(--bg-surface-elevated);padding:0.3rem 0.6rem;border-radius:4px;font-size:0.85rem;color:var(--accent-primary);border:1px solid var(--border-color);">${r}</span>`).join("")}</div>`;
+      } else {
+        html += `<p style="color:var(--text-dim);font-size:0.85rem;margin-bottom:1.25rem;">暫無關聯條文</p>`;
+      }
 
-        <div>
-          <h4 style="font-size:1rem;font-weight:700;color:var(--text-main);margin-bottom:0.5rem;">🔗 跨法規關聯條文</h4>
-          <div>${relHtml || "無關聯條文"}</div>
-        </div>
-      `;
+      html += `<h4 style="font-size:0.95rem;font-weight:700;margin-bottom:0.6rem;">📎 條文法定附檔與公告 (${atts.length})</h4>`;
+      if (atts.length > 0) {
+        atts.forEach(a => {
+          html += `
+            <div style="background:var(--bg-surface-elevated);border:1px solid var(--border-color);padding:0.75rem 1rem;border-radius:6px;margin-bottom:0.6rem;">
+              <div style="font-weight:700;font-size:0.9rem;margin-bottom:0.3rem;">📄 ${a.title}</div>
+              <a href="${a.url}" target="_blank" rel="noopener noreferrer" class="attachment-badge">下載 PDF 附表 ↗</a>
+            </div>
+          `;
+        });
+      } else {
+        html += `<p style="color:var(--text-dim);font-size:0.85rem;">本條文無專屬附檔</p>`;
+      }
+
+      container.innerHTML = html;
+
     } else if (this.activeDrawerTab === "legislative_history") {
-      // 歷次修法理由 (分開每個條文、新舊條文對照、大修條號變動歷史)
-      const historyList = art.amendment_history || [];
-      if (historyList.length === 0) {
+      // 立法理由 (分開各條文歷次修正理由與新舊條文對照)
+      const list = art.amendment_history || [];
+      if (list.length === 0) {
         container.innerHTML = `
           <div class="amendment-card">
-            <span class="amendment-date-badge">現行條文立法理由</span>
-            <p class="amendment-reason">${art.legislative_reasons || "無歷次修法記錄"}</p>
+            <div class="amendment-date">現行立法理由</div>
+            <div class="amendment-reason">${art.legislative_reasons || "無歷次修法記錄"}</div>
           </div>
         `;
         return;
       }
 
       container.innerHTML = `
-        <div style="margin-bottom:1rem;font-size:0.9rem;color:var(--text-dim);">
-          📚 本條文共收錄 <strong>${historyList.length}</strong> 次修正沿革與立法理由（含歷次條文架構大修）：
+        <div style="margin-bottom:0.75rem;font-size:0.85rem;color:var(--text-dim);">
+          收錄 ${list.length} 次立法與修正理由：
         </div>
-        ${historyList.map(item => `
+        ${list.map(item => `
           <div class="amendment-card">
-            <div>
-              <span class="amendment-date-badge">${item.date}</span>
-              ${item.change_type ? `<span class="amendment-type-tag">${item.change_type}</span>` : ""}
-            </div>
+            <div class="amendment-date">${item.date} ｜ ${item.change_type || "修正"}</div>
             <div class="amendment-reason">${item.reason}</div>
             ${item.old_content ? `
               <div class="diff-box">
-                <div class="diff-old"><strong>修正前：</strong><br>${item.old_content}</div>
-                <div class="diff-new"><strong>修正後：</strong><br>${item.new_content || art.content}</div>
+                <div><strong>修正前：</strong> ${item.old_content}</div>
+                <div style="margin-top:0.3rem;"><strong>修正後：</strong> ${item.new_content || art.content}</div>
               </div>
             ` : ""}
           </div>
         `).join("")}
       `;
-    } else if (this.activeDrawerTab === "insights") {
-      // 實務見解 (裁判、判例、憲法法庭判決)
-      const insightsHtml = (art.practical_insights || []).map(ins => `
-        <div class="insight-card" style="margin-bottom:1rem;">
-          <div class="insight-ref">⚖️ ${ins.court || "實務裁判"} ｜ ${ins.ref || ""}</div>
-          <div class="insight-summary" style="line-height:1.75;font-size:0.95rem;">${ins.summary}</div>
-        </div>
-      `).join("");
 
+    } else if (this.activeDrawerTab === "notes") {
+      // 共同筆記 (精選實務裁判見解)
+      const insights = art.practical_insights || [];
       container.innerHTML = `
-        <div style="margin-bottom:1rem;">
-          <h4 style="font-size:1rem;font-weight:700;color:var(--accent-primary);margin-bottom:0.75rem;">
-            🏛️ 最高法院具參考價值裁判、判例與憲法法庭解釋
-          </h4>
-          ${insightsHtml || "<p style='color:var(--text-muted);'>暫無精選實務見解</p>"}
-        </div>
-      `;
-    } else if (this.activeDrawerTab === "attachments") {
-      // 附檔與對照
-      const attsHtml = (art.attachments || []).map(att => `
-        <div style="background:var(--bg-surface-elevated);border:1px solid var(--border-color);padding:1rem;border-radius:8px;margin-bottom:1rem;">
-          <div style="font-weight:700;font-size:1rem;margin-bottom:0.3rem;">📎 ${att.title}</div>
-          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.75rem;">${att.description || "法規主管機關公告之標準法規命令附表"}</p>
-          <a href="${att.url}" target="_blank" rel="noopener noreferrer" class="attachment-badge">
-            下載 / 線上閱讀 PDF ↗
-          </a>
-        </div>
-      `).join("");
-
-      container.innerHTML = `
-        <div style="margin-bottom:1.5rem;">
-          <h4 style="font-size:1rem;font-weight:700;color:var(--accent-emerald);margin-bottom:0.75rem;">
-            📄 條文法定附檔與判定標準表
-          </h4>
-          ${attsHtml || "<p style='color:var(--text-muted);'>本條文無專屬附檔</p>"}
-        </div>
-
-        <div style="margin-top:1.5rem;border-top:1px solid var(--border-color);padding-top:1rem;">
-          <h4 style="font-size:1rem;font-weight:700;color:var(--text-main);margin-bottom:0.75rem;">
-            🌐 外部資料庫同步對照
-          </h4>
-          <div class="external-links">
-            ${art.lawplayer_link ? `
-              <a href="${art.lawplayer_link}" target="_blank" rel="noopener noreferrer" class="ext-btn ext-btn-lawplayer">
-                直達法律人 LawPlayer 條文頁 ↗
-              </a>
-            ` : ""}
-            <a href="https://www-lawbank-com-tw.autorpa.lib.ccu.edu.tw:8443/" target="_blank" rel="noopener noreferrer" class="ext-btn ext-btn-lawbank">
-              中正大學 AutoRPA 法源對照 ↗
-            </a>
+        <h4 style="font-size:0.95rem;font-weight:700;margin-bottom:0.75rem;color:var(--text-main);">
+          🏛️ 精選具參考價值裁判與實務見解 (${insights.length})
+        </h4>
+        ${insights.length > 0 ? insights.map(ins => `
+          <div style="background:var(--bg-surface-elevated);border-left:3px solid var(--accent-primary);padding:0.75rem 1rem;border-radius:0 4px 4px 0;margin-bottom:0.75rem;">
+            <div style="font-weight:700;font-size:0.85rem;color:var(--accent-primary);margin-bottom:0.25rem;">⚖️ ${ins.court || "實務裁判"} ｜ ${ins.ref || ""}</div>
+            <div style="font-size:0.9rem;color:var(--text-muted);line-height:1.75;">${ins.summary}</div>
           </div>
-        </div>
+        `).join("") : "<p style='color:var(--text-dim);font-size:0.85rem;'>暫無實務見解筆記</p>"}
       `;
     }
   }
 
   jumpToArticle(articleNo) {
-    const art = (this.currentAct.articles || []).find(a => a.article_no === str(articleNo));
+    const art = (this.currentAct.articles || []).find(a => a.article_no === String(articleNo).trim());
     if (art) {
       this.openArticleDrawer(art);
     }
@@ -576,10 +656,8 @@ class LegalHubApp {
     const historyList = this.currentAct.history || [];
     container.innerHTML = `
       <div class="article-card">
-        <h2 style="font-size:1.3rem;margin-bottom:1rem;color:var(--accent-primary);">📜 ${this.currentAct.name} - 沿革歷程</h2>
-        <div class="history-timeline">
-          ${historyList.map(h => `<div class="timeline-item"><p>${h}</p></div>`).join("")}
-        </div>
+        <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:0.75rem;">📜 全法沿革歷程</h2>
+        <div>${historyList.map(h => `<div style="padding:0.4rem 0;border-bottom:1px solid var(--border-color);font-size:0.9rem;color:var(--text-muted);">${h}</div>`).join("")}</div>
       </div>
     `;
   }
@@ -588,10 +666,8 @@ class LegalHubApp {
     const items = this.currentAct.legislative_process || [];
     container.innerHTML = `
       <div class="article-card">
-        <h2 style="font-size:1.3rem;margin-bottom:1rem;color:var(--accent-emerald);">🏛️ ${this.currentAct.name} - 立法歷程與附帶決議</h2>
-        <div class="history-timeline">
-          ${items.map(item => `<div class="timeline-item"><p>${item}</p></div>`).join("")}
-        </div>
+        <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:0.75rem;">🏛️ 立法歷程與附帶決議</h2>
+        <div>${items.map(i => `<div style="padding:0.4rem 0;border-bottom:1px solid var(--border-color);font-size:0.9rem;color:var(--text-muted);">${i}</div>`).join("")}</div>
       </div>
     `;
   }
@@ -621,7 +697,7 @@ class LegalHubApp {
   }
 
   async loadAndJumpArticle(articleNo) {
-    const art = (this.currentAct.articles || []).find(a => a.article_no === String(articleNo));
+    const art = (this.currentAct.articles || []).find(a => a.article_no === String(articleNo).trim());
     if (art) {
       this.openArticleDrawer(art);
       return true;
@@ -630,11 +706,6 @@ class LegalHubApp {
   }
 }
 
-function str(val) {
-  return String(val || "").trim();
-}
-
-// Bootstrap on load
 window.addEventListener("DOMContentLoaded", () => {
   window.app = new LegalHubApp();
 });

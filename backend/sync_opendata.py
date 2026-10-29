@@ -69,3 +69,4 @@ def import_raw_law_data(law_entry: dict, conn):
 if __name__ == "__main__":
     init_database()
     print("Open Data Ingestion Engine ready.")
+
