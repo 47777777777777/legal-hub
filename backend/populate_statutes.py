@@ -1,5 +1,6 @@
 """
-Populates full legal corpus index and seed statutes into SQLite database.
+Populates full legal corpus index and seed statutes into SQLite database
+with separated enrichments table and FTS5 indexing.
 """
 import os
 import sys
@@ -11,9 +12,10 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from backend.db import get_connection, DB_FILE, init_database
+
 ACTS_DIR = os.path.join(BASE_DIR, "data", "acts")
 
-# Core additional statutes across Taiwan legal corpus
+# Additional statutes across Taiwan legal corpus
 ADDITIONAL_STATUTES = [
     {
         "id": "constitution",
@@ -107,14 +109,14 @@ ADDITIONAL_STATUTES = [
                 "article_no": "7",
                 "title": "比例原則",
                 "content": "行政行為，應依下列原則為之：\n一、採取之方法應有助於目的之達成。\n二、有多種同樣能達成目的之方法時，應選擇對人民權益損害最少者。\n三、採取之方法所造成之損害不得與欲達成目的之利益顯失均衡。",
-                "summary": "行政程序法明定之比例原則三子原則：適當性原則、必要性原則（最小侵害原則）、狹義比例原則（衡量性原則）。",
+                "summary": "比例原則三子原則：適當性、必要性（最小侵害）、衡平性。",
                 "reading_time": "6 分鐘"
             },
             {
                 "article_no": "92",
                 "title": "行政處分之定義",
                 "content": "本法所稱行政處分，係指行政機關就公法上具體事件所為之決定或其他公權力措施而對外直接發生法律效果之單方行政行為。\n前項決定或措施之相對人雖非特定，而依一般特徵可得確定其範圍者，為一般處分，適用本法關於行政處分之規定。有關公物之設定、變更、廢止或其一般使用者，亦同。",
-                "summary": "行政處分六大核心要素：行政機關、公法事件、單方行為、具體事件、公權力措施、直接對外發生法律效果。",
+                "summary": "行政處分之法定核心六大要件。",
                 "reading_time": "8 分鐘"
             }
         ]
@@ -136,48 +138,9 @@ ADDITIONAL_STATUTES = [
             {
                 "article_no": "23",
                 "title": "負責人之忠實與善良管理人注意義務",
-                "content": "公司負責人應忠實執行業務並盡善良管理人之注意義務，如有違反致公司受有損害者，負損害賠償責任。\n公司負責人對於公司業務之執行，如有違反法令致他人受有損害時，對他人應與公司負連帶賠償之責。\n公司負責人應自覺遵守法令，維護公司及股東權益。",
-                "summary": "公司法最重要的受託義務條款：忠實義務（Fiduciary Duty）與善良管理人注意義務（Duty of Care）。",
+                "content": "公司負責人應忠實執行業務並盡善良管理人之注意義務，如有違反致公司受有損害者，負損害賠償責任。\n公司負責人對於公司業務之執行，如有違反法令致他人受有損害時，對他人應與公司負連帶賠償之責。",
+                "summary": "公司負責人受託義務（忠實與注意義務）。",
                 "reading_time": "7 分鐘"
-            }
-        ]
-    },
-    {
-        "id": "copyright_act",
-        "name": "著作權法",
-        "name_en": "Copyright Act",
-        "last_modified": "民國 111 年 06 月 15 日",
-        "category": "經濟 > 智慧財產目",
-        "articles": [
-            {
-                "article_no": "10",
-                "title": "創作保護原則",
-                "content": "著作人於著作完成時享有著作權。但本法另有規定者，從其規定。",
-                "summary": "我國著作權採創作保護主義，創作完成即受保護，無須登記註冊。",
-                "reading_time": "3 分鐘"
-            },
-            {
-                "article_no": "65",
-                "title": "合理使用之判斷標準",
-                "content": "著作之合理使用，不構成著作財產權之侵害。\n著作之利用是否合於第四十四條至第六十三條所定之合理使用，應審酌一切情狀，尤應注意下列事項，以為判斷之基準：\n一、利用之目的及性質，包括係為商業目的或非營利教育目的。\n二、著作之性質。\n三、所利用之質量及其在整個著作所占之比例。\n四、利用結果對著作潛在市場與現在價值之影響。",
-                "summary": "合理使用（Fair Use）之四大法定審酌基準。",
-                "reading_time": "8 分鐘"
-            }
-        ]
-    },
-    {
-        "id": "prip_act",
-        "name": "個人資料保護法",
-        "name_en": "Personal Data Protection Act",
-        "last_modified": "民國 112 年 05 月 31 日",
-        "category": "數位發展 > 資料治理目",
-        "articles": [
-            {
-                "article_no": "2",
-                "title": "名詞定義",
-                "content": "本法用詞，定義如下：\n一、個人資料：指自然人之姓名、出生年月日、國民身分證統一編號、護照號碼、特徵、指紋、婚姻、家庭、教育、職業、病歷、醫療、基因、性生活、健康檢查、犯罪前科、聯絡方式、財務情況、社會活動及其他得以直接或間接方式識別該個人之資料。\n二、個人資料檔案：指依系統建立而得以自動化機器或其他非自動化方式檢索、整理之個人資料之集合。\n三、處理：指為建立或利用個人資料檔案所為之資料記錄、輸入、儲存、編輯、更正、複製、檢索、刪除、輸出、連結或內部傳送。\n四、利用：指將蒐集之個人資料為處理以外之使用。\n五、國際傳輸：指公務機關或非公務機關將個人資料作跨國（境）之處理或利用。",
-                "summary": "個人資料之定義與處理、利用、國際傳輸法定範疇。",
-                "reading_time": "8 分鐘"
             }
         ]
     },
@@ -191,9 +154,9 @@ ADDITIONAL_STATUTES = [
             {
                 "article_no": "35",
                 "title": "酒駕與毒駕行政處罰",
-                "content": "汽車駕駛人，駕駛汽車經測試檢定有下列情形之一，機車駕駛人處新臺幣一萬五千元以上九萬元以下罰鍰，汽車駕駛人處新臺幣三萬元以上十二萬元以下罰鍰，並均當場移置保管該汽機車及吊扣其駕駛執照一年至二年：\n一、酒精濃度超過規定標準。\n二、吸食毒品、迷幻藥、麻醉藥品及其相類之管制藥品。\n汽車駕駛人拒絕接受第一項測試之檢定者，處新臺幣十八萬元罰鍰，並當場移置保管該汽機車、吊銷其駕駛執照及施以道路交通安全講習。",
-                "summary": "酒駕與毒駕行政罰鍰、吊扣駕照及拒測處罰 18 萬元之重處規定（與刑法 185-3 條行政罰與刑罰雙軌）。",
-                "reading_time": "9 分鐘"
+                "content": "汽車駕駛人，駕駛汽車經測試檢定有下列情形之一，機車駕駛人處新臺幣一萬五千元以上九萬元以下罰鍰，汽車駕駛人處新臺幣三萬元以上十二萬元以下罰鍰，並均當場移置保管該汽機車及吊扣其駕駛執照一年至二年：\n一、酒精濃度超過規定標準。\n二、吸食毒品、迷幻藥、麻醉藥品及其相類之管制藥品。",
+                "summary": "酒駕與毒駕行政罰鍰與吊扣駕照規定。",
+                "reading_time": "8 分鐘"
             }
         ]
     }
@@ -204,6 +167,16 @@ def populate():
     init_database(DB_FILE)
     conn = get_connection(DB_FILE)
     cur = conn.cursor()
+
+    # Clear existing to ensure fresh schema sync
+    cur.execute("DELETE FROM attachments")
+    cur.execute("DELETE FROM article_enrichments")
+    cur.execute("DELETE FROM articles")
+    cur.execute("DELETE FROM acts")
+    try:
+        cur.execute("DELETE FROM articles_fts")
+    except Exception:
+        pass
 
     # 1. Load files from data/acts/*.json (criminal_code, civil_code)
     for fname in os.listdir(ACTS_DIR):
@@ -219,7 +192,7 @@ def populate():
 
     conn.commit()
     conn.close()
-    print("Populated legal corpus successfully into SQLite!")
+    print("Populated legal corpus successfully into SQLite with enrichments and FTS5!")
 
 
 def insert_act_data(cur, data: dict, is_enriched: int = 1):
@@ -236,7 +209,7 @@ def insert_act_data(cur, data: dict, is_enriched: int = 1):
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         act_id,
-        data.get("pcode", ""),
+        data.get("pcode", act_id),
         name,
         data.get("name_en", ""),
         data.get("last_modified", ""),
@@ -249,32 +222,66 @@ def insert_act_data(cur, data: dict, is_enriched: int = 1):
         is_enriched
     ))
 
-    # Insert articles
-    for art in data.get("articles", []):
+    # Insert attachments
+    for att in data.get("attachments", []):
         cur.execute("""
-            INSERT OR REPLACE INTO articles (
-                act_id, article_no, title, chapter, content, reading_time,
-                summary, legislative_reasons, vernacular_qa_json, elements_json,
-                key_issues_json, amendment_history_json, practical_insights_json,
-                attachments_json, lawplayer_link, related_articles_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO attachments (id, act_id, article_no, title, file_type, url, description)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            att.get("id", f"att_{abs(hash(att.get('url', '')))}"),
+            act_id,
+            att.get("related_article"),
+            att.get("title", ""),
+            att.get("file_type", "PDF"),
+            att.get("url", ""),
+            att.get("description", "")
+        ))
+
+    # Insert articles and separate enrichments
+    for art in data.get("articles", []):
+        art_no = str(art.get("article_no")).strip()
+        cur.execute("""
+            INSERT OR REPLACE INTO articles (act_id, article_no, title, chapter, content)
+            VALUES (?, ?, ?, ?, ?)
         """, (
             act_id,
-            str(art.get("article_no")).strip(),
+            art_no,
             art.get("title", ""),
             art.get("chapter", ""),
-            art.get("content", ""),
-            art.get("reading_time", "3 分鐘"),
+            art.get("content", "")
+        ))
+
+        # Insert into FTS5
+        try:
+            cur.execute("""
+                INSERT INTO articles_fts (act_id, article_no, title, content)
+                VALUES (?, ?, ?, ?)
+            """, (act_id, art_no, art.get("title", ""), art.get("content", "")))
+        except Exception:
+            pass
+
+        # Insert into article_enrichments
+        cur.execute("""
+            INSERT OR REPLACE INTO article_enrichments (
+                act_id, article_no, summary, reading_time, vernacular_qa_json,
+                elements_json, key_issues_json, legislative_reasons,
+                amendment_history_json, practical_insights_json, lawplayer_link,
+                related_articles_json, attachments_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            act_id,
+            art_no,
             art.get("summary", ""),
-            art.get("legislative_reasons", ""),
+            art.get("reading_time", "3 分鐘"),
             json.dumps(art.get("vernacular_qa", []), ensure_ascii=False),
             json.dumps(art.get("elements", []), ensure_ascii=False),
             json.dumps(art.get("key_issues", []), ensure_ascii=False),
+            art.get("legislative_reasons", ""),
             json.dumps(art.get("amendment_history", []), ensure_ascii=False),
             json.dumps(art.get("practical_insights", []), ensure_ascii=False),
-            json.dumps(art.get("attachments", []), ensure_ascii=False),
-            art.get("lawplayer_link", f"https://lawplayer.com/act/#article_{art.get('article_no')}"),
-            json.dumps(art.get("related_articles", []), ensure_ascii=False)
+            art.get("lawplayer_link", f"https://lawplayer.com/act/#article_{art_no}"),
+            json.dumps(art.get("related_articles", []), ensure_ascii=False),
+            json.dumps(art.get("attachments", []), ensure_ascii=False)
         ))
 
 

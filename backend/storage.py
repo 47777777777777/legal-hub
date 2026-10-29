@@ -1,6 +1,6 @@
 """
 Storage repository, duplicate validations, SQLite backing layer, and caching for Legal Hub.
-Supports all Taiwan statutes and dynamic fallback.
+Reconstructs domain models with full LawPlayer enrichments via LEFT JOIN.
 """
 import os
 import json
@@ -68,25 +68,6 @@ class LegalStorage:
         self.db_path = db_path
         self.cache = CacheManager()
         init_database(self.db_path)
-        self.sync_seed_files_if_empty()
-
-    def sync_seed_files_if_empty(self):
-        """
-        Loads initial seed files from acts_dir into SQLite if SQLite table has no acts.
-        """
-        conn = get_connection(self.db_path)
-        cur = conn.cursor()
-        cur.execute("SELECT count(*) as count FROM acts")
-        count = cur.fetchone()["count"]
-        conn.close()
-
-        if count == 0 and self.acts_dir and os.path.exists(self.acts_dir):
-            for filename in sorted(os.listdir(self.acts_dir)):
-                if filename.endswith(".json"):
-                    filepath = os.path.join(self.acts_dir, filename)
-                    with open(filepath, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        self.add_act(data)
 
     def load_all_acts(self):
         self.cache.invalidate()
@@ -113,7 +94,7 @@ class LegalStorage:
             conn.close()
             raise StorageError(f"Duplicate act name '{act_name}' is already registered.")
 
-        # Validate with Model (checks internal duplicate articles and attachments)
+        # Validate with Model
         act = Act(**data)
 
         # Insert to SQLite
@@ -121,11 +102,11 @@ class LegalStorage:
             INSERT INTO acts (
                 id, pcode, name, name_en, last_modified, category, 
                 org_reform_notice, history_json, legislative_process_json, 
-                chapters_json, attachments_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                chapters_json, attachments_json, is_enriched
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             act.id,
-            data.get("pcode", ""),
+            data.get("pcode", act.id),
             act.name,
             act.name_en,
             act.last_modified,
@@ -134,35 +115,48 @@ class LegalStorage:
             json.dumps(act.history, ensure_ascii=False),
             json.dumps(act.legislative_process, ensure_ascii=False),
             json.dumps(act.chapters, ensure_ascii=False),
-            json.dumps([att.to_dict() for att in act.attachments], ensure_ascii=False)
+            json.dumps([att.to_dict() for att in act.attachments], ensure_ascii=False),
+            1
         ))
 
         for art in act.articles:
             cur.execute("""
-                INSERT INTO articles (
-                    act_id, article_no, title, chapter, content, reading_time,
-                    summary, legislative_reasons, vernacular_qa_json, elements_json,
-                    key_issues_json, amendment_history_json, practical_insights_json,
-                    attachments_json, lawplayer_link, related_articles_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO articles (act_id, article_no, title, chapter, content)
+                VALUES (?, ?, ?, ?, ?)
+            """, (act.id, art.article_no, art.title, art.chapter, art.content))
+
+            # Enrichments
+            cur.execute("""
+                INSERT INTO article_enrichments (
+                    act_id, article_no, summary, reading_time, vernacular_qa_json,
+                    elements_json, key_issues_json, legislative_reasons,
+                    amendment_history_json, practical_insights_json, lawplayer_link,
+                    related_articles_json, attachments_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 act.id,
                 art.article_no,
-                art.title,
-                art.chapter,
-                art.content,
-                art.reading_time,
                 art.summary,
-                art.legislative_reasons,
+                art.reading_time,
                 json.dumps(art.vernacular_qa, ensure_ascii=False),
                 json.dumps(art.elements, ensure_ascii=False),
                 json.dumps(art.key_issues, ensure_ascii=False),
+                art.legislative_reasons,
                 json.dumps(art.amendment_history, ensure_ascii=False),
                 json.dumps(art.practical_insights, ensure_ascii=False),
-                json.dumps([att.to_dict() for att in art.attachments], ensure_ascii=False),
                 art.lawplayer_link,
-                json.dumps(art.related_articles, ensure_ascii=False)
+                json.dumps(art.related_articles, ensure_ascii=False),
+                json.dumps([att.to_dict() for att in art.attachments], ensure_ascii=False)
             ))
+
+            # FTS5 insert
+            try:
+                cur.execute("""
+                    INSERT INTO articles_fts (act_id, article_no, title, content)
+                    VALUES (?, ?, ?, ?)
+                """, (act.id, art.article_no, art.title, art.content))
+            except Exception:
+                pass
 
         conn.commit()
         conn.close()
@@ -183,8 +177,20 @@ class LegalStorage:
             conn.close()
             return None
 
-        # Fetch articles
-        cur.execute("SELECT * FROM articles WHERE act_id = ? ORDER BY id ASC", (row["id"],))
+        # Fetch articles joined with enrichments
+        cur.execute("""
+            SELECT 
+                a.act_id, a.article_no, a.title, a.chapter, a.content,
+                e.summary, e.reading_time, e.vernacular_qa_json, e.elements_json,
+                e.key_issues_json, e.legislative_reasons, e.amendment_history_json,
+                e.practical_insights_json, e.lawplayer_link, e.related_articles_json,
+                e.attachments_json
+            FROM articles a
+            LEFT JOIN article_enrichments e 
+                ON a.act_id = e.act_id AND a.article_no = e.article_no
+            WHERE a.act_id = ?
+            ORDER BY a.rowid ASC
+        """, (row["id"],))
         art_rows = cur.fetchall()
         conn.close()
 
