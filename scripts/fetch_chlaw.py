@@ -35,3 +35,4 @@ def fetch_chlaw_json():
 
 if __name__ == "__main__":
     fetch_chlaw_json()
+

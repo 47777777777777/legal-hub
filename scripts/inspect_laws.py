@@ -15,3 +15,4 @@ for law in laws:
         url = law.get('LawURL', '')
         pcode = url.split('=')[-1] if '=' in url else ''
         print(f"Name: {name:20s} | PCode: {pcode:10s} | Articles: {len(arts):4d} | Chapters: {len(chapters):3d}")
+
