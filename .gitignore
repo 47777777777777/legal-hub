@@ -1,0 +1,36 @@
+# Logs and databases
+*.log
+*.sqlite3
+*.db
+
+# Environment variables & secrets (CRITICAL for credentials & sessions)
+.env
+.env.local
+*.pem
+credentials.json
+session.json
+cookies.json
+
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Build artifacts
+dist/
+build/
+.cache/
+
+# Downloaded legal files & caches
+downloads/
+temp/
+data/cache/
+
+# OS & Editor specific files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
