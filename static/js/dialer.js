@@ -31,6 +31,12 @@ class QuickDialer {
       closeBtn.addEventListener("click", () => this.toggle(false));
     }
 
+    // Jump button in dialer footer
+    const jumpBtn = document.getElementById("dialer-jump-btn");
+    if (jumpBtn) {
+      jumpBtn.addEventListener("click", () => this.executeJump(true));
+    }
+
     // Floating FAB toggle
     if (this.fab) {
       this.fab.addEventListener("click", () => this.toggle());
@@ -115,26 +121,16 @@ class QuickDialer {
     const targetNo = this.buffer.trim();
     if (!targetNo) return;
 
-    // Check if element is already rendered in DOM
-    let el = document.getElementById(`art-${targetNo}`);
-    
-    if (!el) {
-      // Try finding via API search or switching tab to all articles
-      const found = await this.app.loadAndJumpArticle(targetNo);
-      if (found) {
-        el = document.getElementById(`art-${targetNo}`);
-      }
-    }
-
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.remove("highlight-pulse");
-      // Trigger reflow for animation restart
-      void el.offsetWidth;
-      el.classList.add("highlight-pulse");
-
+    const found = await this.app.loadAndJumpArticle(targetNo);
+    if (found) {
       if (clearAfter) {
-        setTimeout(() => this.clear(), 600);
+        setTimeout(() => {
+          this.clear();
+          // on mobile, auto close dialer when jumped to article
+          if (window.innerWidth <= 768) {
+            this.toggle(false);
+          }
+        }, 300);
       }
     } else {
       if (this.display) {

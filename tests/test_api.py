@@ -106,6 +106,17 @@ class TestApiIntegration(unittest.TestCase):
         self.assertTrue(len(art["vernacular_qa"]) > 0)
         self.assertTrue(len(art.get("summary", "")) > 0)
 
+    def test_get_single_article_1_rich_data(self):
+        status, data = self.get_json("/api/acts/criminal_code/articles/1")
+        self.assertEqual(status, 200)
+        art = data["data"]
+        self.assertEqual(art["article_no"], "1")
+        self.assertEqual(art["title"], "罪刑法定原則")
+        self.assertTrue(len(art["faqs"]) >= 4)
+        self.assertTrue(len(art["comparison_table"]["headers"]) >= 3)
+        self.assertTrue(len(art["official_letters"]) > 0)
+        self.assertIn("Nulla poena", art["legal_definition"])
+
     def test_search_articles(self):
         # Search by keyword "酒駕" or "酒精"
         status, data = self.get_json("/api/acts/criminal_code/search?q=酒精&page=1&page_size=10")

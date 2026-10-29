@@ -74,10 +74,32 @@ def init_database(db_path: str = DB_FILE):
             lawplayer_link TEXT,
             related_articles_json TEXT DEFAULT '[]',
             attachments_json TEXT DEFAULT '[]',
+            faqs_json TEXT DEFAULT '[]',
+            comparison_table_json TEXT DEFAULT '{}',
+            legal_definition TEXT DEFAULT '',
+            flowchart_json TEXT DEFAULT '{}',
+            official_letters_json TEXT DEFAULT '[]',
             PRIMARY KEY (act_id, article_no),
             FOREIGN KEY (act_id, article_no) REFERENCES articles(act_id, article_no) ON DELETE CASCADE
         )
     """)
+
+    # Check and add columns if table already existed without new columns
+    cur.execute("PRAGMA table_info(article_enrichments)")
+    existing_cols = [c[1] for c in cur.fetchall()]
+    new_cols = [
+        ("faqs_json", "TEXT DEFAULT '[]'"),
+        ("comparison_table_json", "TEXT DEFAULT '{}'"),
+        ("legal_definition", "TEXT DEFAULT ''"),
+        ("flowchart_json", "TEXT DEFAULT '{}'"),
+        ("official_letters_json", "TEXT DEFAULT '[]'")
+    ]
+    for col_name, col_type in new_cols:
+        if col_name not in existing_cols:
+            try:
+                cur.execute(f"ALTER TABLE article_enrichments ADD COLUMN {col_name} {col_type}")
+            except Exception:
+                pass
 
     # 4. Attachments table
     cur.execute("""

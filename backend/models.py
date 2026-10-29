@@ -43,7 +43,12 @@ class Article:
                  vernacular_qa: Optional[List[Dict[str, str]]] = None,
                  elements: Optional[List[str]] = None,
                  key_issues: Optional[List[str]] = None,
-                 amendment_history: Optional[List[Dict[str, Any]]] = None):
+                 amendment_history: Optional[List[Dict[str, Any]]] = None,
+                 faqs: Optional[List[Dict[str, str]]] = None,
+                 comparison_table: Optional[Dict[str, Any]] = None,
+                 legal_definition: str = "",
+                 flowchart: Optional[Dict[str, Any]] = None,
+                 official_letters: Optional[List[Dict[str, str]]] = None):
         if not article_no or not str(article_no).strip():
             raise ValidationError("Article number (article_no) cannot be empty.")
         if not content or not content.strip():
@@ -63,6 +68,11 @@ class Article:
         self.elements = elements or []
         self.key_issues = key_issues or []
         self.amendment_history = amendment_history or []
+        self.faqs = faqs or []
+        self.comparison_table = comparison_table or {}
+        self.legal_definition = legal_definition or ""
+        self.flowchart = flowchart or {}
+        self.official_letters = official_letters or []
         
         # Attachments validation (check duplicates)
         self.attachments: List[Attachment] = []
@@ -98,6 +108,11 @@ class Article:
             "elements": self.elements,
             "key_issues": self.key_issues,
             "amendment_history": self.amendment_history,
+            "faqs": self.faqs,
+            "comparison_table": self.comparison_table,
+            "legal_definition": self.legal_definition,
+            "flowchart": self.flowchart,
+            "official_letters": self.official_letters,
             "attachments": [att.to_dict() for att in self.attachments]
         }
 

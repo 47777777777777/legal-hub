@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Legal Hub - 法律法規檢索與條文研析</title>
-  <meta name="description" content="簡潔純粹的台灣法規檢索閱讀平台，具備深度白話條文解讀、思考脈絡流程圖、常見問答、歷次修法理由對照與手機直達鍵盤。">
+  <title>Legal Hub - 專業法規閱讀與條文深度研析</title>
+  <meta name="description" content="符合人體工學的現代法律檢索與深度研析平台，單一自然滾動排版，收錄全條文白話解析、實務判解、內容連結與歷次修法理由。">
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/dialer.css">
 </head>
 <body>
 
-  <!-- Minimal Top Navigation -->
+  <!-- Minimal Ergonomic Header -->
   <header class="navbar" id="top-navbar">
     <div class="nav-brand">
       <div class="brand-icon">⚖️</div>
@@ -38,85 +38,63 @@
     </div>
   </header>
 
-  <!-- Act Header (Clean LawPlayer Style) -->
+  <!-- Act Meta Bar -->
   <section class="act-banner" id="act-banner">
     <!-- Populated dynamically -->
   </section>
 
-  <!-- Main Content Layout (Split Screen) -->
-  <main class="main-container">
-    <!-- Sidebar: Chapters (編章節) -->
-    <aside class="sidebar" id="sidebar-toc">
-      <h3 class="sidebar-title">📑 編章節目錄</h3>
+  <!-- Ergonomic Workspace Layout -->
+  <main class="workspace-container">
+    <!-- Left Col 1: Chapter Outline (Desktop only, 220px) -->
+    <aside class="sidebar-toc" id="sidebar-toc">
+      <h3 class="panel-heading">📑 編章節索引</h3>
       <div id="sidebar-chapter-list"></div>
     </aside>
 
-    <!-- Center Content: Articles Feed -->
-    <section class="content-area">
-      <div class="search-bar-wrapper">
-        <input 
-          type="text" 
-          id="search-input" 
-          class="search-input" 
-          placeholder="🔍 快速搜尋條號（如 185-3、184）或條文關鍵字..." 
-          aria-label="搜尋條文"
-        />
-        <button id="search-btn" class="search-btn">搜尋</button>
+    <!-- Center Main Area: Continuous Statute Stream Reader (全條文連續流暢閱讀) -->
+    <section class="statute-stream-container" id="statute-stream-container">
+      <div class="stream-toolbar">
+        <div class="stream-search-wrapper">
+          <input type="text" id="search-input" class="search-input" placeholder="🔍 搜尋本法規條號（如 1、184、185-3）或條文關鍵字..." aria-label="搜尋條文" />
+        </div>
+        <div class="stream-stats" id="stream-stats"></div>
       </div>
-
-      <!-- Quick Jump Pills (1) (2) (184) ... -->
-      <div class="quick-pills-bar" id="quick-pills-bar">
-        <span class="pill-label">條號：</span>
-        <div id="pills-container" style="display:inline-flex;gap:0.35rem;flex-wrap:wrap;"></div>
+      
+      <!-- Continuous list of all articles with full text -->
+      <div class="statute-stream-list" id="statute-stream-list">
+        <!-- Rendered articles in sequence with full text & 條文研析 action -->
       </div>
-
-      <!-- Articles Container -->
-      <div id="articles-container"></div>
     </section>
 
-    <!-- Right Side: Clean LawPlayer Reading Drawer -->
-    <aside class="lawplayer-drawer hidden" id="lawplayer-drawer" aria-label="條文研析">
-      <div class="drawer-header">
-        <div class="drawer-top-row">
-          <div class="breadcrumbs" id="drawer-breadcrumbs">中華民國刑法 > 第一編 總則 > 第一章 法例</div>
-          <button class="drawer-close-btn" id="drawer-close-btn" title="關閉">✕</button>
+    <!-- Slide-Over Deep Study Drawer (Desktop side drawer / Mobile full sheet) -->
+    <!-- SINGLE UNIFIED VERTICAL SCROLL CONTAINER: No nested scrollbars! -->
+    <aside class="study-drawer hidden" id="study-drawer" aria-label="條文深度研析面板">
+      <div class="study-drawer-backdrop" id="drawer-backdrop"></div>
+      <div class="study-drawer-panel" id="study-drawer-panel">
+        <div class="study-drawer-header">
+          <div class="drawer-header-left">
+            <span class="drawer-breadcrumb" id="drawer-breadcrumb">中華民國刑法 > 第一章 法例</span>
+            <span class="drawer-article-badge" id="drawer-article-badge">第 1 條</span>
+          </div>
+          <div class="drawer-header-actions">
+            <button class="drawer-tool-btn" id="drawer-expand-btn" title="切換寬度">⛶ 展開</button>
+            <button class="drawer-close-btn" id="drawer-close-btn" title="關閉 (Esc)">✕</button>
+          </div>
         </div>
 
-        <h2 class="drawer-title" id="drawer-title">中華民國刑法 第 1 條</h2>
-        <div class="drawer-subtitle" id="drawer-subtitle">罪刑法定原則</div>
-
-        <div class="drawer-article-text" id="drawer-article-text">
-          <!-- Article full text -->
+        <!-- Single vertical scroll body: Everything flows inside naturally! -->
+        <div class="study-drawer-scroll-body" id="study-drawer-scroll-body">
+          <!-- Populated dynamically: Article text, Sticky tabs, All tab content, Bottom nav -->
         </div>
-
-        <!-- LawPlayer Tabs: 關鍵知識 | 內容連結 | 立法理由 | 共同筆記 -->
-        <nav class="drawer-tabs" id="drawer-tabs">
-          <button class="drawer-tab active" data-tab="key_knowledge">關鍵知識</button>
-          <button class="drawer-tab" data-tab="content_links">內容連結 <span class="tab-count-badge" id="links-count-badge">3</span></button>
-          <button class="drawer-tab" data-tab="legislative_history">立法理由</button>
-          <button class="drawer-tab" data-tab="notes">共同筆記</button>
-        </nav>
       </div>
-
-      <!-- Drawer Scrollable Content Body -->
-      <div class="drawer-content" id="drawer-content">
-        <!-- Rendered dynamically -->
-      </div>
-
-      <!-- Drawer Sticky Footer -->
-      <footer class="drawer-footer">
-        <button class="nav-arrow-btn" id="drawer-prev-btn">← 上一條</button>
-        <span class="drawer-curr-nav" id="drawer-curr-nav">第 1 條 罪刑法定原則</span>
-        <button class="nav-arrow-btn" id="drawer-next-btn">下一條 →</button>
-      </footer>
     </aside>
   </main>
 
-  <!-- Mobile-Only 0-9 Floating Numeric Keypad (Completely hidden on desktop) -->
+  <!-- Mobile-Only 0-9 Floating Numeric Keypad -->
   <div id="quick-dialer" class="quick-dialer-container hidden" role="dialog" aria-label="手機條號直達數字鍵盤">
     <div class="dialer-header">
       <div class="dialer-preview">
-        <span class="dialer-label">📱 手機條號直達：</span>
+        <span class="dialer-label">📱 條號直達：</span>
         <span id="dialer-display" class="dialer-display">請輸入條號</span>
       </div>
       <div class="dialer-actions">
@@ -134,17 +112,15 @@
       <button class="dialer-key" data-val="7">7</button>
       <button class="dialer-key" data-val="8">8</button>
       <button class="dialer-key" data-val="9">9</button>
+      <button class="dialer-key dialer-key-action" data-val="-">之 (-)</button>
       <button class="dialer-key" data-val="0">0</button>
-      <button class="dialer-key key-dash" data-val="-" title="之 (例: 185-3)">-</button>
-      <button class="dialer-key key-backspace" data-val="backspace" title="退格">⌫</button>
-      <button class="dialer-key key-go" data-val="go" title="立即跳轉">GO</button>
+      <button class="dialer-key dialer-key-action" data-val="back">⌫ 刪除</button>
+    </div>
+
+    <div class="dialer-footer">
+      <button class="dialer-jump-btn" id="dialer-jump-btn">⚡ 立即前往條文</button>
     </div>
   </div>
-
-  <!-- Mobile Floating Action Button (FAB) - Hidden on desktop via CSS -->
-  <button id="dialer-fab" class="dialer-fab" title="開啟手機 0-9 條號鍵盤">
-    🔢
-  </button>
 
   <script src="/js/dialer.js"></script>
   <script src="/js/app.js"></script>

@@ -249,8 +249,9 @@ def insert_act_data(cur, data: dict, is_enriched: int = 1):
                 act_id, article_no, summary, reading_time, vernacular_qa_json,
                 elements_json, key_issues_json, legislative_reasons,
                 amendment_history_json, practical_insights_json, lawplayer_link,
-                related_articles_json, attachments_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                related_articles_json, attachments_json, faqs_json,
+                comparison_table_json, legal_definition, flowchart_json, official_letters_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             act_id,
             art_no,
@@ -264,7 +265,12 @@ def insert_act_data(cur, data: dict, is_enriched: int = 1):
             json.dumps(art.get("practical_insights", []), ensure_ascii=False),
             art.get("lawplayer_link", f"https://lawplayer.com/act/#article_{art_no}"),
             json.dumps(art.get("related_articles", []), ensure_ascii=False),
-            json.dumps(art.get("attachments", []), ensure_ascii=False)
+            json.dumps(art.get("attachments", []), ensure_ascii=False),
+            json.dumps(art.get("faqs", []), ensure_ascii=False),
+            json.dumps(art.get("comparison_table", {}), ensure_ascii=False),
+            art.get("legal_definition", ""),
+            json.dumps(art.get("flowchart", {}), ensure_ascii=False),
+            json.dumps(art.get("official_letters", []), ensure_ascii=False)
         ))
 
 

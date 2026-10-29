@@ -12,7 +12,8 @@ from backend.models import ValidationError
 class TestBackendValidation(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
-        self.storage = LegalStorage(self.temp_dir)
+        self.db_path = os.path.join(self.temp_dir, "test.db")
+        self.storage = LegalStorage(self.temp_dir, db_path=self.db_path)
 
     def tearDown(self):
         for f in os.listdir(self.temp_dir):

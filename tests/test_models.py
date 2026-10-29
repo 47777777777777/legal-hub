@@ -74,5 +74,22 @@ class TestModels(unittest.TestCase):
         self.assertIn("Duplicate attachment URL", str(ctx.exception))
 
 
+    def test_article_rich_enrichment_fields(self):
+        art = Article(
+            article_no="1",
+            content="行為之處罰，以行為時之法律有明文規定者為限。",
+            title="罪刑法定原則",
+            legal_definition="罪刑法定原則為刑法核心基石",
+            faqs=[{"q": "Q1 國家可以事後立法定我罪嗎？", "a": "不行"}],
+            comparison_table={"headers": ["A", "B"], "rows": [["1", "2"]]},
+            official_letters=[{"no": "法檢字第 123 號", "organ": "法務部", "date": "2020-01-01"}]
+        )
+        d = art.to_dict()
+        self.assertEqual(d["legal_definition"], "罪刑法定原則為刑法核心基石")
+        self.assertEqual(len(d["faqs"]), 1)
+        self.assertEqual(len(d["comparison_table"]["headers"]), 2)
+        self.assertEqual(len(d["official_letters"]), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

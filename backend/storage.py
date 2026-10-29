@@ -131,8 +131,9 @@ class LegalStorage:
                     act_id, article_no, summary, reading_time, vernacular_qa_json,
                     elements_json, key_issues_json, legislative_reasons,
                     amendment_history_json, practical_insights_json, lawplayer_link,
-                    related_articles_json, attachments_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    related_articles_json, attachments_json, faqs_json,
+                    comparison_table_json, legal_definition, flowchart_json, official_letters_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 act.id,
                 art.article_no,
@@ -146,7 +147,12 @@ class LegalStorage:
                 json.dumps(art.practical_insights, ensure_ascii=False),
                 art.lawplayer_link,
                 json.dumps(art.related_articles, ensure_ascii=False),
-                json.dumps([att.to_dict() for att in art.attachments], ensure_ascii=False)
+                json.dumps([att.to_dict() for att in art.attachments], ensure_ascii=False),
+                json.dumps(art.faqs, ensure_ascii=False),
+                json.dumps(art.comparison_table, ensure_ascii=False),
+                art.legal_definition,
+                json.dumps(art.flowchart, ensure_ascii=False),
+                json.dumps(art.official_letters, ensure_ascii=False)
             ))
 
             # FTS5 insert
@@ -184,7 +190,8 @@ class LegalStorage:
                 e.summary, e.reading_time, e.vernacular_qa_json, e.elements_json,
                 e.key_issues_json, e.legislative_reasons, e.amendment_history_json,
                 e.practical_insights_json, e.lawplayer_link, e.related_articles_json,
-                e.attachments_json
+                e.attachments_json, e.faqs_json, e.comparison_table_json,
+                e.legal_definition, e.flowchart_json, e.official_letters_json
             FROM articles a
             LEFT JOIN article_enrichments e 
                 ON a.act_id = e.act_id AND a.article_no = e.article_no
@@ -211,7 +218,12 @@ class LegalStorage:
                 "practical_insights": json.loads(a["practical_insights_json"] or "[]"),
                 "attachments": json.loads(a["attachments_json"] or "[]"),
                 "lawplayer_link": a["lawplayer_link"] or "",
-                "related_articles": json.loads(a["related_articles_json"] or "[]")
+                "related_articles": json.loads(a["related_articles_json"] or "[]"),
+                "faqs": json.loads(a["faqs_json"] or "[]"),
+                "comparison_table": json.loads(a["comparison_table_json"] or "{}"),
+                "legal_definition": a["legal_definition"] or "",
+                "flowchart": json.loads(a["flowchart_json"] or "{}"),
+                "official_letters": json.loads(a["official_letters_json"] or "[]")
             })
 
         act_data = {
