@@ -1,0 +1,73 @@
+{
+  "id": "civil_code",
+  "name": "中華民國民法",
+  "name_en": "Civil Code of the Republic of China",
+  "last_modified": "民國 110 年 01 月 13 日",
+  "category": "民事 > 法律事務目",
+  "org_reform_notice": "如已配合行政院組織改造，公告變更管轄或停止辦理業務之法規條文，請詳見沿革",
+  "attachments": [],
+  "history": [
+    "民國 110 年 01 月 13 日 修正公布調降成年年齡為 18 歲",
+    "民國 18 年 05 月 23 日 制定公布"
+  ],
+  "legislative_process": [
+    "立法院三讀通過調降成年年齡案",
+    "配合世界多數國家立法趨勢與自主責任成年化原則修正。"
+  ],
+  "chapters": [
+    {
+      "code": "CIV1",
+      "title": "第一編 總則",
+      "sections": [
+        { "code": "CIV1-1", "title": "第一章 法例 (第 1 ~ 5 條)" }
+      ]
+    },
+    {
+      "code": "CIV2",
+      "title": "第二編 債",
+      "sections": [
+        { "code": "CIV2-1-1", "title": "第一章 通則 / 第一節 債之發生 / 第二款 侵權行為 (第 184 ~ 198 條)" }
+      ]
+    }
+  ],
+  "articles": [
+    {
+      "article_no": "1",
+      "chapter": "第一編 總則 / 第一章 法例",
+      "title": "民事適用之法源",
+      "content": "民事，法律所未規定者，依習慣；無習慣者，依法理。",
+      "legislative_reasons": "民事糾紛多元萬千，法律條文或有窮盡，為防止法官拒絕裁判，明文確立『法律、習慣、法理』之補充適用順序。",
+      "practical_insights": [
+        {
+          "court": "最高法院",
+          "ref": "17年上字第613號判例",
+          "summary": "適用習慣須以不背於公共秩序或善良風俗者為限。"
+        }
+      ],
+      "lawplayer_link": "https://lawplayer.com/act/civil_code#article_1",
+      "related_articles": ["民法第 2 條", "民法第 71 條"]
+    },
+    {
+      "article_no": "184",
+      "chapter": "第二編 債 / 第一章 通則 / 第一節 債之發生 / 第二款 侵權行為",
+      "title": "獨立侵權行為之責任（一般侵權行為）",
+      "content": "因故意或過失，不法侵害他人之權利者，負損害賠償責任。故意以背於善良風俗之方法，加損害於他人者亦同。\n違反保護他人之法律，致生損害於他人者，負賠償責任。但能證明其行為無過失者，不在此限。",
+      "legislative_reasons": "本條為我國民事侵權行為法之總樞紐。分為第1項前段（權利侵害）、第1項後段（故意背於善良風俗加損害於利益）、第2項（違反保護他人法律之推定過失責任）。確立三個獨立之請求權基礎體系。",
+      "practical_insights": [
+        {
+          "court": "最高法院",
+          "ref": "大法庭 108年度台上大字第1636號裁定",
+          "summary": "民法第184條第1項前段之『權利』，指既存法律體系所明認之權利，不包含純粹經濟上損失；純粹經濟損失應循第1項後段或第2項救濟。"
+        },
+        {
+          "court": "最高法院",
+          "ref": "55年台上字第2053號判例",
+          "summary": "侵權行為賠償請求權之成立，以行為人之故意或過失、不法性、損害之發生，及相當因果關係為必要要件。"
+        }
+      ],
+      "attachments": [],
+      "lawplayer_link": "https://lawplayer.com/act/civil_code#article_184",
+      "related_articles": ["民法第 185 條", "民法第 195 條", "民法第 216 條"]
+    }
+  ]
+}

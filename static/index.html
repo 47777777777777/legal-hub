@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Legal Hub - 台灣法規智慧檢索與法律人深度研析平台</title>
+  <meta name="description" content="專為行動端打造的台灣法規極致檢索閱讀器，具備0-9數字條號直達鍵、法律人實務見解與立法理由補充、官方附檔下載，以及校園代理資料庫連結。">
+  
+  <!-- Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/dialer.css">
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="navbar" id="top-navbar">
+    <div class="nav-brand">
+      <div class="brand-icon">⚖️</div>
+      <span class="brand-title">Legal Hub</span>
+      <span class="brand-tag">LawPlayer Edition</span>
+    </div>
+    
+    <div class="nav-controls">
+      <select id="act-select" class="act-select" aria-label="選擇法規">
+        <option value="criminal_code">中華民國刑法</option>
+        <option value="civil_code">中華民國民法</option>
+      </select>
+      <button id="dialer-toggle-btn" class="dialer-toggle-btn" title="開啟 0-9 條號直達鍵盤">
+        🔢 條號直達
+      </button>
+      <button id="theme-toggle-btn" class="theme-toggle-btn" title="切換深色/淺色主題">
+        ☀️ 淺色
+      </button>
+    </div>
+  </header>
+
+  <!-- Law Header Banner (Format matching user's official screenshot) -->
+  <section class="act-banner" id="act-banner">
+    <!-- Populated dynamically by app.js -->
+  </section>
+
+  <!-- Main Content Layout -->
+  <main class="main-container">
+    <!-- Sidebar: Chapters Hierarchy (編章節) -->
+    <aside class="sidebar" id="sidebar-toc">
+      <h3 class="sidebar-title">📑 目錄大綱與編章節</h3>
+      <div id="sidebar-chapter-list">
+        <!-- Populated dynamically -->
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <section class="content-area">
+      <!-- Search Toolbar -->
+      <div class="search-bar-wrapper">
+        <input 
+          type="text" 
+          id="search-input" 
+          class="search-input" 
+          placeholder="🔍 輸入條號（如 185-3、184）或條文關鍵字、裁判見解..." 
+          aria-label="搜尋法規條文"
+        />
+        <button id="search-btn" class="search-btn">搜尋</button>
+      </div>
+
+      <!-- Articles Container -->
+      <div id="articles-container">
+        <!-- Populated dynamically with LawPlayer style article cards -->
+      </div>
+    </section>
+  </main>
+
+  <!-- Floating Mobile 0-9 Numeric Keypad Quick Dial -->
+  <div id="quick-dialer" class="quick-dialer-container hidden" role="dialog" aria-label="手機條號直達數字鍵盤">
+    <div class="dialer-header">
+      <div class="dialer-preview">
+        <span class="dialer-label">📱 快速條號直達：</span>
+        <span id="dialer-display" class="dialer-display">請輸入條號</span>
+      </div>
+      <div class="dialer-actions">
+        <button class="dialer-btn-close" id="dialer-close-btn" title="收起鍵盤">✕</button>
+      </div>
+    </div>
+    
+    <div class="dialer-grid">
+      <button class="dialer-key" data-val="1">1</button>
+      <button class="dialer-key" data-val="2">2</button>
+      <button class="dialer-key" data-val="3">3</button>
+      <button class="dialer-key" data-val="4">4</button>
+      <button class="dialer-key" data-val="5">5</button>
+      <button class="dialer-key" data-val="6">6</button>
+      <button class="dialer-key" data-val="7">7</button>
+      <button class="dialer-key" data-val="8">8</button>
+      <button class="dialer-key" data-val="9">9</button>
+      <button class="dialer-key" data-val="0">0</button>
+      <button class="dialer-key key-dash" data-val="-" title="之 (例: 185-3)">-</button>
+      <button class="dialer-key key-backspace" data-val="backspace" title="退格">⌫</button>
+      <button class="dialer-key key-go" data-val="go" title="立即跳轉">GO</button>
+    </div>
+  </div>
+
+  <!-- Mobile Floating Action Button (FAB) to open dialer -->
+  <button id="dialer-fab" class="dialer-fab" title="開啟 0-9 條號鍵盤">
+    🔢
+  </button>
+
+  <!-- JavaScript Modules -->
+  <script src="/js/dialer.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
