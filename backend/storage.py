@@ -1,11 +1,14 @@
 """
-Storage repository, duplicate validations, and caching layer for Legal Hub.
+Storage repository, duplicate validations, SQLite backing layer, and caching for Legal Hub.
+Supports all Taiwan statutes and dynamic fallback.
 """
 import os
 import json
 import time
+import sqlite3
 from typing import Dict, List, Optional, Any
 from backend.models import Act, Article, Attachment, ValidationError
+from backend.db import get_connection, DB_FILE, init_database
 
 
 class StorageError(Exception):
@@ -13,9 +16,6 @@ class StorageError(Exception):
 
 
 class CacheManager:
-    """
-    In-memory caching mechanism with TTL and hit/miss tracking for cache validation.
-    """
     def __init__(self, default_ttl_seconds: int = 300):
         self.default_ttl = default_ttl_seconds
         self._cache: Dict[str, Dict[str, Any]] = {}
@@ -63,52 +63,110 @@ class CacheManager:
 
 
 class LegalStorage:
-    def __init__(self, acts_dir: str):
+    def __init__(self, acts_dir: Optional[str] = None, db_path: str = DB_FILE):
         self.acts_dir = acts_dir
-        self.acts: Dict[str, Act] = {}
+        self.db_path = db_path
         self.cache = CacheManager()
-        self.load_all_acts()
+        init_database(self.db_path)
+        self.sync_seed_files_if_empty()
 
-    def load_all_acts(self) -> None:
+    def sync_seed_files_if_empty(self):
         """
-        Loads all acts from JSON files and validates duplicates.
+        Loads initial seed files from acts_dir into SQLite if SQLite table has no acts.
         """
-        self.acts.clear()
+        conn = get_connection(self.db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT count(*) as count FROM acts")
+        count = cur.fetchone()["count"]
+        conn.close()
+
+        if count == 0 and self.acts_dir and os.path.exists(self.acts_dir):
+            for filename in sorted(os.listdir(self.acts_dir)):
+                if filename.endswith(".json"):
+                    filepath = os.path.join(self.acts_dir, filename)
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        self.add_act(data)
+
+    def load_all_acts(self):
         self.cache.invalidate()
 
-        if not os.path.exists(self.acts_dir):
-            return
-
-        for filename in sorted(os.listdir(self.acts_dir)):
-            if filename.endswith(".json"):
-                filepath = os.path.join(self.acts_dir, filename)
-                with open(filepath, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    self.add_act(data)
-
     def add_act(self, data: Dict[str, Any]) -> Act:
-        """
-        Validates and adds an act. Raises StorageError if duplicate act ID or duplicate act name exists.
-        """
         act_id = data.get("id", "").strip()
         act_name = data.get("name", "").strip()
 
         if not act_id:
             raise ValidationError("Act ID is required.")
 
-        # Duplicate act ID validation
-        if act_id in self.acts:
+        conn = get_connection(self.db_path)
+        cur = conn.cursor()
+
+        # Duplicate act ID check
+        cur.execute("SELECT id FROM acts WHERE id = ?", (act_id,))
+        if cur.fetchone():
+            conn.close()
             raise StorageError(f"Duplicate act ID '{act_id}' is already registered.")
 
-        # Duplicate act name validation
-        for existing in self.acts.values():
-            if existing.name == act_name:
-                raise StorageError(f"Duplicate act name '{act_name}' is already registered.")
+        # Duplicate act Name check
+        cur.execute("SELECT id FROM acts WHERE name = ?", (act_name,))
+        if cur.fetchone():
+            conn.close()
+            raise StorageError(f"Duplicate act name '{act_name}' is already registered.")
 
-        # Construct and validate Act (which checks internal duplicate articles and attachments)
+        # Validate with Model (checks internal duplicate articles and attachments)
         act = Act(**data)
-        self.acts[act.id] = act
-        self.cache.invalidate(f"act:{act.id}")
+
+        # Insert to SQLite
+        cur.execute("""
+            INSERT INTO acts (
+                id, pcode, name, name_en, last_modified, category, 
+                org_reform_notice, history_json, legislative_process_json, 
+                chapters_json, attachments_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            act.id,
+            data.get("pcode", ""),
+            act.name,
+            act.name_en,
+            act.last_modified,
+            act.category,
+            act.org_reform_notice,
+            json.dumps(act.history, ensure_ascii=False),
+            json.dumps(act.legislative_process, ensure_ascii=False),
+            json.dumps(act.chapters, ensure_ascii=False),
+            json.dumps([att.to_dict() for att in act.attachments], ensure_ascii=False)
+        ))
+
+        for art in act.articles:
+            cur.execute("""
+                INSERT INTO articles (
+                    act_id, article_no, title, chapter, content, reading_time,
+                    summary, legislative_reasons, vernacular_qa_json, elements_json,
+                    key_issues_json, amendment_history_json, practical_insights_json,
+                    attachments_json, lawplayer_link, related_articles_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                act.id,
+                art.article_no,
+                art.title,
+                art.chapter,
+                art.content,
+                art.reading_time,
+                art.summary,
+                art.legislative_reasons,
+                json.dumps(art.vernacular_qa, ensure_ascii=False),
+                json.dumps(art.elements, ensure_ascii=False),
+                json.dumps(art.key_issues, ensure_ascii=False),
+                json.dumps(art.amendment_history, ensure_ascii=False),
+                json.dumps(art.practical_insights, ensure_ascii=False),
+                json.dumps([att.to_dict() for att in art.attachments], ensure_ascii=False),
+                art.lawplayer_link,
+                json.dumps(art.related_articles, ensure_ascii=False)
+            ))
+
+        conn.commit()
+        conn.close()
+        self.cache.invalidate()
         return act
 
     def get_act(self, act_id: str) -> Optional[Act]:
@@ -117,20 +175,91 @@ class LegalStorage:
         if cached:
             return cached
 
-        act = self.acts.get(act_id)
-        if act:
-            self.cache.set(cache_key, act)
+        conn = get_connection(self.db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM acts WHERE id = ? OR pcode = ? OR name = ?", (act_id, act_id, act_id))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return None
+
+        # Fetch articles
+        cur.execute("SELECT * FROM articles WHERE act_id = ? ORDER BY id ASC", (row["id"],))
+        art_rows = cur.fetchall()
+        conn.close()
+
+        articles = []
+        for a in art_rows:
+            articles.append({
+                "article_no": a["article_no"],
+                "title": a["title"] or "",
+                "chapter": a["chapter"] or "",
+                "content": a["content"],
+                "reading_time": a["reading_time"] or "3 分鐘",
+                "summary": a["summary"] or "",
+                "legislative_reasons": a["legislative_reasons"] or "",
+                "vernacular_qa": json.loads(a["vernacular_qa_json"] or "[]"),
+                "elements": json.loads(a["elements_json"] or "[]"),
+                "key_issues": json.loads(a["key_issues_json"] or "[]"),
+                "amendment_history": json.loads(a["amendment_history_json"] or "[]"),
+                "practical_insights": json.loads(a["practical_insights_json"] or "[]"),
+                "attachments": json.loads(a["attachments_json"] or "[]"),
+                "lawplayer_link": a["lawplayer_link"] or "",
+                "related_articles": json.loads(a["related_articles_json"] or "[]")
+            })
+
+        act_data = {
+            "id": row["id"],
+            "name": row["name"],
+            "name_en": row["name_en"] or "",
+            "last_modified": row["last_modified"] or "",
+            "category": row["category"] or "",
+            "org_reform_notice": row["org_reform_notice"] or "",
+            "history": json.loads(row["history_json"] or "[]"),
+            "legislative_process": json.loads(row["legislative_process_json"] or "[]"),
+            "chapters": json.loads(row["chapters_json"] or "[]"),
+            "attachments": json.loads(row["attachments_json"] or "[]"),
+            "articles": articles
+        }
+
+        act = Act(**act_data)
+        self.cache.set(cache_key, act)
         return act
 
-    def list_acts(self) -> List[Dict[str, Any]]:
-        cache_key = "acts:list"
+    def list_acts(self, query: str = "") -> List[Dict[str, Any]]:
+        q = (query or "").strip().lower()
+        cache_key = f"acts:list:{q}"
         cached = self.cache.get(cache_key)
         if cached:
             return cached
 
-        result = [act.to_dict(include_articles=False) for act in self.acts.values()]
-        self.cache.set(cache_key, result)
-        return result
+        conn = get_connection(self.db_path)
+        cur = conn.cursor()
+        if q:
+            cur.execute("""
+                SELECT id, name, name_en, last_modified, category 
+                FROM acts 
+                WHERE lower(name) LIKE ? OR lower(category) LIKE ? OR lower(id) LIKE ?
+                ORDER BY is_enriched DESC, name ASC
+            """, (f"%{q}%", f"%{q}%", f"%{q}%"))
+        else:
+            cur.execute("SELECT id, name, name_en, last_modified, category FROM acts ORDER BY is_enriched DESC, name ASC")
+
+        rows = cur.fetchall()
+        conn.close()
+
+        results = []
+        for r in rows:
+            results.append({
+                "id": r["id"],
+                "name": r["name"],
+                "name_en": r["name_en"] or "",
+                "last_modified": r["last_modified"] or "",
+                "category": r["category"] or ""
+            })
+
+        self.cache.set(cache_key, results)
+        return results
 
     def get_article(self, act_id: str, article_no: str) -> Optional[Article]:
         act = self.get_act(act_id)
@@ -139,9 +268,6 @@ class LegalStorage:
         return act.articles_map.get(str(article_no).strip())
 
     def search_articles(self, act_id: str, query: str) -> List[Dict[str, Any]]:
-        """
-        Searches articles in an act by number, title, content, legislative reasons, or practical insights.
-        """
         act = self.get_act(act_id)
         if not act:
             return []
@@ -157,17 +283,17 @@ class LegalStorage:
 
         results = []
         for art in act.articles:
-            # Check match by exact or partial article number
             match_no = q == art.article_no.lower() or f"第{q}條" in f"第{art.article_no}條"
             match_title = q in art.title.lower()
             match_content = q in art.content.lower()
             match_reasons = q in art.legislative_reasons.lower()
+            match_summary = q in (art.summary or "").lower()
             match_insights = any(
                 q in item.get("summary", "").lower() or q in item.get("ref", "").lower()
                 for item in art.practical_insights
             )
 
-            if match_no or match_title or match_content or match_reasons or match_insights:
+            if match_no or match_title or match_content or match_reasons or match_summary or match_insights:
                 results.append(art.to_dict())
 
         self.cache.set(cache_key, results)

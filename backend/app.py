@@ -97,9 +97,10 @@ class LegalApiHandler(BaseHTTPRequestHandler):
 
     def handle_api_get(self, path: str, query: dict):
         try:
-            # GET /api/acts
+            # GET /api/acts (supports ?q=... for full statutes search)
             if path == "/api/acts":
-                acts = storage.list_acts()
+                q = query.get("q", [""])[0]
+                acts = storage.list_acts(q)
                 self.send_json(200, {"success": True, "data": acts})
                 return
 

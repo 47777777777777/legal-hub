@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Legal Hub - 台灣法規智慧檢索與法律人深度研析平台</title>
-  <meta name="description" content="專為行動端打造的台灣法規極致檢索閱讀器，具備0-9數字條號直達鍵、法律人實務見解與立法理由補充、官方附檔下載，以及校園代理資料庫連結。">
+  <meta name="description" content="比照法律人完整架構的台灣法規智慧檢索平台，具備分條歷次修法理由、綱要知識白話解析、實務裁判、官方附檔下載，並針對手機端提供0-9條號直達鍵。">
   
   <!-- Modern Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,15 +22,26 @@
     <div class="nav-brand">
       <div class="brand-icon">⚖️</div>
       <span class="brand-title">Legal Hub</span>
-      <span class="brand-tag">LawPlayer Edition</span>
+      <span class="brand-tag">LawPlayer Pro Edition</span>
     </div>
     
     <div class="nav-controls">
-      <select id="act-select" class="act-select" aria-label="選擇法規">
-        <option value="criminal_code">中華民國刑法</option>
-        <option value="civil_code">中華民國民法</option>
-      </select>
-      <button id="dialer-toggle-btn" class="dialer-toggle-btn" title="開啟 0-9 條號直達鍵盤">
+      <div style="position:relative;display:flex;align-items:center;gap:0.4rem;">
+        <select id="act-select" class="act-select" aria-label="選擇法規">
+          <option value="criminal_code">中華民國刑法</option>
+          <option value="civil_code">中華民國民法</option>
+          <option value="constitution">中華民國憲法</option>
+          <option value="labor_standards_act">勞動基準法</option>
+          <option value="admin_procedure_act">行政程序法</option>
+          <option value="traffic_act">道路交通管理處罰條例</option>
+          <option value="company_act">公司法</option>
+          <option value="copyright_act">著作權法</option>
+          <option value="prip_act">個人資料保護法</option>
+        </select>
+        <input type="text" id="act-search-input" class="act-search-input" placeholder="🔍 全國法規搜尋..." title="輸入法規名稱（如勞基法、公司法、商標法等）" style="background:var(--bg-surface-elevated);border:1px solid var(--border-color);color:var(--text-main);padding:0.45rem 0.75rem;border-radius:8px;font-size:0.85rem;width:160px;outline:none;" />
+      </div>
+      <!-- Dialer Toggle only displays on mobile screens via CSS media queries -->
+      <button id="dialer-toggle-btn" class="dialer-toggle-btn" title="開啟手機 0-9 條號直達鍵盤">
         🔢 條號直達
       </button>
       <button id="theme-toggle-btn" class="theme-toggle-btn" title="切換深色/淺色主題">
@@ -44,7 +55,7 @@
     <!-- Populated dynamically by app.js -->
   </section>
 
-  <!-- Main Content Layout -->
+  <!-- Main Content Layout (Dual-Pane / Split View) -->
   <main class="main-container">
     <!-- Sidebar: Chapters Hierarchy (編章節) -->
     <aside class="sidebar" id="sidebar-toc">
@@ -54,7 +65,7 @@
       </div>
     </aside>
 
-    <!-- Main Content Area -->
+    <!-- Center Content Area (Article Feed & Quick Pills) -->
     <section class="content-area">
       <!-- Search Toolbar -->
       <div class="search-bar-wrapper">
@@ -62,10 +73,16 @@
           type="text" 
           id="search-input" 
           class="search-input" 
-          placeholder="🔍 輸入條號（如 185-3、184）或條文關鍵字、裁判見解..." 
+          placeholder="🔍 輸入條號（如 185-3、184）或關鍵字、裁判案號、爭點..." 
           aria-label="搜尋法規條文"
         />
         <button id="search-btn" class="search-btn">搜尋</button>
+      </div>
+
+      <!-- Quick Jump Article Number Pills (LawPlayer (1) (2) (184) style) -->
+      <div class="quick-pills-bar" id="quick-pills-bar">
+        <span class="pill-label">條號直選：</span>
+        <div id="pills-container" style="display:inline-flex;gap:0.35rem;flex-wrap:wrap;"></div>
       </div>
 
       <!-- Articles Container -->
@@ -73,13 +90,65 @@
         <!-- Populated dynamically with LawPlayer style article cards -->
       </div>
     </section>
+
+    <!-- Right Side: LawPlayer Detail Drawer (Matching user's uploaded LawPlayer screenshot) -->
+    <aside class="lawplayer-drawer hidden" id="lawplayer-drawer" aria-label="條文深度研析面板">
+      <div class="drawer-header">
+        <div class="drawer-top-row">
+          <div class="breadcrumbs" id="drawer-breadcrumbs">中華民國刑法 > 第一編 總則</div>
+          <button class="drawer-close-btn" id="drawer-close-btn" title="關閉研析抽屜">✕</button>
+        </div>
+        
+        <div class="drawer-badges-row">
+          <span class="source-badge">資料來源：全國法規資料庫、立法院法律系統</span>
+          <span class="time-badge" id="drawer-reading-time">閱讀時間 8 分鐘</span>
+        </div>
+
+        <h2 class="drawer-title" id="drawer-title">中華民國刑法 第 1 條</h2>
+        <div class="drawer-subtitle" id="drawer-subtitle">罪刑法定原則</div>
+
+        <div class="drawer-article-text" id="drawer-article-text">
+          <!-- Article full text -->
+        </div>
+
+        <!-- AI Action Prompts Toolbar (LawPlayer Twin) -->
+        <div class="ai-actions-bar">
+          <button class="ai-btn" onclick="alert('已複製條文至剪貼簿，可直接貼給 AI 閱讀！')">🤖 用 AI 讀條文</button>
+          <a class="ai-btn" id="ai-perplexity-btn" target="_blank" rel="noopener noreferrer">🔎 用 Perplexity 問</a>
+          <a class="ai-btn" id="ai-chatgpt-btn" target="_blank" rel="noopener noreferrer">💬 用 ChatGPT 問</a>
+          <a class="ai-btn" id="ai-grok-btn" target="_blank" rel="noopener noreferrer">⚡ 用 Grok 問</a>
+          <button class="ai-btn btn-export-pdf" onclick="window.print()">📄 匯出 PDF</button>
+        </div>
+
+        <!-- Drawer Detail Tabs -->
+        <nav class="drawer-tabs" id="drawer-tabs">
+          <button class="drawer-tab active" data-tab="summary">綱要知識</button>
+          <button class="drawer-tab" data-tab="quick_view">內容速覽</button>
+          <button class="drawer-tab" data-tab="legislative_history">歷次修法理由</button>
+          <button class="drawer-tab" data-tab="insights">實務見解</button>
+          <button class="drawer-tab" data-tab="attachments">附檔與對照</button>
+        </nav>
+      </div>
+
+      <!-- Drawer Scrollable Content Body -->
+      <div class="drawer-content" id="drawer-content">
+        <!-- Rendered dynamically by active drawer tab -->
+      </div>
+
+      <!-- Drawer Sticky Footer (Prev / Next Article) -->
+      <footer class="drawer-footer">
+        <button class="nav-arrow-btn" id="drawer-prev-btn">← 上一條</button>
+        <span class="drawer-curr-nav" id="drawer-curr-nav">第 1 條 罪刑法定原則</span>
+        <button class="nav-arrow-btn" id="drawer-next-btn">下一條 →</button>
+      </footer>
+    </aside>
   </main>
 
-  <!-- Floating Mobile 0-9 Numeric Keypad Quick Dial -->
+  <!-- Mobile-Only 0-9 Floating Numeric Keypad (Hidden on Desktop) -->
   <div id="quick-dialer" class="quick-dialer-container hidden" role="dialog" aria-label="手機條號直達數字鍵盤">
     <div class="dialer-header">
       <div class="dialer-preview">
-        <span class="dialer-label">📱 快速條號直達：</span>
+        <span class="dialer-label">📱 手機條號直達：</span>
         <span id="dialer-display" class="dialer-display">請輸入條號</span>
       </div>
       <div class="dialer-actions">
@@ -104,8 +173,8 @@
     </div>
   </div>
 
-  <!-- Mobile Floating Action Button (FAB) to open dialer -->
-  <button id="dialer-fab" class="dialer-fab" title="開啟 0-9 條號鍵盤">
+  <!-- Mobile Floating Action Button (FAB) - Hidden on desktop via CSS -->
+  <button id="dialer-fab" class="dialer-fab" title="開啟手機 0-9 條號鍵盤">
     🔢
   </button>
 

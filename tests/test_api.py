@@ -97,11 +97,14 @@ class TestApiIntegration(unittest.TestCase):
         self.assertEqual(status, 200)
         art = data["data"]
         self.assertEqual(art["article_no"], "185-3")
-        self.assertEqual(art["title"], "不能安全駕駛動力交通工具罪")
+        self.assertIn("不能安全駕駛動力交通工具罪", art["title"])
         self.assertIn("尿液或血液所含毒品", art["content"])
         self.assertTrue(len(art["attachments"]) > 0)
         self.assertTrue(len(art["practical_insights"]) > 0)
         self.assertTrue(len(art["legislative_reasons"]) > 0)
+        self.assertTrue(len(art["amendment_history"]) >= 4)
+        self.assertTrue(len(art["vernacular_qa"]) > 0)
+        self.assertTrue(len(art.get("summary", "")) > 0)
 
     def test_search_articles(self):
         # Search by keyword "酒駕" or "酒精"

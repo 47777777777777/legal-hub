@@ -38,7 +38,12 @@ class Article:
                  chapter: str = "", legislative_reasons: str = "",
                  practical_insights: Optional[List[Dict[str, str]]] = None,
                  attachments: Optional[List[Dict[str, Any]]] = None,
-                 lawplayer_link: str = "", related_articles: Optional[List[str]] = None):
+                 lawplayer_link: str = "", related_articles: Optional[List[str]] = None,
+                 summary: str = "", reading_time: str = "3 分鐘",
+                 vernacular_qa: Optional[List[Dict[str, str]]] = None,
+                 elements: Optional[List[str]] = None,
+                 key_issues: Optional[List[str]] = None,
+                 amendment_history: Optional[List[Dict[str, Any]]] = None):
         if not article_no or not str(article_no).strip():
             raise ValidationError("Article number (article_no) cannot be empty.")
         if not content or not content.strip():
@@ -52,6 +57,12 @@ class Article:
         self.practical_insights = practical_insights or []
         self.lawplayer_link = lawplayer_link or f"https://lawplayer.com/act/#article_{self.article_no}"
         self.related_articles = related_articles or []
+        self.summary = summary or ""
+        self.reading_time = reading_time or "3 分鐘"
+        self.vernacular_qa = vernacular_qa or []
+        self.elements = elements or []
+        self.key_issues = key_issues or []
+        self.amendment_history = amendment_history or []
         
         # Attachments validation (check duplicates)
         self.attachments: List[Attachment] = []
@@ -81,6 +92,12 @@ class Article:
             "practical_insights": self.practical_insights,
             "lawplayer_link": self.lawplayer_link,
             "related_articles": self.related_articles,
+            "summary": self.summary,
+            "reading_time": self.reading_time,
+            "vernacular_qa": self.vernacular_qa,
+            "elements": self.elements,
+            "key_issues": self.key_issues,
+            "amendment_history": self.amendment_history,
             "attachments": [att.to_dict() for att in self.attachments]
         }
 
