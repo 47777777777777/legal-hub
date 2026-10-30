@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-TW" data-theme="dark">
+<html lang="zh-TW" data-theme="dark" data-density="compact">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -15,60 +15,92 @@
 </head>
 <body>
 
-  <!-- Top bar: brand + global law search + display controls (no duplicate act title) -->
+  <!-- LAYER 1: Chrome-style combined Bar: Logo + Chrome Tabs + Global Search + Controls -->
   <header class="navbar" id="top-navbar">
-    <div class="nav-brand">
-      <span class="brand-icon" data-icon="scale" data-size="22"></span>
-      <span class="brand-title">Legal Hub</span>
+    <div class="nav-left">
+      <div class="nav-brand">
+        <span class="brand-icon" data-icon="scale" data-size="20"></span>
+        <span class="brand-title">Legal Hub</span>
+      </div>
+      <!-- Embedded Chrome-like research tabs -->
+      <nav class="research-tabs-container" id="research-tabs-container" aria-label="法規分頁列">
+        <div class="research-tabs-list" id="research-tabs-list"></div>
+        <button class="add-tab-btn" id="add-tab-btn" title="開啟其他法規" aria-label="開啟其他法規">
+          <span data-icon="plus" data-size="14"></span>
+        </button>
+      </nav>
     </div>
 
     <div class="nav-controls">
       <div class="input-wrap nav-search">
-        <span class="input-icon" data-icon="search" data-size="15"></span>
-        <input type="text" id="act-search-input" class="field-input" placeholder="搜尋全國法規，按 Enter 開啟" aria-label="搜尋全國法規" autocomplete="off" />
-        <button class="input-clear hidden" id="act-search-clear" aria-label="清除" data-icon="x" data-size="14"></button>
+        <span class="input-icon" data-icon="search" data-size="14"></span>
+        <input type="text" id="act-search-input" class="field-input" placeholder="🔍 搜尋全國法規 (Enter)" aria-label="搜尋全國法規" autocomplete="off" />
+        <button class="input-clear hidden" id="act-search-clear" aria-label="清除" data-icon="x" data-size="13"></button>
       </div>
+      
+      <!-- Density Toggle: Standard vs Compact -->
+      <button id="density-toggle-btn" class="icon-btn" title="切換檢視密度 (緊湊 / 舒適)" aria-label="切換檢視密度">
+        <span data-icon="table" data-size="16"></span>
+      </button>
+
       <div class="font-size-controls" title="調整字體大小">
         <button id="font-minus-btn" class="font-size-btn" aria-label="縮小字體">A-</button>
         <button id="font-plus-btn" class="font-size-btn" aria-label="放大字體">A+</button>
       </div>
-      <button id="dialer-toggle-btn" class="icon-text-btn dialer-toggle-btn" title="手機條號直達"><span data-icon="hash" data-size="15"></span><span>條號</span></button>
+
       <button id="theme-toggle-btn" class="icon-btn" title="切換深淺主題" aria-label="切換深淺主題"></button>
     </div>
   </header>
 
-  <!-- Research tabs: the only place the current act name is shown -->
-  <nav class="research-tabs-container" id="research-tabs-container" aria-label="研究分頁列">
-    <div class="research-tabs-list" id="research-tabs-list"></div>
-    <button class="add-tab-btn" id="add-tab-btn" title="開啟其他法規"><span data-icon="plus" data-size="14"></span><span>開啟法規</span></button>
-  </nav>
+  <!-- LAYER 2: Ultra-compact Statute Action Toolbar (Chapter on left, In-act search on right) -->
+  <section class="statute-toolbar-layer" id="statute-toolbar-layer">
+    <div class="toolbar-left">
+      <button id="toc-toggle-btn" class="icon-btn toc-toggle-btn" title="收合/展開目錄 (Ctrl+B)" aria-label="收合目錄">
+        <span data-icon="book" data-size="15"></span>
+      </button>
+      <div class="current-chapter-indicator" id="current-chapter-indicator">
+        <span class="chapter-text" id="active-chapter-name">載入中...</span>
+        <span class="act-meta-inline" id="act-meta-inline"></span>
+      </div>
+    </div>
 
-  <!-- Act meta (no title, just facts) -->
-  <section class="act-banner" id="act-banner"></section>
+    <div class="toolbar-right">
+      <div class="quick-filter-chips" id="quick-filter-chips">
+        <button class="filter-chip active" data-filter="all">全部</button>
+        <button class="filter-chip" data-filter="penalty">只看罰則</button>
+        <button class="filter-chip" data-filter="important">常用條文</button>
+      </div>
+      <div class="input-wrap stream-search-wrap">
+        <span class="input-icon" data-icon="search" data-size="14"></span>
+        <input type="text" id="search-input" class="field-input" placeholder="搜尋條號 (如 185-3) 或關鍵字..." aria-label="本法搜尋" autocomplete="off" inputmode="search" />
+        <span class="search-count-badge" id="search-count-badge">422 條</span>
+        <button class="input-clear hidden" id="search-clear" aria-label="清除搜尋" data-icon="x" data-size="13"></button>
+      </div>
+    </div>
+  </section>
 
-  <main class="workspace-container">
+  <!-- WORKSPACE: Left Collapsible TOC, Center Stream Reader, Right Split-view / Drawer -->
+  <main class="workspace-container" id="workspace-container">
     <aside class="sidebar-toc" id="sidebar-toc">
-      <h3 class="panel-heading">編章節索引</h3>
-      <div id="sidebar-chapter-list"></div>
+      <div class="sidebar-toc-header">
+        <span class="panel-heading">編章節大綱</span>
+      </div>
+      <div class="sidebar-chapter-tree" id="sidebar-chapter-list"></div>
     </aside>
 
+    <!-- Center Stream Reader -->
     <section class="statute-stream-container" id="statute-stream-container">
-      <div class="stream-toolbar">
-        <div class="input-wrap stream-search">
-          <span class="input-icon" data-icon="search" data-size="15"></span>
-          <input type="text" id="search-input" class="field-input" placeholder="本法規內搜尋：條號（185-3）或關鍵字" aria-label="搜尋條文" autocomplete="off" />
-          <button class="input-clear hidden" id="search-clear" aria-label="清除搜尋" data-icon="x" data-size="14"></button>
-        </div>
-        <div class="stream-stats" id="stream-stats"></div>
-      </div>
-
       <div class="statute-stream-list" id="statute-stream-list"></div>
     </section>
 
-    <!-- Slide-over study drawer. ONE scroll container (#study-drawer-scroll-body). -->
+    <!-- Desktop Drag Resizer -->
+    <div class="split-drag-handle hidden" id="split-drag-handle" title="拖曳調整面板寬度"></div>
+
+    <!-- Right Side Study Drawer / Split Panel -->
     <aside class="study-drawer hidden" id="study-drawer" aria-label="條文深度研析面板">
       <div class="study-drawer-backdrop" id="drawer-backdrop"></div>
       <div class="study-drawer-panel" id="study-drawer-panel">
+        <div class="mobile-sheet-drag-handle" id="mobile-sheet-drag-handle"></div>
         <div class="study-drawer-header">
           <div class="drawer-header-left">
             <span class="drawer-article-badge" id="drawer-article-badge">第 1 條</span>
@@ -76,9 +108,11 @@
           </div>
           <div class="drawer-header-actions">
             <button class="icon-btn" id="drawer-bookmark-btn" title="加入或取消書籤" aria-label="書籤"></button>
-            <button class="icon-btn" id="drawer-pdf-btn" title="匯出 PDF" aria-label="匯出 PDF" data-icon="printer" data-size="17"></button>
-            <button class="icon-btn" id="drawer-expand-btn" title="展開 / 還原寬度" aria-label="展開" data-icon="maximize" data-size="17"></button>
-            <button class="icon-btn" id="drawer-close-btn" title="關閉 (Esc)" aria-label="關閉" data-icon="x" data-size="18"></button>
+            <button class="icon-btn" id="drawer-pdf-btn" title="匯出 PDF" aria-label="匯出 PDF" data-icon="printer" data-size="16"></button>
+            <button class="icon-btn" id="drawer-split-btn" title="切換並排分欄 / 覆蓋抽屜" aria-label="切換並排分欄">
+              <span data-icon="maximize" data-size="16"></span>
+            </button>
+            <button class="icon-btn" id="drawer-close-btn" title="關閉 (Esc)" aria-label="關閉" data-icon="x" data-size="16"></button>
           </div>
         </div>
 
@@ -86,6 +120,44 @@
       </div>
     </aside>
   </main>
+
+  <!-- Mobile Floating Thumb Search Capsule & Scrubber -->
+  <div class="mobile-bottom-capsule" id="mobile-bottom-capsule">
+    <button class="capsule-btn" id="capsule-search-btn">
+      <span data-icon="search" data-size="16"></span>
+      <span class="capsule-label">搜尋 / 條號直達</span>
+    </button>
+    <button class="capsule-btn-dial" id="capsule-dial-btn" title="九宮格撥號">
+      <span data-icon="hash" data-size="16"></span>
+    </button>
+  </div>
+
+  <!-- Mobile Edge Fast Scrubber Index -->
+  <div class="fast-scrubber-index" id="fast-scrubber-index"></div>
+  <div class="scrubber-bubble hidden" id="scrubber-bubble">第 1 條</div>
+
+  <!-- Floating Article Popover (Hover preview on desktop / Tap preview on mobile) -->
+  <div class="article-hover-popover hidden" id="article-hover-popover">
+    <div class="popover-header">
+      <span class="popover-title" id="popover-title">關聯條文</span>
+      <button class="popover-close-btn" id="popover-close-btn">&times;</button>
+    </div>
+    <div class="popover-body" id="popover-body">載入中...</div>
+    <div class="popover-footer">
+      <button class="popover-jump-btn" id="popover-jump-btn">⚡ 前往研析該條</button>
+    </div>
+  </div>
+
+  <!-- Fullscreen Flowchart Modal -->
+  <div class="modal-backdrop hidden" id="flowchart-modal">
+    <div class="modal-dialog flowchart-modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">🔍 思考脈絡與邏輯判斷流程 (全螢幕檢視)</h3>
+        <button class="icon-btn" id="flowchart-modal-close" aria-label="關閉" data-icon="x" data-size="18"></button>
+      </div>
+      <div class="modal-body flowchart-modal-body" id="flowchart-modal-body"></div>
+    </div>
+  </div>
 
   <!-- Open-act modal -->
   <div class="modal-backdrop hidden" id="add-tab-modal">
@@ -105,7 +177,7 @@
     </div>
   </div>
 
-  <!-- Mobile-only 0-9 keypad -->
+  <!-- Mobile 0-9 Keypad -->
   <div id="quick-dialer" class="quick-dialer-container hidden" role="dialog" aria-label="手機條號直達數字鍵盤">
     <div class="dialer-header">
       <div class="dialer-preview">

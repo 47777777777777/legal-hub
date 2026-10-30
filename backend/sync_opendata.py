@@ -123,9 +123,11 @@ def sync_full_statutes(db_path: str = DB_FILE, limit_laws: int = None):
             except Exception:
                 pass
 
-        # Parse articles and chapters
+        # Parse articles and chapters hierarchy (編、章、節、款、目)
         raw_items = law.get("LawArticles", [])
-        current_chapter_parts = []
+        current_part = ""
+        current_chapter = ""
+        current_section = ""
         parsed_chapters = []
         parsed_articles = []
 
@@ -134,12 +136,24 @@ def sync_full_statutes(db_path: str = DB_FILE, limit_laws: int = None):
             content = item.get("ArticleContent", "").strip()
 
             if item_type == "C":
-                # Chapter header
                 ch_title = content.replace("\r", " ").replace("\n", " ").strip()
-                current_chapter_parts = [ch_title]
+                # Clean multiple spaces: '第 一 編  總則' -> '第一編 總則'
+                norm = " ".join([p.strip() for p in ch_title.split() if p.strip()])
+                if "編" in norm:
+                    current_part = norm
+                    current_chapter = ""
+                    current_section = ""
+                elif "章" in norm:
+                    current_chapter = norm
+                    current_section = ""
+                elif "節" in norm:
+                    current_section = norm
+                else:
+                    current_chapter = norm
+                
                 parsed_chapters.append({
                     "code": f"CH_{len(parsed_chapters) + 1}",
-                    "title": ch_title
+                    "title": norm
                 })
             elif item_type == "A":
                 raw_no = item.get("ArticleNo", "")
@@ -147,7 +161,8 @@ def sync_full_statutes(db_path: str = DB_FILE, limit_laws: int = None):
                 if not art_no or not content:
                     continue
 
-                chapter_str = " / ".join(current_chapter_parts) if current_chapter_parts else "本法"
+                parts = [p for p in [current_part, current_chapter, current_section] if p]
+                chapter_str = " / ".join(parts) if parts else "本法"
                 title = seed_titles.get(art_no, "")
 
                 parsed_articles.append({
