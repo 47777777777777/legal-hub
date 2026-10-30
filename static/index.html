@@ -4,140 +4,119 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Legal Hub - 專業法規閱讀與條文深度研析</title>
-  <meta name="description" content="符合人體工學的現代法律檢索與深度研析平台，單一自然滾動排版，收錄全條文白話解析、實務判解、內容連結與歷次修法理由。">
-  
+  <meta name="description" content="符合人體工學的現代法律檢索與深度研析平台，收錄全國法規條文、立法理由與歷次修法沿革。">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
-  
+
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/dialer.css">
 </head>
 <body>
 
-  <!-- Minimal Ergonomic Header -->
+  <!-- Top bar: brand + global law search + display controls (no duplicate act title) -->
   <header class="navbar" id="top-navbar">
     <div class="nav-brand">
-      <div class="brand-icon">⚖️</div>
+      <span class="brand-icon" data-icon="scale" data-size="22"></span>
       <span class="brand-title">Legal Hub</span>
     </div>
-    
+
     <div class="nav-controls">
-      <select id="act-select" class="act-select" aria-label="選擇法規">
-        <option value="criminal_code">中華民國刑法</option>
-        <option value="civil_code">中華民國民法</option>
-        <option value="constitution">中華民國憲法</option>
-        <option value="criminal_procedure_code">刑事訴訟法</option>
-        <option value="civil_procedure_code">民事訴訟法</option>
-        <option value="labor_standards_act">勞動基準法</option>
-        <option value="admin_procedure_act">行政程序法</option>
-        <option value="traffic_act">道路交通管理處罰條例</option>
-        <option value="company_act">公司法</option>
-      </select>
-      <input type="text" id="act-search-input" class="act-search-input" placeholder="🔍 搜尋 1,351 部法規..." aria-label="搜尋全國法規" />
+      <div class="input-wrap nav-search">
+        <span class="input-icon" data-icon="search" data-size="15"></span>
+        <input type="text" id="act-search-input" class="field-input" placeholder="搜尋全國法規，按 Enter 開啟" aria-label="搜尋全國法規" autocomplete="off" />
+        <button class="input-clear hidden" id="act-search-clear" aria-label="清除" data-icon="x" data-size="14"></button>
+      </div>
       <div class="font-size-controls" title="調整字體大小">
         <button id="font-minus-btn" class="font-size-btn" aria-label="縮小字體">A-</button>
         <button id="font-plus-btn" class="font-size-btn" aria-label="放大字體">A+</button>
       </div>
-      <button id="dialer-toggle-btn" class="dialer-toggle-btn" title="手機條號直達">🔢 條號直達</button>
-      <button id="theme-toggle-btn" class="theme-toggle-btn" title="切換深淺主題">☀️ 淺色</button>
+      <button id="dialer-toggle-btn" class="icon-text-btn dialer-toggle-btn" title="手機條號直達"><span data-icon="hash" data-size="15"></span><span>條號</span></button>
+      <button id="theme-toggle-btn" class="icon-btn" title="切換深淺主題" aria-label="切換深淺主題"></button>
     </div>
   </header>
 
-  <!-- Multi-Act Research Tabs (LawPlayer Unlocked Replica - 100% Free & Unlimited) -->
+  <!-- Research tabs: the only place the current act name is shown -->
   <nav class="research-tabs-container" id="research-tabs-container" aria-label="研究分頁列">
-    <div class="research-tabs-list" id="research-tabs-list">
-      <!-- Injected dynamically, e.g. [中華民國刑法 ✕] -->
-    </div>
-    <button class="add-tab-btn" id="add-tab-btn" title="開啟新法規研究分頁（全解鎖無限制）">＋ 研究分頁</button>
+    <div class="research-tabs-list" id="research-tabs-list"></div>
+    <button class="add-tab-btn" id="add-tab-btn" title="開啟其他法規"><span data-icon="plus" data-size="14"></span><span>開啟法規</span></button>
   </nav>
 
-  <!-- Act Meta Bar -->
-  <section class="act-banner" id="act-banner">
-    <!-- Populated dynamically -->
-  </section>
+  <!-- Act meta (no title, just facts) -->
+  <section class="act-banner" id="act-banner"></section>
 
-  <!-- Ergonomic Workspace Layout -->
   <main class="workspace-container">
-    <!-- Left Col 1: Chapter Outline (Desktop only, 220px) -->
     <aside class="sidebar-toc" id="sidebar-toc">
-      <h3 class="panel-heading">📑 編章節索引</h3>
+      <h3 class="panel-heading">編章節索引</h3>
       <div id="sidebar-chapter-list"></div>
     </aside>
 
-    <!-- Center Main Area: Continuous Statute Stream Reader (全條文連續流暢閱讀) -->
     <section class="statute-stream-container" id="statute-stream-container">
       <div class="stream-toolbar">
-        <div class="stream-search-wrapper">
-          <input type="text" id="search-input" class="search-input" placeholder="🔍 搜尋本法規條號（如 1、184、185-3）或條文關鍵字..." aria-label="搜尋條文" />
+        <div class="input-wrap stream-search">
+          <span class="input-icon" data-icon="search" data-size="15"></span>
+          <input type="text" id="search-input" class="field-input" placeholder="本法規內搜尋：條號（185-3）或關鍵字" aria-label="搜尋條文" autocomplete="off" />
+          <button class="input-clear hidden" id="search-clear" aria-label="清除搜尋" data-icon="x" data-size="14"></button>
         </div>
         <div class="stream-stats" id="stream-stats"></div>
       </div>
-      
-      <!-- Continuous list of all articles with full text -->
-      <div class="statute-stream-list" id="statute-stream-list">
-        <!-- Rendered articles in sequence with full text & 條文研析 action -->
-      </div>
+
+      <div class="statute-stream-list" id="statute-stream-list"></div>
     </section>
 
-    <!-- Slide-Over Deep Study Drawer (Desktop side drawer / Mobile full sheet) -->
-    <!-- SINGLE UNIFIED VERTICAL SCROLL CONTAINER: No nested scrollbars! -->
+    <!-- Slide-over study drawer. ONE scroll container (#study-drawer-scroll-body). -->
     <aside class="study-drawer hidden" id="study-drawer" aria-label="條文深度研析面板">
       <div class="study-drawer-backdrop" id="drawer-backdrop"></div>
       <div class="study-drawer-panel" id="study-drawer-panel">
         <div class="study-drawer-header">
           <div class="drawer-header-left">
-            <span class="drawer-breadcrumb" id="drawer-breadcrumb">中華民國刑法 > 第一章 法例</span>
             <span class="drawer-article-badge" id="drawer-article-badge">第 1 條</span>
+            <span class="drawer-breadcrumb" id="drawer-breadcrumb"></span>
           </div>
           <div class="drawer-header-actions">
-            <button class="drawer-tool-btn" id="drawer-bookmark-btn" title="加入或取消書籤">🔖 書籤</button>
-            <button class="drawer-tool-btn" id="drawer-pdf-btn" title="匯出 PDF 條文研析">🖨️ 匯出 PDF</button>
-            <button class="drawer-tool-btn" id="drawer-expand-btn" title="切換抽屜寬度 / 全螢幕">⤢ 展開</button>
-            <button class="drawer-close-btn" id="drawer-close-btn" title="關閉 (Esc)">✕</button>
+            <button class="icon-btn" id="drawer-bookmark-btn" title="加入或取消書籤" aria-label="書籤"></button>
+            <button class="icon-btn" id="drawer-pdf-btn" title="匯出 PDF" aria-label="匯出 PDF" data-icon="printer" data-size="17"></button>
+            <button class="icon-btn" id="drawer-expand-btn" title="展開 / 還原寬度" aria-label="展開" data-icon="maximize" data-size="17"></button>
+            <button class="icon-btn" id="drawer-close-btn" title="關閉 (Esc)" aria-label="關閉" data-icon="x" data-size="18"></button>
           </div>
         </div>
 
-        <!-- Single vertical scroll body: Everything flows inside naturally! -->
-        <div class="study-drawer-scroll-body" id="study-drawer-scroll-body">
-          <!-- Populated dynamically: Article text, Sticky tabs, All tab content, Bottom nav -->
-        </div>
+        <div class="study-drawer-scroll-body" id="study-drawer-scroll-body"></div>
       </div>
     </aside>
   </main>
 
-  <!-- Add Tab Modal -->
+  <!-- Open-act modal -->
   <div class="modal-backdrop hidden" id="add-tab-modal">
     <div class="modal-dialog">
       <div class="modal-header">
-        <h3 class="modal-title">📂 開啟法規研究分頁</h3>
-        <button class="modal-close-btn" id="add-tab-modal-close">✕</button>
+        <h3 class="modal-title">開啟法規</h3>
+        <button class="icon-btn" id="add-tab-modal-close" aria-label="關閉" data-icon="x" data-size="18"></button>
       </div>
       <div class="modal-body">
-        <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:0.75rem;">
-          點選常用核心法典或搜尋全國法規，即可同時開啟多部法規對照研析：
-        </p>
         <div class="popular-acts-grid" id="popular-acts-grid"></div>
-        <div style="margin-top:1rem;">
-          <input type="text" id="tab-search-input" class="act-search-input" style="width:100%;" placeholder="🔍 搜尋其他法規名稱（如 消保法、證交法、商標法）..." />
-          <div class="tab-search-results" id="tab-search-results" style="margin-top:0.5rem;max-height:180px;overflow-y:auto;"></div>
+        <div class="input-wrap" style="margin-top:1rem;">
+          <span class="input-icon" data-icon="search" data-size="15"></span>
+          <input type="text" id="tab-search-input" class="field-input" placeholder="搜尋其他法規名稱，例如 消費者保護法" autocomplete="off" />
         </div>
+        <div class="tab-search-results" id="tab-search-results"></div>
       </div>
     </div>
   </div>
 
-  <!-- Mobile-Only 0-9 Floating Numeric Keypad -->
+  <!-- Mobile-only 0-9 keypad -->
   <div id="quick-dialer" class="quick-dialer-container hidden" role="dialog" aria-label="手機條號直達數字鍵盤">
     <div class="dialer-header">
       <div class="dialer-preview">
-        <span class="dialer-label">📱 條號直達：</span>
+        <span class="dialer-label">條號直達</span>
         <span id="dialer-display" class="dialer-display">請輸入條號</span>
       </div>
       <div class="dialer-actions">
-        <button class="dialer-btn-close" id="dialer-close-btn" title="收起鍵盤">✕</button>
+        <button class="dialer-btn-close" id="dialer-close-btn" title="收起鍵盤" data-icon="x" data-size="18"></button>
       </div>
     </div>
-    
+
     <div class="dialer-grid">
       <button class="dialer-key" data-val="1">1</button>
       <button class="dialer-key" data-val="2">2</button>
@@ -150,14 +129,15 @@
       <button class="dialer-key" data-val="9">9</button>
       <button class="dialer-key dialer-key-action" data-val="-">之 (-)</button>
       <button class="dialer-key" data-val="0">0</button>
-      <button class="dialer-key dialer-key-action" data-val="back">⌫ 刪除</button>
+      <button class="dialer-key dialer-key-action" data-val="back">刪除</button>
     </div>
 
     <div class="dialer-footer">
-      <button class="dialer-jump-btn" id="dialer-jump-btn">⚡ 立即前往條文</button>
+      <button class="dialer-jump-btn" id="dialer-jump-btn">前往條文</button>
     </div>
   </div>
 
+  <script src="/js/icons.js"></script>
   <script src="/js/dialer.js"></script>
   <script src="/js/app.js"></script>
 </body>

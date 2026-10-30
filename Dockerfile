@@ -33,3 +33,4 @@ EXPOSE 7860
 
 # Run sync on startup (if DB empty) then start server
 CMD ["python", "backend/app.py"]
+
