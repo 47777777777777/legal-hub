@@ -25,3 +25,4 @@ else:
     print('APIs found in html:', apis)
     endpoints = set(re.findall(r'/api/[^\s"\'<>]+', html))
     print('Internal endpoints:', endpoints)
+

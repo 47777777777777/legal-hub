@@ -10,3 +10,4 @@ all_js = set(re.findall(r'src="(/_next/[^"]+)"', html))
 print('Direct script srcs:', len(all_js))
 for j in all_js:
     print(' ', j)
+

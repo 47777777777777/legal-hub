@@ -27,12 +27,14 @@
         <option value="criminal_code">中華民國刑法</option>
         <option value="civil_code">中華民國民法</option>
         <option value="constitution">中華民國憲法</option>
+        <option value="criminal_procedure_code">刑事訴訟法</option>
+        <option value="civil_procedure_code">民事訴訟法</option>
         <option value="labor_standards_act">勞動基準法</option>
         <option value="admin_procedure_act">行政程序法</option>
         <option value="traffic_act">道路交通管理處罰條例</option>
         <option value="company_act">公司法</option>
       </select>
-      <input type="text" id="act-search-input" class="act-search-input" placeholder="🔍 搜尋全國法規..." aria-label="搜尋全國法規" />
+      <input type="text" id="act-search-input" class="act-search-input" placeholder="🔍 搜尋 1,351 部法規..." aria-label="搜尋全國法規" />
       <div class="font-size-controls" title="調整字體大小">
         <button id="font-minus-btn" class="font-size-btn" aria-label="縮小字體">A-</button>
         <button id="font-plus-btn" class="font-size-btn" aria-label="放大字體">A+</button>
@@ -41,6 +43,14 @@
       <button id="theme-toggle-btn" class="theme-toggle-btn" title="切換深淺主題">☀️ 淺色</button>
     </div>
   </header>
+
+  <!-- Multi-Act Research Tabs (LawPlayer Unlocked Replica - 100% Free & Unlimited) -->
+  <nav class="research-tabs-container" id="research-tabs-container" aria-label="研究分頁列">
+    <div class="research-tabs-list" id="research-tabs-list">
+      <!-- Injected dynamically, e.g. [中華民國刑法 ✕] -->
+    </div>
+    <button class="add-tab-btn" id="add-tab-btn" title="開啟新法規研究分頁（全解鎖無限制）">＋ 研究分頁</button>
+  </nav>
 
   <!-- Act Meta Bar -->
   <section class="act-banner" id="act-banner">
@@ -81,7 +91,9 @@
             <span class="drawer-article-badge" id="drawer-article-badge">第 1 條</span>
           </div>
           <div class="drawer-header-actions">
-            <button class="drawer-tool-btn" id="drawer-expand-btn" title="切換寬度">⛶ 展開</button>
+            <button class="drawer-tool-btn" id="drawer-bookmark-btn" title="加入或取消書籤">🔖 書籤</button>
+            <button class="drawer-tool-btn" id="drawer-pdf-btn" title="匯出 PDF 條文研析">🖨️ 匯出 PDF</button>
+            <button class="drawer-tool-btn" id="drawer-expand-btn" title="切換抽屜寬度 / 全螢幕">⤢ 展開</button>
             <button class="drawer-close-btn" id="drawer-close-btn" title="關閉 (Esc)">✕</button>
           </div>
         </div>
@@ -93,6 +105,26 @@
       </div>
     </aside>
   </main>
+
+  <!-- Add Tab Modal -->
+  <div class="modal-backdrop hidden" id="add-tab-modal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">📂 開啟法規研究分頁</h3>
+        <button class="modal-close-btn" id="add-tab-modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:0.75rem;">
+          點選常用核心法典或搜尋全國法規，即可同時開啟多部法規對照研析：
+        </p>
+        <div class="popular-acts-grid" id="popular-acts-grid"></div>
+        <div style="margin-top:1rem;">
+          <input type="text" id="tab-search-input" class="act-search-input" style="width:100%;" placeholder="🔍 搜尋其他法規名稱（如 消保法、證交法、商標法）..." />
+          <div class="tab-search-results" id="tab-search-results" style="margin-top:0.5rem;max-height:180px;overflow-y:auto;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Mobile-Only 0-9 Floating Numeric Keypad -->
   <div id="quick-dialer" class="quick-dialer-container hidden" role="dialog" aria-label="手機條號直達數字鍵盤">

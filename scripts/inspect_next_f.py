@@ -24,3 +24,4 @@ for attrs, content in scripts:
 # Also look for API domain names
 domains = set(re.findall(r'https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', html))
 print('Domains referenced:', domains)
+

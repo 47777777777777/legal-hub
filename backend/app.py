@@ -209,6 +209,18 @@ class LegalApiHandler(BaseHTTPRequestHandler):
 def run_server(port: int = None, host: str = "0.0.0.0"):
     if port is None:
         port = int(os.environ.get("PORT", 8080))
+    
+    # Auto-seed corpus if empty (e.g. fresh Docker container in Hugging Face Spaces)
+    try:
+        acts = storage.get_all_acts()
+        if len(acts) == 0:
+            print("Database empty. Auto-seeding comprehensive legal corpus...")
+            import subprocess
+            subprocess.run([sys.executable, os.path.join(BASE_DIR, "scripts", "build_comprehensive_corpus.py")], check=True)
+            storage.cache.invalidate()
+    except Exception as e:
+        print(f"Corpus check info: {e}")
+
     server_address = (host, port)
     httpd = HTTPServer(server_address, LegalApiHandler)
     print(f"Legal Hub Server running at http://{host}:{port}/")

@@ -25,3 +25,4 @@ for c in chunks:
                 print(f'{c} has legal tabs!')
     except Exception as e:
         print(f'Error fetching {c}:', e)
+
