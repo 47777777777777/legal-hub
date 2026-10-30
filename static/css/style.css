@@ -409,7 +409,29 @@ mark {
   cursor: pointer;
 }
 .article-study-btn:hover { border-color: var(--accent-primary); background: var(--accent-glow); }
-.article-card-content { font-size: 1rem; line-height: 1.9; white-space: pre-line; color: var(--text-main); }
+.article-card-content { font-size: 1rem; line-height: 1.9; color: var(--text-main); }
+
+/* 項 (paragraph) / 款 (一、) / 目 ((一) 1.) layout */
+.article-body { display: flex; flex-direction: column; gap: 0.7rem; }
+.para-block { display: grid; grid-template-columns: 2.1rem minmax(0, 1fr); column-gap: 0.5rem; }
+.para-block.single { grid-template-columns: minmax(0, 1fr); }
+.para-no {
+  padding-top: 0.2em;
+  text-align: right;
+  font-family: 'Outfit', Georgia, serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+  user-select: none;
+}
+.para-text { overflow-wrap: anywhere; }
+.sub { display: flex; align-items: baseline; margin-top: 0.2rem; overflow-wrap: anywhere; }
+.sub-1 { padding-left: 1.6rem; }
+.sub-2 { padding-left: 3.2rem; }
+.sub-3 { padding-left: 4.8rem; }
+.sub-marker { flex: 0 0 auto; min-width: 2.3em; white-space: nowrap; color: var(--text-muted); }
+.sub-text { flex: 1; min-width: 0; }
 
 .empty-note { color: var(--text-dim); font-size: 0.88rem; padding: 0.5rem 0; }
 .empty-note.big { text-align: center; padding: 3rem 1rem; font-size: 0.95rem; }
@@ -475,13 +497,12 @@ mark {
 .drawer-hero-article-box {
   position: relative;
   margin-top: 1rem;
-  padding: 1.1rem 1.25rem;
+  padding: 2.6rem 1.25rem 1.1rem;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: 10px;
   font-size: 1.08rem;
   line-height: 2;
-  white-space: pre-line;
 }
 .article-box-copy-action {
   position: absolute;
@@ -850,6 +871,10 @@ mark {
   .stream-toolbar { padding: 0.5rem 0.8rem; }
   .statute-stream-list { padding: 0.5rem 0.8rem 6rem; }
   .stream-article-card { padding: 0.9rem 1rem; }
+  .para-block { grid-template-columns: 1.7rem minmax(0, 1fr); column-gap: 0.35rem; }
+  .sub-1 { padding-left: 1rem; }
+  .sub-2 { padding-left: 2rem; }
+  .sub-3 { padding-left: 3rem; }
   .chapter-badge { max-width: 140px; }
   .study-drawer-panel { width: 100% !important; max-width: 100%; border-left: none; }
   .study-drawer-header { padding: 0 0.7rem 0 1rem; }

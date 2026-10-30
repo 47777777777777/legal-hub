@@ -29,6 +29,87 @@ function hl(text, q) {
   return out + esc(text.slice(last));
 }
 
+function toRoman(n) {
+  const map = [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"], [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
+  let out = "";
+  for (const [v, s] of map) {
+    while (n >= v) {
+      out += s;
+      n -= v;
+    }
+  }
+  return out;
+}
+
+const RE_KUAN = /^([一二三四五六七八九十百]+、)\s*/; // 款：一、二、三、
+const RE_MU = /^([（(][一二三四五六七八九十百]+[）)])\s*/; // 目：（一）（二）
+const RE_SUBMU = /^([0-9０-９]+[.．、])\s*/; // 目下：1. 2.
+
+/**
+ * Split article text into 項 (paragraphs, one per line) and their 款/目 lines.
+ * Returns { paras: [{ text, subs: [{level, marker, text}] }] }
+ */
+function parseArticleStructure(content) {
+  const lines = String(content == null ? "" : content)
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+  const paras = [];
+  lines.forEach((line) => {
+    let m;
+    let level = 0;
+    if ((m = line.match(RE_KUAN))) level = 1;
+    else if ((m = line.match(RE_MU))) level = 2;
+    else if ((m = line.match(RE_SUBMU))) level = 3;
+
+    if (level === 0) {
+      paras.push({ text: line, subs: [] });
+    } else {
+      if (!paras.length) paras.push({ text: "", subs: [] }); // 款 appearing before any 項 text
+      paras[paras.length - 1].subs.push({ level, marker: m[1], text: line.slice(m[0].length) });
+    }
+  });
+  return { paras };
+}
+
+/** HTML for an article body: 項 numbered with roman numerals when there is more than one, 款/目 indented. */
+function renderArticleBody(content, q) {
+  const { paras } = parseArticleStructure(content);
+  if (!paras.length) return `<div class="article-body"></div>`;
+  const multi = paras.filter((p) => p.text).length > 1;
+  let n = 0;
+  const blocks = paras
+    .map((p) => {
+      const no = p.text ? ++n : 0; // a leading 款-only block never takes a 項 number
+      const subs = p.subs
+        .map(
+          (s) =>
+            `<div class="sub sub-${s.level}"><span class="sub-marker">${esc(s.marker)}</span><span class="sub-text">${hl(s.text, q)}</span></div>`
+        )
+        .join("");
+      return `<div class="para-block ${multi ? "" : "single"}">
+        ${multi ? `<span class="para-no" title="${no ? `第 ${no} 項` : ""}">${no ? toRoman(no) : ""}</span>` : ""}
+        <div class="para-body">${p.text ? `<div class="para-text">${hl(p.text, q)}</div>` : ""}${subs}</div>
+      </div>`;
+    })
+    .join("");
+  return `<div class="article-body">${blocks}</div>`;
+}
+
+/** Plain text for copying: 項 labelled "第 N 項" when there is more than one. */
+function articleCopyText(content) {
+  const { paras } = parseArticleStructure(content);
+  const multi = paras.filter((p) => p.text).length > 1;
+  let n = 0;
+  return paras
+    .map((p) => {
+      const head = (multi && p.text ? `第 ${++n} 項　` : "") + p.text;
+      const subs = p.subs.map((s) => `${"　".repeat(s.level)}${s.marker}${s.text}`);
+      return [head.trimEnd(), ...subs].filter((l) => l).join("\n");
+    })
+    .join("\n");
+}
+
 function hydrateIcons(root) {
   (root || document).querySelectorAll("[data-icon]").forEach((el) => {
     if (el.dataset.hydrated) return;
@@ -507,7 +588,7 @@ class LegalHubApp {
               <button class="article-study-btn" data-article-no="${esc(art.article_no)}">研析</button>
             </div>
           </div>
-          <div class="article-card-content">${hl(art.content, q)}</div>
+          <div class="article-card-content">${renderArticleBody(art.content, q)}</div>
         </article>`;
     });
     list.innerHTML = html;
@@ -604,7 +685,7 @@ class LegalHubApp {
         ${art.title ? `<div class="drawer-hero-subtitle">${esc(art.title)}</div>` : ""}
         <div class="drawer-hero-article-box">
           <button class="article-box-copy-action" id="drawer-copy-article-btn" title="複製條文">${icon("copy", 14)}<span>複製</span></button>
-          ${esc(art.content)}
+          ${renderArticleBody(art.content, "")}
         </div>
       </section>
 
@@ -630,7 +711,7 @@ class LegalHubApp {
     scrollBody.scrollTop = 0;
 
     scrollBody.querySelector("#drawer-copy-article-btn").addEventListener("click", (e) => {
-      const text = `${this.currentAct.name} 第 ${art.article_no} 條 ${art.title || ""}\n${art.content}`;
+      const text = `${this.currentAct.name} 第 ${art.article_no} 條 ${art.title || ""}\n${articleCopyText(art.content)}`;
       this.copyToClipboard(text, e.currentTarget);
     });
     scrollBody.querySelector("#drawer-permalink-btn").addEventListener("click", () => {
