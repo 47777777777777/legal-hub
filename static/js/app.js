@@ -177,6 +177,7 @@ class LegalHubApp {
     this.initDensity();
     this.initEventListeners();
     this.bindCCUEvents();
+    this.refreshCCUStatus();
     this.renderResearchTabs();
 
     const route = this.parseHashRoute();
@@ -540,6 +541,7 @@ class LegalHubApp {
 
   async refreshCCUStatus() {
     const badge = document.getElementById("ccu-auth-badge");
+    const indicator = document.getElementById("ccu-header-indicator");
     try {
       const res = await fetch("/api/ccu/status");
       const json = await res.json();
@@ -550,15 +552,24 @@ class LegalHubApp {
           badge.style.background = "#052e16";
           badge.style.color = "#86efac";
         }
+        if (indicator) {
+          indicator.style.background = "#10b981";
+          indicator.title = "中正 AutoRPA 已認證";
+        }
       } else {
         if (badge) {
           badge.textContent = "● 未認證 (請登入後貼上 Cookie)";
           badge.style.background = "#2a2a32";
           badge.style.color = "#a1a1aa";
         }
+        if (indicator) {
+          indicator.style.background = "#71717a";
+          indicator.title = "中正 AutoRPA 未認證 (點擊設定)";
+        }
       }
     } catch (e) {
       if (badge) badge.textContent = "連線失敗";
+      if (indicator) indicator.style.background = "#ef4444";
     }
   }
 
@@ -566,9 +577,28 @@ class LegalHubApp {
     const saveBtn = document.getElementById("ccu-save-session-btn");
     const refreshBtn = document.getElementById("ccu-refresh-status-btn");
     const cookieInput = document.getElementById("ccu-cookie-input");
+    const pasteBtn = document.getElementById("ccu-paste-btn");
     const searchBtn = document.getElementById("ccu-do-search-btn");
     const searchInput = document.getElementById("ccu-search-input");
     const resultsContainer = document.getElementById("ccu-search-results");
+
+    if (pasteBtn && cookieInput) {
+      pasteBtn.addEventListener("click", async () => {
+        try {
+          const clipText = await navigator.clipboard.readText();
+          if (clipText && clipText.trim()) {
+            cookieInput.value = clipText.trim();
+            pasteBtn.textContent = "✅ 已成功貼上！";
+            setTimeout(() => { pasteBtn.textContent = "📋 貼上剪貼簿"; }, 1500);
+          } else {
+            alert("剪貼簿目前沒有內容，請先在登入後的法源分頁執行 copy(document.cookie)");
+          }
+        } catch (e) {
+          cookieInput.focus();
+          alert("瀏覽器剪貼簿存取受限，請直接在輸入框內按鍵盤「Ctrl + V」貼上！");
+        }
+      });
+    }
 
     if (saveBtn) {
       saveBtn.addEventListener("click", async () => {
@@ -1080,6 +1110,11 @@ class LegalHubApp {
       });
     });
 
+    // Drawer CCU Open Config Modal Trigger
+    root.querySelectorAll(".drawer-open-ccu-config-btn").forEach((btn) => {
+      btn.addEventListener("click", () => this.openCCUModal());
+    });
+
     // Drawer CCU Paper Search Trigger
     root.querySelectorAll(".drawer-ccu-fetch-btn").forEach((btn) => {
       btn.addEventListener("click", async () => {
@@ -1448,9 +1483,14 @@ class LegalHubApp {
         <div class="card" style="padding: 0.85rem;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.6rem; flex-wrap:wrap; gap:0.5rem;">
             <span style="font-size:0.85rem; color:#d4d4d8;">查閱探討本條之法源/月旦期刊文獻</span>
-            <button class="filter-chip active drawer-ccu-fetch-btn" data-query="${actName} 第${esc(art.article_no)}條" style="padding:0.3rem 0.8rem; font-size:0.8rem; cursor:pointer;">
-              🔍 檢索本條相關論文
-            </button>
+            <div style="display:flex; gap:0.4rem;">
+              <button class="filter-chip drawer-open-ccu-config-btn" style="padding:0.3rem 0.75rem; font-size:0.8rem; cursor:pointer;" title="開啟中正校園代理設定視窗">
+                ⚙️ 設定中正 Cookie
+              </button>
+              <button class="filter-chip active drawer-ccu-fetch-btn" data-query="${actName} 第${esc(art.article_no)}條" style="padding:0.3rem 0.8rem; font-size:0.8rem; cursor:pointer;">
+                🔍 檢索本條相關論文
+              </button>
+            </div>
           </div>
           <div class="drawer-ccu-results-box" style="font-size:0.85rem; color:#71717a; min-height:36px;">
             點擊上方按鈕立即向中正法源與月旦檢索關聯論文與裁判解析。

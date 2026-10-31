@@ -44,8 +44,10 @@
       </button>
 
       <!-- CCU AutoRPA Proxy Connection Modal Button -->
-      <button id="ccu-proxy-btn" class="icon-btn" title="中正校園資源代理 (AutoRPA & 論文下載)" aria-label="中正校園資源代理">
-        <span data-icon="landmark" data-size="16"></span>
+      <button id="ccu-proxy-btn" class="icon-btn" title="中正校園資源代理 (AutoRPA & 論文下載)" aria-label="中正校園資源代理" style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.3rem 0.65rem; border-radius:6px; font-size:0.8rem; font-weight:600; border:1px solid #3f3f46; background:#18181b; cursor:pointer;">
+        <span data-icon="landmark" data-size="15"></span>
+        <span>中正代理</span>
+        <span id="ccu-header-indicator" style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#71717a;" title="連線狀態"></span>
       </button>
 
       <div class="font-size-controls" title="調整字體大小">
@@ -185,16 +187,36 @@
         <section style="margin-bottom: 1.25rem;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
             <label style="font-weight:700; font-size:0.9rem;">校外連線認證 (無需 VPN，中正帳號直接登入)</label>
-            <a href="https://idm.lib.ccu.edu.tw/sso/idm/oidc/login/?next=/openid/idm/authorize/%3Fclient_id%3D616339%26response_type%3Dcode%26redirect_uri%3Dhttps%253A%252F%252Fautorpa.lib.ccu.edu.tw%252Flogin%26scope%3Dopenid%26state%3Dhttps%253A%252F%252Fautorpa.lib.ccu.edu.tw%252Flogin%252F%253Furl%253Dhttps%25253A%252F%252Fwww-lawbank-com-tw.autorpa.lib.ccu.edu.tw%25253A8443%252F" target="_blank" rel="noopener noreferrer" style="font-size:0.85rem; color:#60a5fa; text-decoration:none;">
-              開啟中正登入頁 ↗
+            <a href="https://idm.lib.ccu.edu.tw/sso/idm/oidc/login/?next=/openid/idm/authorize/%3Fclient_id%3D616339%26response_type%3Dcode%26redirect_uri%3Dhttps%253A%252F%252Fautorpa.lib.ccu.edu.tw%252Flogin%26scope%3Dopenid%26state%3Dhttps%253A%252F%252Fautorpa.lib.ccu.edu.tw%252Flogin%252F%253Furl%253Dhttps%25253A%252F%252Fwww-lawbank-com-tw.autorpa.lib.ccu.edu.tw%25253A8443%252F" target="_blank" rel="noopener noreferrer" style="font-size:0.85rem; color:#60a5fa; text-decoration:none; font-weight:600;">
+              點此開啟中正登入頁 ↗
             </a>
           </div>
+
+          <!-- Step-by-step Cookie retrieval help -->
+          <details style="background:#18181b; border:1px solid #27272a; border-radius:6px; padding:0.6rem 0.8rem; margin-bottom:0.75rem; font-size:0.825rem; color:#d4d4d8;">
+            <summary style="cursor:pointer; font-weight:700; color:#93c5fd; user-select:none;">
+              💡 找不到 Cookie？點此查看「3 秒取得 Cookie」超簡易教學
+            </summary>
+            <ol style="margin:0.5rem 0 0 1.2rem; padding:0; line-height:1.6; color:#a1a1aa;">
+              <li>先點上方 <b>「點此開啟中正登入頁 ↗」</b>，登入中正單一簽入帳號（SSO）。</li>
+              <li>登入完成後會自動導向法源法律網首頁。在該分頁按下鍵盤 <b>F12</b>（或按右鍵選「檢查」）。</li>
+              <li>點上方切換到 <b>Console（主控台）</b>，貼上這行指令並按 Enter：
+                <div style="background:#09090b; padding:0.3rem 0.5rem; margin:0.3rem 0; border-radius:4px; font-family:monospace; color:#34d399; user-select:all;">
+                  copy(document.cookie)
+                </div>
+                （這行指令會直接將完整的 Cookie 自動複製到你的剪貼簿！）
+              </li>
+              <li>回到本畫面，點擊下方的 <b>「📋 貼上剪貼簿」</b> 或在框內按 <b>Ctrl + V</b>，再按 <b>「儲存並驗證連線」</b> 即可！</li>
+            </ol>
+          </details>
+
           <div class="input-wrap" style="margin-bottom: 0.5rem;">
-            <input type="text" id="ccu-cookie-input" class="field-input" placeholder="登入後貼上 AutoRPA Cookie / Session" autocomplete="off" />
+            <input type="text" id="ccu-cookie-input" class="field-input" placeholder="在法源頁面複製 document.cookie 後在此貼上 (Ctrl+V)" autocomplete="off" />
           </div>
-          <div style="display:flex; gap:0.5rem;">
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button id="ccu-paste-btn" class="filter-chip" style="padding:0.4rem 0.8rem; cursor:pointer;" title="一鍵從剪貼簿貼上">📋 貼上剪貼簿</button>
             <button id="ccu-save-session-btn" class="filter-chip active" style="padding:0.4rem 1rem; cursor:pointer;">儲存並驗證連線</button>
-            <button id="ccu-refresh-status-btn" class="filter-chip" style="padding:0.4rem 1rem; cursor:pointer;">重新檢測狀態</button>
+            <button id="ccu-refresh-status-btn" class="filter-chip" style="padding:0.4rem 0.8rem; cursor:pointer;">重新檢測狀態</button>
           </div>
         </section>
 
