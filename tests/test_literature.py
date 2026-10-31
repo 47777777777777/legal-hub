@@ -1,0 +1,150 @@
+"""
+Comprehensive unit and integration tests for Legal Literature & Dual-Binding Repository.
+"""
+import unittest
+import json
+import os
+import urllib.request
+import threading
+from http.server import HTTPServer
+
+from backend.models import Literature, ValidationError
+from backend.storage import LegalStorage
+from backend.app import LegalApiHandler
+from backend.db import get_connection, DB_FILE
+
+
+class TestLiteratureUnitAndIntegration(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.storage = LegalStorage()
+        cls.server = HTTPServer(("127.0.0.1", 0), LegalApiHandler)
+        cls.port = cls.server.server_port
+        cls.base_url = f"http://127.0.0.1:{cls.port}"
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+
+    def setUp(self):
+        # Insert a sample literature for testing
+        self.sample_lit = {
+            "id": "test_lit_2026_001",
+            "title": "論罪刑法定原則與溯及既往之禁止",
+            "subtitle": "以近年大法庭裁定為中心",
+            "author": "林山田",
+            "author_affiliation": "國立臺灣大學法律學院名譽教授",
+            "journal_name": "臺大法學論叢",
+            "pub_year": 2026,
+            "pub_date": "2026-03",
+            "volume": "第 55 卷",
+            "issue": "第 1 期",
+            "pages": "100-150",
+            "abstract": "本文重新審視罪刑法定原則在現代刑事立法之演進與挑戰...",
+            "abstract_en": "This article re-examines the principle of legality...",
+            "keywords": ["罪刑法定原則", "溯及既往禁止", "刑法第1條", "大法庭裁定"],
+            "cited_articles": [
+                {"act_id": "criminal_code", "article_no": "1"},
+                {"act_id": "criminal_code", "article_no": "2"}
+            ],
+            "cited_judgments": ["最高法院 110 年度台上大字第 1234 號裁定", "司法院釋字第 777 號解釋"],
+            "references": ["林山田，《刑法通論（上冊）》，2008 年。"],
+            "related_literature": [
+                {"title": "刑法溯及既往原則之新展開", "author": "李茂生", "year": 2024}
+            ],
+            "file_path": "downloads/ccu/test_lit_2026_001.pdf",
+            "file_size_bytes": 1258291,  # ~1.2 MB
+            "download_status": "downloaded",
+            "source_url": "https://www-lawbank-com-tw.autorpa.lib.ccu.edu.tw:8443/test",
+            "source_db": "lawdata"
+        }
+        self.storage.add_literature(self.sample_lit)
+
+    def test_literature_model_validation(self):
+        # Missing id
+        with self.assertRaises(ValidationError):
+            Literature(id="", title="標題", author="作者", journal_name="學報")
+        # Missing title
+        with self.assertRaises(ValidationError):
+            Literature(id="lit1", title="", author="作者", journal_name="學報")
+        # Missing author
+        with self.assertRaises(ValidationError):
+            Literature(id="lit1", title="標題", author="", journal_name="學報")
+
+    def test_get_and_dual_binding(self):
+        lit = self.storage.get_literature("test_lit_2026_001")
+        self.assertIsNotNone(lit)
+        self.assertEqual(lit["title"], "論罪刑法定原則與溯及既往之禁止")
+        self.assertEqual(lit["author"], "林山田")
+        self.assertEqual(lit["journal_name"], "臺大法學論叢")
+        self.assertEqual(lit["pub_year"], 2026)
+        self.assertEqual(len(lit["cited_articles"]), 2)
+        self.assertIn("罪刑法定原則", lit["keywords"])
+        self.assertGreater(lit["file_size_mb"], 1.0)
+
+        # Test querying literature by article (二級維度：刑法第 1 條)
+        by_art = self.storage.get_literature_for_article("criminal_code", "1")
+        self.assertTrue(len(by_art) >= 1)
+        self.assertEqual(by_art[0]["id"], "test_lit_2026_001")
+
+    def test_list_literature_pagination_and_filter(self):
+        # Filter by author
+        res_author = self.storage.list_literature(author="林山田")
+        self.assertTrue(res_author["total_items"] >= 1)
+        self.assertEqual(res_author["items"][0]["author"], "林山田")
+
+        # Filter by year
+        res_year = self.storage.list_literature(year=2026)
+        self.assertTrue(res_year["total_items"] >= 1)
+
+        # Filter by act_id and article_no
+        res_art = self.storage.list_literature(act_id="criminal_code", article_no="1")
+        self.assertTrue(res_art["total_items"] >= 1)
+
+    def test_literature_stats(self):
+        stats = self.storage.get_literature_stats()
+        self.assertGreaterEqual(stats["total_articles"], 1)
+        self.assertGreaterEqual(stats["downloaded_articles"], 1)
+        self.assertGreater(stats["downloaded_size_bytes"], 0)
+        self.assertGreater(stats["downloaded_size_mb"], 0)
+        self.assertGreater(stats["average_file_size_mb"], 0)
+        self.assertTrue(any(y["year"] == 2026 for y in stats["year_distribution"]))
+
+    def test_api_literature_routes(self):
+        # 1. GET /api/literature
+        req = urllib.request.Request(f"{self.base_url}/api/literature?author=%E6%9E%97%E5%B1%B1%E7%94%B0")
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertTrue(data.get("success"))
+            self.assertTrue(data.get("data", {}).get("total_items") >= 1)
+
+        # 2. GET /api/literature/<id>
+        req = urllib.request.Request(f"{self.base_url}/api/literature/test_lit_2026_001")
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertTrue(data.get("success"))
+            self.assertEqual(data["data"]["title"], "論罪刑法定原則與溯及既往之禁止")
+            self.assertEqual(len(data["data"]["cited_articles"]), 2)
+
+        # 3. GET /api/literature/stats
+        req = urllib.request.Request(f"{self.base_url}/api/literature/stats")
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertTrue(data.get("success"))
+            self.assertIn("downloaded_size_mb", data["data"])
+            self.assertIn("average_file_size_mb", data["data"])
+
+        # 4. GET /api/acts/criminal_code/articles/1/literature
+        req = urllib.request.Request(f"{self.base_url}/api/acts/criminal_code/articles/1/literature")
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertTrue(data.get("success"))
+            self.assertTrue(data.get("total") >= 1)
+            self.assertEqual(data["data"][0]["id"], "test_lit_2026_001")
+
+
+if __name__ == "__main__":
+    unittest.main()

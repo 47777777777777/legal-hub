@@ -135,6 +135,51 @@ def init_database(db_path: str = DB_FILE):
         # Fallback if trigram is not available in specific environment
         print(f"FTS5 trigram notice: {e}")
 
+    # 6. Literature table (Academic and professional legal literature)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS literature (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            subtitle TEXT DEFAULT '',
+            author TEXT NOT NULL,
+            author_affiliation TEXT DEFAULT '',
+            journal_name TEXT NOT NULL,
+            pub_year INTEGER,
+            pub_date TEXT,
+            volume TEXT DEFAULT '',
+            issue TEXT DEFAULT '',
+            pages TEXT DEFAULT '',
+            abstract TEXT DEFAULT '',
+            abstract_en TEXT DEFAULT '',
+            keywords TEXT DEFAULT '',
+            cited_judgments_json TEXT DEFAULT '[]',
+            references_json TEXT DEFAULT '[]',
+            related_literature_json TEXT DEFAULT '[]',
+            file_path TEXT,
+            file_size_bytes INTEGER DEFAULT 0,
+            download_status TEXT DEFAULT 'pending',
+            source_url TEXT DEFAULT '',
+            source_db TEXT DEFAULT 'lawdata',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_lit_year ON literature(pub_year DESC, pub_date DESC)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_lit_author ON literature(author)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_lit_journal ON literature(journal_name)")
+
+    # 7. Literature-Article dual-binding table (二級維度：法條關聯)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS literature_articles (
+            literature_id TEXT NOT NULL,
+            act_id TEXT NOT NULL,
+            article_no TEXT NOT NULL,
+            PRIMARY KEY (literature_id, act_id, article_no),
+            FOREIGN KEY (literature_id) REFERENCES literature(id) ON DELETE CASCADE
+        )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_lit_art_binding ON literature_articles(act_id, article_no)")
+
     conn.commit()
     conn.close()
 

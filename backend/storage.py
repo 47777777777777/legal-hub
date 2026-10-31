@@ -7,7 +7,7 @@ import json
 import time
 import sqlite3
 from typing import Dict, List, Optional, Any
-from backend.models import Act, Article, Attachment, ValidationError
+from backend.models import Act, Article, Attachment, Literature, ValidationError
 from backend.db import get_connection, DB_FILE, init_database
 
 
@@ -316,3 +316,254 @@ class LegalStorage:
 
         self.cache.set(cache_key, results)
         return results
+
+    # ---------------- Literature Repository (二級維度：法條雙向綁定與文獻庫) ----------------
+    def add_literature(self, data: Dict[str, Any]) -> str:
+        lit = Literature(**data)
+        conn = get_connection(self.db_path)
+        cur = conn.cursor()
+
+        cur.execute("""
+            INSERT INTO literature (
+                id, title, subtitle, author, author_affiliation,
+                journal_name, pub_year, pub_date, volume, issue, pages,
+                abstract, abstract_en, keywords, cited_judgments_json,
+                references_json, related_literature_json, file_path,
+                file_size_bytes, download_status, source_url, source_db
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                title=excluded.title,
+                subtitle=excluded.subtitle,
+                author=excluded.author,
+                author_affiliation=excluded.author_affiliation,
+                journal_name=excluded.journal_name,
+                pub_year=excluded.pub_year,
+                pub_date=excluded.pub_date,
+                volume=excluded.volume,
+                issue=excluded.issue,
+                pages=excluded.pages,
+                abstract=excluded.abstract,
+                abstract_en=excluded.abstract_en,
+                keywords=excluded.keywords,
+                cited_judgments_json=excluded.cited_judgments_json,
+                references_json=excluded.references_json,
+                related_literature_json=excluded.related_literature_json,
+                file_path=excluded.file_path,
+                file_size_bytes=excluded.file_size_bytes,
+                download_status=excluded.download_status,
+                source_url=excluded.source_url,
+                source_db=excluded.source_db,
+                updated_at=CURRENT_TIMESTAMP
+        """, (
+            lit.id,
+            lit.title,
+            lit.subtitle,
+            lit.author,
+            lit.author_affiliation,
+            lit.journal_name,
+            lit.pub_year,
+            lit.pub_date,
+            lit.volume,
+            lit.issue,
+            lit.pages,
+            lit.abstract,
+            lit.abstract_en,
+            ",".join(lit.keywords) if isinstance(lit.keywords, list) else str(lit.keywords),
+            json.dumps(lit.cited_judgments, ensure_ascii=False),
+            json.dumps(lit.references, ensure_ascii=False),
+            json.dumps(lit.related_literature, ensure_ascii=False),
+            lit.file_path,
+            lit.file_size_bytes,
+            lit.download_status,
+            lit.source_url,
+            lit.source_db
+        ))
+
+        # Insert / update article dual-binding
+        cur.execute("DELETE FROM literature_articles WHERE literature_id = ?", (lit.id,))
+        for art in lit.cited_articles:
+            act_id = art.get("act_id", "").strip()
+            art_no = str(art.get("article_no", "")).strip()
+            if act_id and art_no:
+                cur.execute("""
+                    INSERT OR IGNORE INTO literature_articles (literature_id, act_id, article_no)
+                    VALUES (?, ?, ?)
+                """, (lit.id, act_id, art_no))
+
+        conn.commit()
+        conn.close()
+        self.cache.invalidate("lit:")
+        return lit.id
+
+    def get_literature(self, lit_id: str) -> Optional[Dict[str, Any]]:
+        conn = get_connection(self.db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM literature WHERE id = ?", (lit_id,))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return None
+
+        # Fetch linked articles
+        cur.execute("""
+            SELECT la.act_id, la.article_no, a.name as act_name
+            FROM literature_articles la
+            LEFT JOIN acts a ON la.act_id = a.id
+            WHERE la.literature_id = ?
+        """, (lit_id,))
+        articles = [dict(r) for r in cur.fetchall()]
+        conn.close()
+
+        data = dict(row)
+        data["keywords"] = [k.strip() for k in (data.get("keywords") or "").split(",") if k.strip()]
+        data["cited_judgments"] = json.loads(data.get("cited_judgments_json") or "[]")
+        data["references"] = json.loads(data.get("references_json") or "[]")
+        data["related_literature"] = json.loads(data.get("related_literature_json") or "[]")
+        data["cited_articles"] = articles
+        data["file_size_kb"] = round((data.get("file_size_bytes") or 0) / 1024, 1)
+        data["file_size_mb"] = round((data.get("file_size_bytes") or 0) / (1024 * 1024), 2)
+        return data
+
+    def list_literature(
+        self,
+        query: str = "",
+        author: str = "",
+        journal_name: str = "",
+        year: Optional[int] = None,
+        act_id: str = "",
+        article_no: str = "",
+        page: int = 1,
+        page_size: int = 20
+    ) -> Dict[str, Any]:
+        conn = get_connection(self.db_path)
+        cur = conn.cursor()
+
+        where_clauses = []
+        params: List[Any] = []
+
+        if query:
+            where_clauses.append("(l.title LIKE ? OR l.subtitle LIKE ? OR l.abstract LIKE ? OR l.keywords LIKE ?)")
+            q_param = f"%{query}%"
+            params.extend([q_param, q_param, q_param, q_param])
+
+        if author:
+            where_clauses.append("l.author LIKE ?")
+            params.append(f"%{author}%")
+
+        if journal_name:
+            where_clauses.append("l.journal_name LIKE ?")
+            params.append(f"%{journal_name}%")
+
+        if year:
+            where_clauses.append("l.pub_year = ?")
+            params.append(year)
+
+        join_clause = ""
+        if act_id:
+            join_clause = "JOIN literature_articles la ON l.id = la.literature_id"
+            where_clauses.append("la.act_id = ?")
+            params.append(act_id)
+            if article_no:
+                where_clauses.append("la.article_no = ?")
+                params.append(str(article_no).strip())
+
+        where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+
+        # Count total
+        cur.execute(f"SELECT COUNT(DISTINCT l.id) FROM literature l {join_clause} {where_sql}", tuple(params))
+        total_items = cur.fetchone()[0]
+
+        offset = max(0, (page - 1) * page_size)
+        cur.execute(f"""
+            SELECT DISTINCT l.id, l.title, l.subtitle, l.author, l.author_affiliation,
+                   l.journal_name, l.pub_year, l.pub_date, l.volume, l.issue, l.pages,
+                   l.file_path, l.file_size_bytes, l.download_status, l.source_db
+            FROM literature l
+            {join_clause}
+            {where_sql}
+            ORDER BY l.pub_year DESC, l.pub_date DESC, l.created_at DESC
+            LIMIT ? OFFSET ?
+        """, tuple(params + [page_size, offset]))
+        rows = cur.fetchall()
+        conn.close()
+
+        items = []
+        for r in rows:
+            d = dict(r)
+            d["file_size_kb"] = round((d.get("file_size_bytes") or 0) / 1024, 1)
+            d["file_size_mb"] = round((d.get("file_size_bytes") or 0) / (1024 * 1024), 2)
+            items.append(d)
+
+        total_pages = (total_items + page_size - 1) // page_size if total_items > 0 else 1
+        return {
+            "items": items,
+            "total_items": total_items,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages
+        }
+
+    def get_literature_for_article(self, act_id: str, article_no: str, limit: int = 20) -> List[Dict[str, Any]]:
+        conn = get_connection(self.db_path)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT l.id, l.title, l.subtitle, l.author, l.author_affiliation,
+                   l.journal_name, l.pub_year, l.pub_date, l.volume, l.issue, l.pages,
+                   l.abstract, l.file_path, l.file_size_bytes, l.download_status, l.source_db
+            FROM literature l
+            JOIN literature_articles la ON l.id = la.literature_id
+            WHERE la.act_id = ? AND la.article_no = ?
+            ORDER BY l.pub_year DESC, l.pub_date DESC
+            LIMIT ?
+        """, (act_id, str(article_no).strip(), limit))
+        rows = cur.fetchall()
+        conn.close()
+
+        res = []
+        for r in rows:
+            d = dict(r)
+            d["file_size_kb"] = round((d.get("file_size_bytes") or 0) / 1024, 1)
+            d["file_size_mb"] = round((d.get("file_size_bytes") or 0) / (1024 * 1024), 2)
+            res.append(d)
+        return res
+
+    def get_literature_stats(self) -> Dict[str, Any]:
+        """
+        Calculates storage, count, and size distribution metrics for downloaded literature.
+        """
+        conn = get_connection(self.db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*), COALESCE(SUM(file_size_bytes), 0) FROM literature")
+        total_count, total_bytes = cur.fetchone()
+
+        cur.execute("SELECT COUNT(*), COALESCE(SUM(file_size_bytes), 0) FROM literature WHERE download_status = 'downloaded'")
+        downloaded_count, downloaded_bytes = cur.fetchone()
+
+        # Distribution by year (from newest to oldest)
+        cur.execute("""
+            SELECT pub_year, COUNT(*), COALESCE(SUM(file_size_bytes), 0)
+            FROM literature
+            WHERE pub_year IS NOT NULL
+            GROUP BY pub_year
+            ORDER BY pub_year DESC
+        """)
+        year_dist = [
+            {"year": r[0], "count": r[1], "bytes": r[2], "mb": round(r[2] / (1024 * 1024), 2)}
+            for r in cur.fetchall()
+        ]
+        conn.close()
+
+        avg_bytes = (downloaded_bytes / downloaded_count) if downloaded_count > 0 else 0
+
+        return {
+            "total_articles": total_count,
+            "downloaded_articles": downloaded_count,
+            "total_size_bytes": total_bytes,
+            "downloaded_size_bytes": downloaded_bytes,
+            "downloaded_size_mb": round(downloaded_bytes / (1024 * 1024), 2),
+            "downloaded_size_gb": round(downloaded_bytes / (1024 * 1024 * 1024), 3),
+            "average_file_size_kb": round(avg_bytes / 1024, 1),
+            "average_file_size_mb": round(avg_bytes / (1024 * 1024), 2),
+            "year_distribution": year_dist
+        }
+

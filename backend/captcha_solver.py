@@ -42,3 +42,4 @@ class CaptchaSolver:
         except Exception as e:
             print(f"Captcha recognition error: {e}")
             return None
+

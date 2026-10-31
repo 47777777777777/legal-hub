@@ -132,3 +132,4 @@ class CCUCrawler:
         except Exception as e:
             print(f"Lawdata search error: {e}")
             return []
+

@@ -186,3 +186,100 @@ class Act:
         if include_articles:
             result["articles"] = [art.to_dict() for art in self.articles]
         return result
+
+
+class Literature:
+    """
+    Model representing authentic legal literature / journal article.
+    Strictly follows LawBank & LawData schema:
+    Article title, author & affiliation, journal & issue, abstract & keywords,
+    cited statutes (dual-binding), cited judgments, and PDF storage metrics.
+    """
+    def __init__(
+        self,
+        id: str,
+        title: str,
+        author: str,
+        journal_name: str,
+        subtitle: str = "",
+        author_affiliation: str = "",
+        pub_year: Optional[int] = None,
+        pub_date: str = "",
+        volume: str = "",
+        issue: str = "",
+        pages: str = "",
+        abstract: str = "",
+        abstract_en: str = "",
+        keywords: Optional[List[str]] = None,
+        cited_articles: Optional[List[Dict[str, str]]] = None,
+        cited_judgments: Optional[List[str]] = None,
+        references: Optional[List[str]] = None,
+        related_literature: Optional[List[Dict[str, Any]]] = None,
+        file_path: Optional[str] = None,
+        file_size_bytes: int = 0,
+        download_status: str = "pending",
+        source_url: str = "",
+        source_db: str = "lawdata"
+    ):
+        if not id or not str(id).strip():
+            raise ValidationError("Literature ID is required.")
+        if not title or not str(title).strip():
+            raise ValidationError("Literature title is required.")
+        if not author or not str(author).strip():
+            raise ValidationError("Literature author is required.")
+        if not journal_name or not str(journal_name).strip():
+            raise ValidationError("Literature journal_name is required.")
+
+        self.id = str(id).strip()
+        self.title = str(title).strip()
+        self.subtitle = str(subtitle or "").strip()
+        self.author = str(author).strip()
+        self.author_affiliation = str(author_affiliation or "").strip()
+        self.journal_name = str(journal_name).strip()
+        self.pub_year = int(pub_year) if pub_year is not None else None
+        self.pub_date = str(pub_date or "").strip()
+        self.volume = str(volume or "").strip()
+        self.issue = str(issue or "").strip()
+        self.pages = str(pages or "").strip()
+        self.abstract = str(abstract or "").strip()
+        self.abstract_en = str(abstract_en or "").strip()
+        self.keywords = keywords or []
+        self.cited_articles = cited_articles or []
+        self.cited_judgments = cited_judgments or []
+        self.references = references or []
+        self.related_literature = related_literature or []
+        self.file_path = file_path
+        self.file_size_bytes = int(file_size_bytes or 0)
+        self.download_status = download_status
+        self.source_url = source_url
+        self.source_db = source_db
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "title": self.title,
+            "subtitle": self.subtitle,
+            "author": self.author,
+            "author_affiliation": self.author_affiliation,
+            "journal_name": self.journal_name,
+            "pub_year": self.pub_year,
+            "pub_date": self.pub_date,
+            "volume": self.volume,
+            "issue": self.issue,
+            "pages": self.pages,
+            "abstract": self.abstract,
+            "abstract_en": self.abstract_en,
+            "keywords": self.keywords,
+            "cited_articles": self.cited_articles,
+            "cited_judgments": self.cited_judgments,
+            "references": self.references,
+            "related_literature": self.related_literature,
+            "file_path": self.file_path,
+            "file_size_bytes": self.file_size_bytes,
+            "file_size_kb": round(self.file_size_bytes / 1024, 1) if self.file_size_bytes else 0,
+            "file_size_mb": round(self.file_size_bytes / (1024 * 1024), 2) if self.file_size_bytes else 0,
+            "download_status": self.download_status,
+            "source_url": self.source_url,
+            "source_db": self.source_db
+        }
+

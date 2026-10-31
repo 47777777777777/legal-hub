@@ -239,6 +239,33 @@
             <div style="color:#71717a; text-align:center; padding:1rem;">尚無檢索結果，請先確認認證並輸入關鍵字搜尋。</div>
           </div>
         </section>
+
+        <!-- Literature Storage & Metrics Dashboard -->
+        <section style="margin-top: 1rem; border-top: 1px solid #27272a; padding-top: 0.85rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+            <div style="font-weight:700; font-size:0.9rem;">📊 文獻庫儲存容量與下載監控 (由新至舊)</div>
+            <button id="ccu-refresh-stats-btn" class="filter-chip" style="padding:0.25rem 0.6rem; font-size:0.75rem; cursor:pointer;">重新計算</button>
+          </div>
+          <div id="ccu-storage-metrics" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:0.5rem; margin-bottom:0.6rem;">
+            <div class="card" style="padding:0.6rem; text-align:center;">
+              <div style="font-size:0.75rem; color:#8e8e93;">已收錄文獻</div>
+              <div id="lit-stat-total" style="font-size:1.1rem; font-weight:800; color:#fafafa; margin-top:2px;">- 篇</div>
+            </div>
+            <div class="card" style="padding:0.6rem; text-align:center;">
+              <div style="font-size:0.75rem; color:#8e8e93;">已下載 PDF</div>
+              <div id="lit-stat-downloaded" style="font-size:1.1rem; font-weight:800; color:#34d399; margin-top:2px;">- 篇</div>
+            </div>
+            <div class="card" style="padding:0.6rem; text-align:center;">
+              <div style="font-size:0.75rem; color:#8e8e93;">已佔用容量</div>
+              <div id="lit-stat-size" style="font-size:1.1rem; font-weight:800; color:#60a5fa; margin-top:2px;">- MB</div>
+            </div>
+            <div class="card" style="padding:0.6rem; text-align:center;">
+              <div style="font-size:0.75rem; color:#8e8e93;">平均單篇大小</div>
+              <div id="lit-stat-avg" style="font-size:1.1rem; font-weight:800; color:#fbbf24; margin-top:2px;">- MB</div>
+            </div>
+          </div>
+          <div id="lit-year-breakdown" style="font-size:0.8rem; color:#a1a1aa; line-height:1.5;"></div>
+        </section>
       </div>
     </div>
   </div>

@@ -111,6 +111,22 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                 self.send_error_json(500, f"Internal server error: {str(e)}", "ServerError")
             return
 
+        if path == "/api/literature":
+            content_length = int(self.headers.get("Content-Length", 0))
+            if content_length == 0:
+                self.send_error_json(400, "Empty request body.", "BadRequest")
+                return
+            try:
+                body_raw = self.rfile.read(content_length).decode("utf-8")
+                payload = json.loads(body_raw)
+                lit_id = storage.add_literature(payload)
+                self.send_json(201, {"success": True, "data": {"id": lit_id}})
+            except ValidationError as e:
+                self.send_error_json(400, str(e), "ValidationError")
+            except Exception as e:
+                self.send_error_json(500, f"Internal server error: {str(e)}", "ServerError")
+            return
+
         self.send_error_json(404, "Endpoint not found", "NotFound")
 
     def handle_api_get(self, path: str, query: dict):
@@ -156,6 +172,41 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                 self.send_json(200, {"success": True, "data": results, "query": q})
                 return
 
+            # GET /api/literature/stats (文獻儲存與容量統計)
+            if path == "/api/literature/stats":
+                stats = storage.get_literature_stats()
+                self.send_json(200, {"success": True, "data": stats})
+                return
+
+            # GET /api/literature (分頁檢索與篩選)
+            if path == "/api/literature":
+                q = query.get("q", [""])[0]
+                author = query.get("author", [""])[0]
+                journal = query.get("journal", [""])[0]
+                year_str = query.get("year", [""])[0]
+                year = int(year_str) if year_str.isdigit() else None
+                act_id = query.get("act_id", [""])[0]
+                article_no = query.get("article_no", [""])[0]
+                page = int(query.get("page", ["1"])[0])
+                page_size = int(query.get("page_size", ["20"])[0])
+                data = storage.list_literature(
+                    query=q, author=author, journal_name=journal, year=year,
+                    act_id=act_id, article_no=article_no, page=page, page_size=page_size
+                )
+                self.send_json(200, {"success": True, "data": data})
+                return
+
+            # GET /api/literature/<id>
+            if path.startswith("/api/literature/"):
+                lit_id = path.split("/api/literature/")[1].strip()
+                if lit_id:
+                    lit = storage.get_literature(lit_id)
+                    if not lit:
+                        self.send_error_json(404, f"Literature '{lit_id}' not found.", "NotFound")
+                        return
+                    self.send_json(200, {"success": True, "data": lit})
+                    return
+
             # Paths like /api/acts/<act_id>...
             parts = [p for p in path.split("/") if p]
             if len(parts) >= 3 and parts[1] == "acts":
@@ -173,6 +224,13 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                 sub = parts[3]
                 # GET /api/acts/<act_id>/articles
                 if sub == "articles":
+                    # GET /api/acts/<act_id>/articles/<article_no>/literature (二級維度：法條關聯文獻)
+                    if len(parts) == 6 and parts[5] == "literature":
+                        art_no = parts[4]
+                        lits = storage.get_literature_for_article(act_id, art_no)
+                        self.send_json(200, {"success": True, "data": lits, "total": len(lits), "act_id": act_id, "article_no": art_no})
+                        return
+
                     # GET /api/acts/<act_id>/articles/<article_no>
                     if len(parts) == 5:
                         art_no = parts[4]

@@ -537,6 +537,33 @@ class LegalHubApp {
     if (!modal) return;
     modal.classList.remove("hidden");
     await this.refreshCCUStatus();
+    await this.loadLiteratureMetrics();
+  }
+
+  async loadLiteratureMetrics() {
+    try {
+      const res = await fetch("/api/literature/stats");
+      const json = await res.json();
+      const s = json.data || {};
+      const totalEl = document.getElementById("lit-stat-total");
+      const downEl = document.getElementById("lit-stat-downloaded");
+      const sizeEl = document.getElementById("lit-stat-size");
+      const avgEl = document.getElementById("lit-stat-avg");
+      const breakdownEl = document.getElementById("lit-year-breakdown");
+
+      if (totalEl) totalEl.textContent = `${s.total_articles || 0} 篇`;
+      if (downEl) downEl.textContent = `${s.downloaded_articles || 0} 篇`;
+      if (sizeEl) sizeEl.textContent = `${s.downloaded_size_mb || 0} MB`;
+      if (avgEl) avgEl.textContent = `${s.average_file_size_mb || 0} MB`;
+
+      if (breakdownEl && s.year_distribution && s.year_distribution.length) {
+        breakdownEl.innerHTML = `<b>最新年份統計：</b> ` + s.year_distribution.slice(0, 5).map(y => `${y.year}年 (${y.count}篇 / ${y.mb}MB)`).join(" · ");
+      } else if (breakdownEl) {
+        breakdownEl.innerHTML = `<span style="color:#71717a;">尚無預載文獻，排程將依最新年份倒序進行採集。</span>`;
+      }
+    } catch (e) {
+      console.warn("Load literature stats failed:", e);
+    }
   }
 
   async refreshCCUStatus() {
@@ -649,6 +676,11 @@ class LegalHubApp {
 
     if (refreshBtn) {
       refreshBtn.addEventListener("click", () => this.refreshCCUStatus());
+    }
+
+    const refreshStatsBtn = document.getElementById("ccu-refresh-stats-btn");
+    if (refreshStatsBtn) {
+      refreshStatsBtn.addEventListener("click", () => this.loadLiteratureMetrics());
     }
 
     if (searchBtn && searchInput) {
@@ -1171,6 +1203,42 @@ class LegalHubApp {
         }
       });
     });
+
+    // Dual-Binding Literature for this Article
+    const litContainer = root.querySelector("#drawer-article-literature-list");
+    if (litContainer && this.currentActId && this.selectedArticleNo) {
+      fetch(`/api/acts/${this.currentActId}/articles/${this.selectedArticleNo}/literature`)
+        .then(res => res.json())
+        .then(json => {
+          const items = json.data || [];
+          if (!items.length) {
+            litContainer.innerHTML = '<div class="card" style="padding:0.75rem; color:#71717a; font-size:0.85rem;">本條目前尚無預載文獻，您可透過下方「中正 AutoRPA」即時檢索法源與月旦最新期刊。</div>';
+            return;
+          }
+          litContainer.innerHTML = items.map(lit => `
+            <div class="card" style="margin-bottom:0.75rem; padding:0.85rem;">
+              <div style="font-weight:700; font-size:0.95rem; color:#60a5fa; margin-bottom:0.25rem;">
+                ${esc(lit.title)}${lit.subtitle ? ` <span style="font-weight:400; color:#d4d4d8; font-size:0.85rem;">—— ${esc(lit.subtitle)}</span>` : ''}
+              </div>
+              <div style="font-size:0.8rem; color:#a1a1aa; margin-bottom:0.5rem; display:flex; flex-wrap:wrap; gap:0.5rem;">
+                <span>👤 <b>${esc(lit.author)}</b>${lit.author_affiliation ? ` (${esc(lit.author_affiliation)})` : ''}</span>
+                <span>📚 <b>${esc(lit.journal_name)}</b></span>
+                <span>📅 ${esc(lit.pub_date || String(lit.pub_year || ''))}</span>
+                ${lit.volume || lit.issue ? `<span>${esc(lit.volume || '')} ${esc(lit.issue || '')}</span>` : ''}
+                ${lit.pages ? `<span>p. ${esc(lit.pages)}</span>` : ''}
+              </div>
+              ${lit.abstract ? `<div style="font-size:0.85rem; line-height:1.6; color:#d4d4d8; margin-bottom:0.5rem; background:#141417; padding:0.5rem; border-radius:4px;">${esc(lit.abstract)}</div>` : ''}
+              <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#71717a;">
+                <span>檔案大小：${lit.file_size_mb ? `${lit.file_size_mb} MB` : '未載入'}</span>
+                ${lit.file_path ? `<a href="/${lit.file_path}" target="_blank" class="filter-chip active" style="padding:0.2rem 0.6rem; font-size:0.75rem; text-decoration:none;">📄 開啟全文 PDF</a>` : ''}
+              </div>
+            </div>
+          `).join('');
+        })
+        .catch(() => {
+          litContainer.innerHTML = '<div style="color:#71717a; font-size:0.85rem;">載入關聯文獻失敗。</div>';
+        });
+    }
   }
 
   generateTabContentHtml(art) {
@@ -1500,6 +1568,12 @@ class LegalHubApp {
           <a href="https://www-lawdata-com-tw.autorpa.lib.ccu.edu.tw:8443/anglekmc/ttswebx?@0:0:1:lawkm@@0.1702332962648232" target="_blank" rel="noopener noreferrer" class="judgment-link-btn">
             <span>📚 月旦知識庫論文與爭點 (AutoRPA)</span>${icon("external", 13)}
           </a>
+        </div>
+      </section>
+
+      <section id="drawer-article-literature-section">${sectionHeading("book", "相關法學期刊與專論文獻 (二級法條關聯)")}
+        <div id="drawer-article-literature-list" style="margin-top:0.5rem;">
+          <div style="color:#71717a; font-size:0.85rem; padding:0.4rem 0;">載入關聯文獻中...</div>
         </div>
       </section>
 
