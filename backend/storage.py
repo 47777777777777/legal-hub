@@ -323,6 +323,31 @@ class LegalStorage:
         conn = get_connection(self.db_path)
         cur = conn.cursor()
 
+        # Enforce strict deduplication: 同標題 + 同作者 就不能重複儲存
+        clean_title = (lit.title or "").strip()
+        clean_author = (lit.author or "").strip()
+        if clean_title and clean_author:
+            cur.execute("""
+                SELECT id FROM literature 
+                WHERE TRIM(title) = ? AND TRIM(author) = ?
+            """, (clean_title, clean_author))
+            existing = cur.fetchone()
+            if existing:
+                existing_id = existing["id"]
+                # Link cited articles to existing literature record without inserting duplicate
+                for art in lit.cited_articles:
+                    act_id = art.get("act_id", "").strip()
+                    art_no = str(art.get("article_no", "")).strip()
+                    if act_id and art_no:
+                        cur.execute("""
+                            INSERT OR IGNORE INTO literature_articles (literature_id, act_id, article_no)
+                            VALUES (?, ?, ?)
+                        """, (existing_id, act_id, art_no))
+                conn.commit()
+                conn.close()
+                self.cache.invalidate("lit:")
+                return existing_id
+
         cur.execute("""
             INSERT INTO literature (
                 id, title, subtitle, author, author_affiliation,
@@ -566,4 +591,8 @@ class LegalStorage:
             "average_file_size_mb": round(avg_bytes / (1024 * 1024), 2),
             "year_distribution": year_dist
         }
+
+
+# Global singleton instance for shared usage
+storage = LegalStorage()
 

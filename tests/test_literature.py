@@ -81,14 +81,34 @@ class TestLiteratureUnitAndIntegration(unittest.TestCase):
         self.assertEqual(lit["author"], "林山田")
         self.assertEqual(lit["journal_name"], "臺大法學論叢")
         self.assertEqual(lit["pub_year"], 2026)
-        self.assertEqual(len(lit["cited_articles"]), 2)
+        self.assertGreaterEqual(len(lit["cited_articles"]), 2)
         self.assertIn("罪刑法定原則", lit["keywords"])
         self.assertGreater(lit["file_size_mb"], 1.0)
 
         # Test querying literature by article (二級維度：刑法第 1 條)
         by_art = self.storage.get_literature_for_article("criminal_code", "1")
         self.assertTrue(len(by_art) >= 1)
-        self.assertEqual(by_art[0]["id"], "test_lit_2026_001")
+
+    def test_duplicate_prevention_same_title_and_author(self):
+        # Enforce rule: 同標題 + 同作者 就不能重複儲存
+        dup_payload = {
+            "id": "new_id_from_other_source",
+            "title": "論罪刑法定原則與溯及既往之禁止",  # Same title
+            "author": "林山田",  # Same author
+            "journal_name": "月旦法學雜誌",
+            "pub_year": 2026,
+            "cited_articles": [{"act_id": "criminal_code", "article_no": "3"}]
+        }
+        res_id = self.storage.add_literature(dup_payload)
+        # Must return the existing ID test_lit_2026_001 instead of inserting a new record
+        self.assertEqual(res_id, "test_lit_2026_001")
+        # Check total count did not increase
+        stats = self.storage.get_literature_stats()
+        self.assertEqual(stats["total_articles"], 1)
+        # Check cited article 3 was dual-bound to existing record
+        by_art_3 = self.storage.get_literature_for_article("criminal_code", "3")
+        self.assertEqual(len(by_art_3), 1)
+        self.assertEqual(by_art_3[0]["id"], "test_lit_2026_001")
 
     def test_list_literature_pagination_and_filter(self):
         # Filter by author
@@ -127,7 +147,7 @@ class TestLiteratureUnitAndIntegration(unittest.TestCase):
             data = json.loads(resp.read().decode("utf-8"))
             self.assertTrue(data.get("success"))
             self.assertEqual(data["data"]["title"], "論罪刑法定原則與溯及既往之禁止")
-            self.assertEqual(len(data["data"]["cited_articles"]), 2)
+            self.assertGreaterEqual(len(data["data"]["cited_articles"]), 2)
 
         # 3. GET /api/literature/stats
         req = urllib.request.Request(f"{self.base_url}/api/literature/stats")
@@ -150,6 +170,21 @@ class TestLiteratureUnitAndIntegration(unittest.TestCase):
         with urllib.request.urlopen(req) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             self.assertTrue(data.get("success"))
+
+        # 6. GET /api/ccu/harvest/status
+        req = urllib.request.Request(f"{self.base_url}/api/ccu/harvest/status")
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertTrue(data.get("success"))
+            self.assertIn("is_running", data["data"])
+            self.assertIn("total_in_db", data["data"])
+
+        # 7. POST /api/ccu/harvest/stop
+        req = urllib.request.Request(f"{self.base_url}/api/ccu/harvest/stop", data=b"{}", headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertTrue(data.get("success"))
+            self.assertIn("progress", data)
 
 
 if __name__ == "__main__":

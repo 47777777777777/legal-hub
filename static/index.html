@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="/css/style.css?v=20261031_04">
-  <link rel="stylesheet" href="/css/dialer.css?v=20261031_04">
+  <link rel="stylesheet" href="/css/style.css?v=20261031_05">
+  <link rel="stylesheet" href="/css/dialer.css?v=20261031_05">
 </head>
 <body>
 
@@ -210,23 +210,28 @@
             </div>
           </div>
 
-          <!-- Segmented Tabs for Method 1 vs Method 2 -->
-          <div class="segmented-control" style="display:flex; background:#0c0c0f; border:1px solid #27272a; border-radius:6px; padding:2px; margin-bottom:0.75rem;">
-            <button id="ccu-tab-app-btn" type="button" onclick="window.switchCCUTab('app')" style="flex:1; padding:0.4rem 0.6rem; font-size:0.8rem; font-weight:600; border-radius:4px; border:none; cursor:pointer; background:#27272a; color:#fafafa;">方式一：Application (推薦)</button>
-            <button id="ccu-tab-net-btn" type="button" onclick="window.switchCCUTab('net')" style="flex:1; padding:0.4rem 0.6rem; font-size:0.8rem; font-weight:600; border-radius:4px; border:none; cursor:pointer; background:transparent; color:#a1a1aa;">方式二：Network (標頭整行)</button>
-          </div>
+          <!-- Method 1 & Method 2: Native HTML Details (Zero JS dependency, guaranteed click) -->
+          <details id="ccu-guide-app" open style="background:#09090b; border:1px solid #27272a; border-radius:6px; padding:0.55rem 0.75rem; margin-bottom:0.5rem; font-size:0.8rem; color:#d4d4d8;">
+            <summary style="cursor:pointer; font-weight:700; color:#60a5fa; user-select:none; margin-bottom:0.4rem;">
+              💡 方式一：從 Application 複製 sessionid（最推薦，點此收合/展開）
+            </summary>
+            <div style="font-size:0.8rem; color:#a1a1aa; line-height:1.55; padding-left:0.3rem;">
+              1. 登入法源或月旦後在分頁按 <b>F12</b>（或右鍵點「檢查」）。<br>
+              2. 上方選 <b>Application</b>（應用程式）分頁（若未看到可點 <code>&gt;&gt;</code> 展開）。<br>
+              3. 左側展開 <b>Storage → Cookies</b>，點擊 <code>autorpa.lib.ccu.edu.tw</code>。<br>
+              4. 找到名稱為 <b>sessionid</b> 那一欄，雙擊複製它的值（約 32 碼英數字），貼在下方輸入框！
+            </div>
+          </details>
 
-          <div id="ccu-tab-app-panel" style="font-size:0.8rem; color:#a1a1aa; line-height:1.55; margin-bottom:0.75rem; background:#09090b; border:1px solid #202024; border-radius:6px; padding:0.6rem 0.8rem;">
-            1. 登入法源或月旦後在分頁按 <b>F12</b>（或右鍵點「檢查」）。<br>
-            2. 上方選 <b>Application</b>（應用程式）分頁（若未看到可點 <code>&gt;&gt;</code> 展開）。<br>
-            3. 左側展開 <b>Storage → Cookies</b>，點擊 <code>autorpa.lib.ccu.edu.tw</code>。<br>
-            4. 找到名稱為 <b>sessionid</b> 那一欄，雙擊複製它的值（約 32 碼英數字），貼在下方輸入框！
-          </div>
-
-          <div id="ccu-tab-net-panel" style="display:none; font-size:0.8rem; color:#a1a1aa; line-height:1.55; margin-bottom:0.75rem; background:#09090b; border:1px solid #202024; border-radius:6px; padding:0.6rem 0.8rem;">
-            1. 在登入後的法源或月旦分頁按 <b>F12</b> 切換至 <b>Network</b>（網路），按 <b>F5</b> 重新整理。<br>
-            2. 點選清單中最上方第一筆請求，在右邊 <b>Request Headers</b> 找到 <b>Cookie:</b>，複製整行並貼上（系統會自動萃取）。
-          </div>
+          <details id="ccu-guide-net" style="background:#09090b; border:1px solid #27272a; border-radius:6px; padding:0.55rem 0.75rem; margin-bottom:0.65rem; font-size:0.8rem; color:#d4d4d8;">
+            <summary style="cursor:pointer; font-weight:700; color:#34d399; user-select:none; margin-bottom:0.4rem;">
+              🌐 方式二：從 Network 複製完整請求標頭（點此展開）
+            </summary>
+            <div style="font-size:0.8rem; color:#a1a1aa; line-height:1.55; padding-left:0.3rem;">
+              1. 在登入後的法源或月旦分頁按 <b>F12</b> 切換至 <b>Network</b>（網路），按 <b>F5</b> 重新整理。<br>
+              2. 點選清單中最上方第一筆請求，在右邊 <b>Request Headers</b> 找到 <b>Cookie:</b>，複製整行並貼上（系統會自動萃取）。
+            </div>
+          </details>
 
           <!-- Input field with inline clipboard paste icon button -->
           <div class="input-wrap" style="position:relative; margin-bottom:0.6rem;">
@@ -244,20 +249,33 @@
           </div>
         </section>
 
+        <!-- Auto-Harvest Background Engine Panel -->
+        <div id="ccu-harvest-panel" style="background:#131317; border:1px solid #27272a; border-radius:8px; padding:0.65rem 0.85rem; display:flex; flex-direction:column; gap:0.45rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.4rem;">
+            <div style="font-size:0.83rem; color:#fafafa; display:flex; align-items:center; gap:0.4rem;">
+              <span style="font-size:1rem;">⚡</span>
+              <span style="font-weight:700;">背景自動採集 (由新至舊 · 法源與月旦)</span>
+              <span id="harvest-active-dot" style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#71717a;" title="採集狀態"></span>
+            </div>
+            <div style="display:flex; gap:0.45rem;">
+              <button id="ccu-start-harvest-btn" type="button" class="filter-chip active" style="padding:0.3rem 0.85rem; font-size:0.8rem; cursor:pointer;">▶️ 啟動自動採集</button>
+              <button id="ccu-stop-harvest-btn" type="button" class="filter-chip" style="display:none; padding:0.3rem 0.85rem; font-size:0.8rem; cursor:pointer; background:#7f1d1d; color:#fca5a5; border-color:#991b1b;">⏹️ 停止採集</button>
+            </div>
+          </div>
+          <div style="font-size:0.78rem; color:#a1a1aa; line-height:1.5;">
+            進度：<span id="harvest-status-text" style="color:#d4d4d8;">待命中（登入後點擊啟動，系統將自動從最新條文往舊抓取，同標題+作者自動去重）</span>
+          </div>
+        </div>
+
         <!-- Literature Search Section (Core Hero Section) -->
         <section style="display:flex; flex-direction:column; flex:1; min-height:350px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.4rem;">
-            <div style="display:flex; align-items:center; gap:0.6rem;">
-              <span style="font-weight:700; font-size:0.9rem; color:#fafafa;">法學期刊專論檢索</span>
-              <!-- Source Filter Chips -->
-              <div id="ccu-source-selector" style="display:inline-flex; gap:0.25rem;">
-                <button type="button" class="filter-chip active ccu-source-btn" data-source="all" style="padding:0.15rem 0.55rem; font-size:0.75rem; cursor:pointer;">全部 (法源+月旦)</button>
-                <button type="button" class="filter-chip ccu-source-btn" data-source="lawbank" style="padding:0.15rem 0.55rem; font-size:0.75rem; cursor:pointer;">⚖️ 法源</button>
-                <button type="button" class="filter-chip ccu-source-btn" data-source="lawdata" style="padding:0.15rem 0.55rem; font-size:0.75rem; cursor:pointer;">📚 月旦</button>
-              </div>
-            </div>
+            <span style="font-weight:700; font-size:0.9rem; color:#fafafa;">法學期刊專論文獻檢索 (法源 / 月旦自動統合)</span>
             <!-- Micro badge for ddddocr -->
             <span class="badge" title="系統內建 ddddocr 深度學習秒解圖形驗證碼，下載期刊全文時自動辨識免手動輸入" style="display:inline-flex; align-items:center; gap:0.25rem; font-size:0.75rem; color:#6ee7b7; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.25); padding:2px 7px; border-radius:10px; cursor:help;">
+              ⚡ 自動驗證碼辨識已啟用 ✓
+            </span>
+          </div>
               ⚡ 自動驗證碼辨識已啟用 ✓
             </span>
           </div>
@@ -340,8 +358,8 @@
     </div>
   </div>
 
-  <script src="/js/icons.js?v=20261031_04"></script>
-  <script src="/js/dialer.js?v=20261031_04"></script>
-  <script src="/js/app.js?v=20261031_04"></script>
+  <script src="/js/icons.js?v=20261031_05"></script>
+  <script src="/js/dialer.js?v=20261031_05"></script>
+  <script src="/js/app.js?v=20261031_05"></script>
 </body>
 </html>

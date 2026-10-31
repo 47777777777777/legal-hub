@@ -94,6 +94,18 @@ class LegalApiHandler(BaseHTTPRequestHandler):
             self.send_json(200, {"success": True, "message": "快取已清理完畢。"})
             return
 
+        if path == "/api/ccu/harvest/start":
+            from backend.batch_crawler import BatchHarvester
+            res = BatchHarvester.get_instance().start_harvest()
+            self.send_json(200, res)
+            return
+
+        if path == "/api/ccu/harvest/stop":
+            from backend.batch_crawler import BatchHarvester
+            res = BatchHarvester.get_instance().stop_harvest()
+            self.send_json(200, res)
+            return
+
         if path == "/api/acts":
             content_length = int(self.headers.get("Content-Length", 0))
             if content_length == 0:
@@ -161,6 +173,13 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                 from backend.ccu_crawler import CCUCrawler
                 docs = CCUCrawler().list_archived_documents()
                 self.send_json(200, {"success": True, "data": docs})
+                return
+
+            # GET /api/ccu/harvest/status
+            if path == "/api/ccu/harvest/status":
+                from backend.batch_crawler import BatchHarvester
+                status = BatchHarvester.get_instance().get_status()
+                self.send_json(200, {"success": True, "data": status})
                 return
 
             # GET /api/ccu/search?q=...&source=all|lawbank|lawdata

@@ -480,10 +480,17 @@ class LegalHubApp {
     if (ccuBtn && ccuModal) {
       ccuBtn.addEventListener("click", () => this.openCCUModal());
     }
+    const closeCCU = () => {
+      ccuModal.classList.add("hidden");
+      if (this.harvestInterval) {
+        clearInterval(this.harvestInterval);
+        this.harvestInterval = null;
+      }
+    };
     if (ccuClose && ccuModal) {
-      ccuClose.addEventListener("click", () => ccuModal.classList.add("hidden"));
+      ccuClose.addEventListener("click", closeCCU);
       ccuModal.addEventListener("click", (e) => {
-        if (e.target === ccuModal) ccuModal.classList.add("hidden");
+        if (e.target === ccuModal) closeCCU();
       });
     }
 
@@ -569,10 +576,51 @@ class LegalHubApp {
     modal.classList.remove("hidden");
     await this.refreshCCUStatus();
     await this.loadLiteratureMetrics();
+    await this.pollHarvestStatus();
+    if (this.harvestInterval) clearInterval(this.harvestInterval);
+    this.harvestInterval = setInterval(() => this.pollHarvestStatus(), 2500);
+
     const searchInput = document.getElementById("ccu-search-input");
     const resultsContainer = document.getElementById("ccu-search-results");
     if (resultsContainer && (!searchInput || !searchInput.value.trim())) {
       this.renderLiteratureEmptyState();
+    }
+  }
+
+  async pollHarvestStatus() {
+    try {
+      const res = await fetch("/api/ccu/harvest/status");
+      const json = await res.json();
+      const st = json.data || {};
+      const statusText = document.getElementById("harvest-status-text");
+      const activeDot = document.getElementById("harvest-active-dot");
+      const startBtn = document.getElementById("ccu-start-harvest-btn");
+      const stopBtn = document.getElementById("ccu-stop-harvest-btn");
+
+      if (st.is_running) {
+        if (activeDot) activeDot.style.background = "#10b981";
+        if (startBtn) startBtn.style.display = "none";
+        if (stopBtn) stopBtn.style.display = "inline-block";
+        if (statusText) {
+          statusText.innerHTML = `<span style="color:#6ee7b7; font-weight:700;">採集中</span> ｜ 已抓取 <b>${st.total_harvested || 0}</b> 篇 ｜ 正處理：<b>${esc(st.current_act || '')} ${esc(st.current_art || '')}</b>${st.last_saved_title ? ` (最新：${esc(st.last_saved_title)})` : ''}`;
+        }
+      } else {
+        if (activeDot) activeDot.style.background = "#71717a";
+        if (startBtn) startBtn.style.display = "inline-block";
+        if (stopBtn) stopBtn.style.display = "none";
+        if (statusText && st.status === "completed") {
+          statusText.innerHTML = `<span style="color:#34d399; font-weight:700;">採集完成</span> ｜ 共收錄 ${st.total_in_db || 0} 篇文獻 (${st.downloaded_size_mb || 0} MB)`;
+        } else if (statusText && st.status === "stopped") {
+          statusText.innerHTML = `已停止 ｜ 現有快取 ${st.total_in_db || 0} 篇文獻`;
+        }
+      }
+
+      const statSummary = document.getElementById("lit-stat-summary");
+      if (statSummary && (st.total_in_db !== undefined)) {
+        statSummary.textContent = `${st.total_in_db} 篇文獻 (${st.downloaded_size_mb || 0} MB)`;
+      }
+    } catch (e) {
+      console.warn("Poll harvest status error:", e);
     }
   }
 
@@ -822,6 +870,40 @@ class LegalHubApp {
     const refreshStatsBtn = document.getElementById("ccu-refresh-stats-btn");
     if (refreshStatsBtn) {
       refreshStatsBtn.addEventListener("click", () => this.loadLiteratureMetrics());
+    }
+
+    // Auto-Harvest Controls
+    const startHarvestBtn = document.getElementById("ccu-start-harvest-btn");
+    const stopHarvestBtn = document.getElementById("ccu-stop-harvest-btn");
+
+    if (startHarvestBtn) {
+      startHarvestBtn.addEventListener("click", async () => {
+        startHarvestBtn.disabled = true;
+        try {
+          const res = await fetch("/api/ccu/harvest/start", { method: "POST" });
+          const json = await res.json();
+          await this.pollHarvestStatus();
+        } catch (e) {
+          alert("啟動採集出錯：" + e.message);
+        } finally {
+          startHarvestBtn.disabled = false;
+        }
+      });
+    }
+
+    if (stopHarvestBtn) {
+      stopHarvestBtn.addEventListener("click", async () => {
+        stopHarvestBtn.disabled = true;
+        try {
+          const res = await fetch("/api/ccu/harvest/stop", { method: "POST" });
+          const json = await res.json();
+          await this.pollHarvestStatus();
+        } catch (e) {
+          alert("停止採集出錯：" + e.message);
+        } finally {
+          stopHarvestBtn.disabled = false;
+        }
+      });
     }
 
     if (clearCacheBtn) {
