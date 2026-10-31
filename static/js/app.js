@@ -176,6 +176,7 @@ class LegalHubApp {
     this.initTheme();
     this.initDensity();
     this.initEventListeners();
+    this.bindCCUEvents();
     this.renderResearchTabs();
 
     const route = this.parseHashRoute();
@@ -440,6 +441,20 @@ class LegalHubApp {
       document.getElementById("flowchart-modal").classList.add("hidden");
     });
 
+    // CCU AutoRPA Modal Controls
+    const ccuBtn = document.getElementById("ccu-proxy-btn");
+    const ccuModal = document.getElementById("ccu-modal");
+    const ccuClose = document.getElementById("ccu-modal-close");
+    if (ccuBtn && ccuModal) {
+      ccuBtn.addEventListener("click", () => this.openCCUModal());
+    }
+    if (ccuClose && ccuModal) {
+      ccuClose.addEventListener("click", () => ccuModal.classList.add("hidden"));
+      ccuModal.addEventListener("click", (e) => {
+        if (e.target === ccuModal) ccuModal.classList.add("hidden");
+      });
+    }
+
     // Popover Close
     document.getElementById("popover-close-btn").addEventListener("click", () => {
       document.getElementById("article-hover-popover").classList.add("hidden");
@@ -462,6 +477,8 @@ class LegalHubApp {
         modal.classList.add("hidden");
         document.getElementById("flowchart-modal").classList.add("hidden");
         document.getElementById("article-hover-popover").classList.add("hidden");
+        const cm = document.getElementById("ccu-modal");
+        if (cm) cm.classList.add("hidden");
         return;
       }
       
@@ -510,6 +527,106 @@ class LegalHubApp {
       const cur = document.documentElement.style.getPropertyValue("--drawer-width") || "50%";
       const next = cur === "50%" ? "65%" : cur === "65%" ? "38%" : "50%";
       document.documentElement.style.setProperty("--drawer-width", next);
+    }
+  }
+
+  // ---------------- CCU AutoRPA & Document Downloader ----------------
+  async openCCUModal() {
+    const modal = document.getElementById("ccu-modal");
+    if (!modal) return;
+    modal.classList.remove("hidden");
+    await this.refreshCCUStatus();
+  }
+
+  async refreshCCUStatus() {
+    const badge = document.getElementById("ccu-auth-badge");
+    try {
+      const res = await fetch("/api/ccu/status");
+      const json = await res.json();
+      const data = json.data || {};
+      if (data.authenticated) {
+        if (badge) {
+          badge.textContent = "● 已通過中正認證";
+          badge.style.background = "#052e16";
+          badge.style.color = "#86efac";
+        }
+      } else {
+        if (badge) {
+          badge.textContent = "● 未認證 (請登入後貼上 Cookie)";
+          badge.style.background = "#2a2a32";
+          badge.style.color = "#a1a1aa";
+        }
+      }
+    } catch (e) {
+      if (badge) badge.textContent = "連線失敗";
+    }
+  }
+
+  bindCCUEvents() {
+    const saveBtn = document.getElementById("ccu-save-session-btn");
+    const refreshBtn = document.getElementById("ccu-refresh-status-btn");
+    const cookieInput = document.getElementById("ccu-cookie-input");
+    const searchBtn = document.getElementById("ccu-do-search-btn");
+    const searchInput = document.getElementById("ccu-search-input");
+    const resultsContainer = document.getElementById("ccu-search-results");
+
+    if (saveBtn) {
+      saveBtn.addEventListener("click", async () => {
+        const val = cookieInput ? cookieInput.value.trim() : "";
+        saveBtn.disabled = true;
+        saveBtn.textContent = "驗證中...";
+        try {
+          const res = await fetch("/api/ccu/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ cookies: val })
+          });
+          const json = await res.json();
+          await this.refreshCCUStatus();
+          alert(json.data && json.data.authenticated ? "✅ 中正 AutoRPA 認證成功！" : "⚠️ Cookie 已儲存，但尚未通過中正 AutoRPA 驗證，請確認登入狀態。");
+        } catch (e) {
+          alert("儲存失敗：" + e.message);
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.textContent = "儲存並驗證連線";
+        }
+      });
+    }
+
+    if (refreshBtn) {
+      refreshBtn.addEventListener("click", () => this.refreshCCUStatus());
+    }
+
+    if (searchBtn && searchInput) {
+      const doSearch = async () => {
+        const q = searchInput.value.trim();
+        if (!q) return;
+        searchBtn.disabled = true;
+        searchBtn.textContent = "檢索中...";
+        if (resultsContainer) resultsContainer.innerHTML = '<div style="color:#71717a; text-align:center; padding:1rem;">正在檢索中正法源與月旦論文...</div>';
+        try {
+          const res = await fetch(`/api/ccu/search?q=${encodeURIComponent(q)}`);
+          const json = await res.json();
+          const items = json.data || [];
+          if (!items.length) {
+            resultsContainer.innerHTML = '<div style="color:#71717a; text-align:center; padding:1rem;">查無相關文獻，或尚未通過中正校園認證。</div>';
+          } else {
+            resultsContainer.innerHTML = items.map(item => `
+              <div class="card" style="margin-bottom:0.5rem; padding:0.6rem;">
+                <div style="font-weight:700; color:#60a5fa;"><a href="${item.url}" target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration:none;">${esc(item.title)} ↗</a></div>
+                <div style="font-size:0.75rem; color:#8e8e93; margin-top:0.25rem;">來源：${esc(item.source)}</div>
+              </div>
+            `).join('');
+          }
+        } catch (e) {
+          if (resultsContainer) resultsContainer.innerHTML = `<div style="color:#ef4444; padding:0.5rem;">檢索出錯：${e.message}</div>`;
+        } finally {
+          searchBtn.disabled = false;
+          searchBtn.textContent = "🔍 檢索論文";
+        }
+      };
+      searchBtn.addEventListener("click", doSearch);
+      searchInput.addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
     }
   }
 

@@ -43,6 +43,11 @@
         <span data-icon="table" data-size="16"></span>
       </button>
 
+      <!-- CCU AutoRPA Proxy Connection Modal Button -->
+      <button id="ccu-proxy-btn" class="icon-btn" title="中正校園資源代理 (AutoRPA & 論文下載)" aria-label="中正校園資源代理">
+        <span data-icon="landmark" data-size="16"></span>
+      </button>
+
       <div class="font-size-controls" title="調整字體大小">
         <button id="font-minus-btn" class="font-size-btn" aria-label="縮小字體">A-</button>
         <button id="font-plus-btn" class="font-size-btn" aria-label="放大字體">A+</button>
@@ -156,6 +161,56 @@
         <button class="icon-btn" id="flowchart-modal-close" aria-label="關閉" data-icon="x" data-size="18"></button>
       </div>
       <div class="modal-body flowchart-modal-body" id="flowchart-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- CCU AutoRPA & Journal Downloader Modal -->
+  <div class="modal-backdrop hidden" id="ccu-modal">
+    <div class="modal-dialog" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 class="modal-title">🏛️ 中正 AutoRPA 校園資源與文獻下載</h3>
+        <button class="icon-btn" id="ccu-modal-close" aria-label="關閉" data-icon="x" data-size="18"></button>
+      </div>
+      <div class="modal-body">
+        <div class="callout-box" style="margin-bottom: 1rem; border-color: #2f2f37; background: #0c0c0f;">
+          <div class="callout-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>連線狀態</span>
+            <span id="ccu-auth-badge" class="badge" style="background:#2a2a32; color:#8e8e93;">檢查中...</span>
+          </div>
+          <div style="font-size:0.875rem; color:#a1a1aa; margin-top:0.5rem; line-height:1.5;">
+            ⚡ <b>已內建 ddddocr 深度學習自動秒解驗證碼</b>：下載法源與月旦之論文與裁判文獻時，系統將自動擷取辨識並提交驗證碼，免除手動輸入痛點。
+          </div>
+        </div>
+
+        <section style="margin-bottom: 1.25rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+            <label style="font-weight:700; font-size:0.9rem;">校外連線認證 (無需 VPN，中正帳號直接登入)</label>
+            <a href="https://idm.lib.ccu.edu.tw/sso/idm/oidc/login/?next=/openid/idm/authorize/%3Fclient_id%3D616339%26response_type%3Dcode%26redirect_uri%3Dhttps%253A%252F%252Fautorpa.lib.ccu.edu.tw%252Flogin%26scope%3Dopenid%26state%3Dhttps%253A%252F%252Fautorpa.lib.ccu.edu.tw%252Flogin%252F%253Furl%253Dhttps%25253A%252F%252Fwww-lawbank-com-tw.autorpa.lib.ccu.edu.tw%25253A8443%252F" target="_blank" rel="noopener noreferrer" style="font-size:0.85rem; color:#60a5fa; text-decoration:none;">
+              開啟中正登入頁 ↗
+            </a>
+          </div>
+          <div class="input-wrap" style="margin-bottom: 0.5rem;">
+            <input type="text" id="ccu-cookie-input" class="field-input" placeholder="登入後貼上 AutoRPA Cookie / Session" autocomplete="off" />
+          </div>
+          <div style="display:flex; gap:0.5rem;">
+            <button id="ccu-save-session-btn" class="filter-chip active" style="padding:0.4rem 1rem; cursor:pointer;">儲存並驗證連線</button>
+            <button id="ccu-refresh-status-btn" class="filter-chip" style="padding:0.4rem 1rem; cursor:pointer;">重新檢測狀態</button>
+          </div>
+        </section>
+
+        <section>
+          <div style="font-weight:700; font-size:0.9rem; margin-bottom:0.5rem;">文獻與期刊論文搜尋 (法源 / 月旦)</div>
+          <div class="input-wrap" style="margin-bottom: 0.5rem;">
+            <input type="text" id="ccu-search-input" class="field-input" placeholder="輸入關鍵字或條文搜尋期刊論文，例如：185-3 酒駕 或 配偶權" autocomplete="off" />
+          </div>
+          <div style="display:flex; gap:0.5rem; margin-bottom: 0.75rem;">
+            <button id="ccu-do-search-btn" class="filter-chip active" style="padding:0.4rem 1rem; cursor:pointer;">🔍 檢索論文</button>
+          </div>
+          <div id="ccu-search-results" style="max-height: 220px; overflow-y: auto; font-size:0.875rem;">
+            <div style="color:#71717a; text-align:center; padding:1rem;">尚無檢索結果，請先確認認證並輸入關鍵字搜尋。</div>
+          </div>
+        </section>
+      </div>
     </div>
   </div>
 
