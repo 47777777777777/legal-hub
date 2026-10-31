@@ -94,11 +94,13 @@ class CCUCrawler:
             pattern = re.compile(r'href="([^"]+FINT03\.aspx\?param=[^"]+)"[^>]*>([^<]+)</a>', re.I)
             for m in pattern.findall(html)[:15]:
                 link, title = m
+                clean_title = re.sub(r'<[^>]+>', '', title).strip()
                 results.append({
                     "source": "法源法律網 (LawBank)",
-                    "title": title.strip(),
+                    "title": clean_title,
                     "url": urllib.parse.urljoin(LAWBANK_URL, link),
-                    "query": query
+                    "query": query,
+                    "source_db": "lawbank"
                 })
             return results
         except Exception as e:
@@ -121,12 +123,33 @@ class CCUCrawler:
             pattern = re.compile(r'href="([^"]*ttswebx[^"]*)"[^>]*>([^<]+)</a>', re.I)
             for m in pattern.findall(html)[:15]:
                 link, title = m
-                if "pdf" in link.lower() or "view" in link.lower() or len(title.strip()) > 4:
+                clean_title = re.sub(r'<[^>]+>', '', title).strip()
+                if clean_title and (len(clean_title) > 3 or "法" in clean_title):
                     results.append({
                         "source": "月旦知識庫 (LawData)",
-                        "title": title.strip(),
+                        "title": clean_title,
                         "url": urllib.parse.urljoin(LAWDATA_URL, link),
-                        "query": query
+                        "query": query,
+                        "source_db": "lawdata"
+                    })
+            if results:
+                return results
+
+            # Fallback: Search endpoint
+            alt_url = f"{LAWDATA_URL}anglekm/search.asp?kw={encoded}"
+            req_alt = urllib.request.Request(alt_url, headers=self.get_headers())
+            with urllib.request.urlopen(req_alt, context=self.ctx, timeout=8) as resp_alt:
+                html_alt = resp_alt.read().decode("utf-8", errors="ignore")
+            for m in re.findall(r'href="([^"]+)"[^>]*>([^<]+)</a>', html_alt)[:15]:
+                l, t = m
+                clean_t = re.sub(r'<[^>]+>', '', t).strip()
+                if clean_t and ("detail" in l.lower() or "article" in l.lower() or "paper" in l.lower() or len(clean_t) > 4):
+                    results.append({
+                        "source": "月旦知識庫 (LawData)",
+                        "title": clean_t,
+                        "url": urllib.parse.urljoin(LAWDATA_URL, l),
+                        "query": query,
+                        "source_db": "lawdata"
                     })
             return results
         except Exception as e:

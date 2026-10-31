@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="/css/style.css">
-  <link rel="stylesheet" href="/css/dialer.css">
+  <link rel="stylesheet" href="/css/style.css?v=20261031_04">
+  <link rel="stylesheet" href="/css/dialer.css?v=20261031_04">
 </head>
 <body>
 
@@ -165,14 +165,14 @@
     </div>
   </div>
 
-  <!-- LawBank Literature & AutoRPA Modal -->
+  <!-- LawBank & LawData Literature & AutoRPA Modal -->
   <div class="modal-backdrop hidden" id="ccu-modal">
     <div class="modal-dialog" style="max-width: 680px; width: 95vw; display: flex; flex-direction: column; max-height: 88vh; border-radius: 12px; border: 1px solid #27272a; background: #0c0c0f; box-shadow: 0 20px 50px rgba(0,0,0,0.85); overflow: hidden;">
       <!-- Standard Modal Header -->
       <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; padding: 0.85rem 1.25rem; border-bottom: 1px solid #27272a; background: #121216;">
         <div style="display:flex; align-items:center; gap:0.6rem;">
           <span style="font-size:1.1rem;">📚</span>
-          <h3 class="modal-title" style="font-size:1rem; font-weight:700; color:#fafafa; margin:0;">文獻庫與法源期刊檢索</h3>
+          <h3 class="modal-title" style="font-size:1rem; font-weight:700; color:#fafafa; margin:0;">文獻庫與法學期刊檢索 (法源 / 月旦)</h3>
         </div>
         <button class="icon-btn" id="ccu-modal-close" aria-label="關閉" data-icon="x" data-size="18" style="color:#a1a1aa; cursor:pointer; background:none; border:none; padding:4px;"></button>
       </div>
@@ -183,7 +183,9 @@
         <div id="ccu-auth-connected-bar" style="display:none; align-items:center; justify-content:space-between; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.3); border-radius:8px; padding:0.5rem 0.85rem;">
           <div style="display:flex; align-items:center; gap:0.55rem; font-size:0.85rem; color:#6ee7b7;">
             <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow: 0 0 6px #10b981;"></span>
-            <span><b>法源連線正常</b> (AutoRPA 認證有效)</span>
+            <span><b>AutoRPA 連線正常</b></span>
+            <span id="ccu-lawbank-pill" class="badge" style="background:#064e3b; color:#6ee7b7; font-size:0.75rem; padding:1px 6px; border-radius:4px;">法源 ✓</span>
+            <span id="ccu-lawdata-pill" class="badge" style="background:#431407; color:#fdba74; font-size:0.75rem; padding:1px 6px; border-radius:4px;">月旦 ✓</span>
           </div>
           <div style="display:flex; align-items:center; gap:0.6rem;">
             <button id="ccu-toggle-config-btn" type="button" style="background:none; border:none; color:#93c5fd; font-size:0.8rem; cursor:pointer; text-decoration:underline;">重新設定</button>
@@ -192,31 +194,37 @@
 
         <!-- Connection Configuration Box (Shown when disconnected or user clicks 重新設定) -->
         <section id="ccu-auth-config-box" style="background:#141417; border:1px solid #27272a; border-radius:8px; padding:0.9rem;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.4rem;">
             <div style="display:flex; align-items:center; gap:0.5rem;">
               <span id="ccu-auth-badge" class="badge" style="background:#2a2a32; color:#8e8e93; font-size:0.75rem;">檢查中...</span>
               <span style="font-weight:700; font-size:0.88rem; color:#fafafa;">校外連線認證 (中正帳號直接登入)</span>
             </div>
-            <a href="https://idm.lib.ccu.edu.tw/sso/idm/oidc/login/?next=/openid/idm/authorize/%3Fclient_id%3D616339%26response_type%3Dcode%26redirect_uri%3Dhttps%253A%252F%252Fautorpa.lib.ccu.edu.tw%252Flogin%26scope%3Dopenid%26state%3Dhttps%253A%252F%252Fautorpa.lib.ccu.edu.tw%252Flogin%252F%253Furl%253Dhttps%25253A%252F%252Fwww-lawbank-com-tw.autorpa.lib.ccu.edu.tw%25253A8443%252F" target="_blank" rel="noopener noreferrer" style="font-size:0.82rem; color:#60a5fa; text-decoration:none; font-weight:600;">
-              開啟中正登入頁 ↗
-            </a>
+            <div style="display:flex; gap:0.6rem; font-size:0.8rem;">
+              <a href="https://idm.lib.ccu.edu.tw/sso/idm/oidc/login/?next=/openid/idm/authorize/%3Fclient_id%3D616339%26response_type%3Dcode%26redirect_uri%3Dhttps%253A%252F%252Fautorpa.lib.ccu.edu.tw%252Flogin%26scope%3Dopenid%26state%3Dhttps%253A%252F%252Fautorpa.lib.ccu.edu.tw%252Flogin%252F%253Furl%253Dhttps%25253A%252F%252Fwww-lawbank-com-tw.autorpa.lib.ccu.edu.tw%25253A8443%252F" target="_blank" rel="noopener noreferrer" style="color:#60a5fa; text-decoration:none; font-weight:600;">
+                法源登入 ↗
+              </a>
+              <span style="color:#3f3f46;">｜</span>
+              <a href="https://idm.lib.ccu.edu.tw/sso/idm/oidc/login/?next=/openid/idm/authorize/%3Fclient_id%3D616339%26response_type%3Dcode%26redirect_uri%3Dhttps%253A%252F%252Fautorpa.lib.ccu.edu.tw%252Flogin%26scope%3Dopenid%26state%3Dhttps%253A%252F%252Fautorpa.lib.ccu.edu.tw%252Flogin%252F%253Furl%253Dhttps%25253A%252F%252Fwww-lawdata-com-tw.autorpa.lib.ccu.edu.tw%25253A8443%252F" target="_blank" rel="noopener noreferrer" style="color:#fb923c; text-decoration:none; font-weight:600;">
+                月旦登入 ↗
+              </a>
+            </div>
           </div>
 
           <!-- Segmented Tabs for Method 1 vs Method 2 -->
           <div class="segmented-control" style="display:flex; background:#0c0c0f; border:1px solid #27272a; border-radius:6px; padding:2px; margin-bottom:0.75rem;">
-            <button id="ccu-tab-app-btn" type="button" style="flex:1; padding:0.35rem 0.6rem; font-size:0.8rem; font-weight:600; border-radius:4px; border:none; cursor:pointer; background:#27272a; color:#fafafa;">方式一：Application (推薦)</button>
-            <button id="ccu-tab-net-btn" type="button" style="flex:1; padding:0.35rem 0.6rem; font-size:0.8rem; font-weight:600; border-radius:4px; border:none; cursor:pointer; background:transparent; color:#a1a1aa;">方式二：Network (標頭整行)</button>
+            <button id="ccu-tab-app-btn" type="button" onclick="window.switchCCUTab('app')" style="flex:1; padding:0.4rem 0.6rem; font-size:0.8rem; font-weight:600; border-radius:4px; border:none; cursor:pointer; background:#27272a; color:#fafafa;">方式一：Application (推薦)</button>
+            <button id="ccu-tab-net-btn" type="button" onclick="window.switchCCUTab('net')" style="flex:1; padding:0.4rem 0.6rem; font-size:0.8rem; font-weight:600; border-radius:4px; border:none; cursor:pointer; background:transparent; color:#a1a1aa;">方式二：Network (標頭整行)</button>
           </div>
 
           <div id="ccu-tab-app-panel" style="font-size:0.8rem; color:#a1a1aa; line-height:1.55; margin-bottom:0.75rem; background:#09090b; border:1px solid #202024; border-radius:6px; padding:0.6rem 0.8rem;">
-            1. 登入法源後在分頁按 <b>F12</b>（或右鍵點「檢查」）。<br>
+            1. 登入法源或月旦後在分頁按 <b>F12</b>（或右鍵點「檢查」）。<br>
             2. 上方選 <b>Application</b>（應用程式）分頁（若未看到可點 <code>&gt;&gt;</code> 展開）。<br>
             3. 左側展開 <b>Storage → Cookies</b>，點擊 <code>autorpa.lib.ccu.edu.tw</code>。<br>
             4. 找到名稱為 <b>sessionid</b> 那一欄，雙擊複製它的值（約 32 碼英數字），貼在下方輸入框！
           </div>
 
           <div id="ccu-tab-net-panel" style="display:none; font-size:0.8rem; color:#a1a1aa; line-height:1.55; margin-bottom:0.75rem; background:#09090b; border:1px solid #202024; border-radius:6px; padding:0.6rem 0.8rem;">
-            1. 在登入後的法源分頁按 <b>F12</b> 切換至 <b>Network</b>（網路），按 <b>F5</b> 重新整理。<br>
+            1. 在登入後的法源或月旦分頁按 <b>F12</b> 切換至 <b>Network</b>（網路），按 <b>F5</b> 重新整理。<br>
             2. 點選清單中最上方第一筆請求，在右邊 <b>Request Headers</b> 找到 <b>Cookie:</b>，複製整行並貼上（系統會自動萃取）。
           </div>
 
@@ -239,9 +247,17 @@
         <!-- Literature Search Section (Core Hero Section) -->
         <section style="display:flex; flex-direction:column; flex:1; min-height:350px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.4rem;">
-            <span style="font-weight:700; font-size:0.9rem; color:#fafafa;">法源法律網期刊論文檢索</span>
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+              <span style="font-weight:700; font-size:0.9rem; color:#fafafa;">法學期刊專論檢索</span>
+              <!-- Source Filter Chips -->
+              <div id="ccu-source-selector" style="display:inline-flex; gap:0.25rem;">
+                <button type="button" class="filter-chip active ccu-source-btn" data-source="all" style="padding:0.15rem 0.55rem; font-size:0.75rem; cursor:pointer;">全部 (法源+月旦)</button>
+                <button type="button" class="filter-chip ccu-source-btn" data-source="lawbank" style="padding:0.15rem 0.55rem; font-size:0.75rem; cursor:pointer;">⚖️ 法源</button>
+                <button type="button" class="filter-chip ccu-source-btn" data-source="lawdata" style="padding:0.15rem 0.55rem; font-size:0.75rem; cursor:pointer;">📚 月旦</button>
+              </div>
+            </div>
             <!-- Micro badge for ddddocr -->
-            <span class="badge" title="系統內建 ddddocr 深度學習秒解圖形驗證碼，下載法源期刊全文時自動辨識免手動輸入" style="display:inline-flex; align-items:center; gap:0.25rem; font-size:0.75rem; color:#6ee7b7; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.25); padding:2px 7px; border-radius:10px; cursor:help;">
+            <span class="badge" title="系統內建 ddddocr 深度學習秒解圖形驗證碼，下載期刊全文時自動辨識免手動輸入" style="display:inline-flex; align-items:center; gap:0.25rem; font-size:0.75rem; color:#6ee7b7; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.25); padding:2px 7px; border-radius:10px; cursor:help;">
               ⚡ 自動驗證碼辨識已啟用 ✓
             </span>
           </div>
@@ -264,7 +280,7 @@
       <!-- Bottom StatusBar -->
       <div class="modal-footer-statusbar" style="border-top:1px solid #27272a; padding:0.55rem 1rem; font-size:0.8rem; color:#a1a1aa; display:flex; justify-content:space-between; align-items:center; background:#101014; border-bottom-left-radius:12px; border-bottom-right-radius:12px;">
         <div>
-          📁 本地快取：<span id="lit-stat-summary" style="font-weight:700; color:#fafafa;">載入中...</span>
+          📁 本地快取：<span id="lit-stat-summary" style="font-weight:700; color:#fafafa;">0 篇文獻 (0 MB)</span>
         </div>
         <div style="display:flex; align-items:center; gap:0.75rem;">
           <button id="ccu-refresh-stats-btn" style="background:none; border:none; color:#60a5fa; cursor:pointer; font-size:0.8rem; text-decoration:underline;">[重新計算]</button>
@@ -324,8 +340,8 @@
     </div>
   </div>
 
-  <script src="/js/icons.js"></script>
-  <script src="/js/dialer.js"></script>
-  <script src="/js/app.js"></script>
+  <script src="/js/icons.js?v=20261031_04"></script>
+  <script src="/js/dialer.js?v=20261031_04"></script>
+  <script src="/js/app.js?v=20261031_04"></script>
 </body>
 </html>

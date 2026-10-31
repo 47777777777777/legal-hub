@@ -163,13 +163,18 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                 self.send_json(200, {"success": True, "data": docs})
                 return
 
-            # GET /api/ccu/search?q=...
+            # GET /api/ccu/search?q=...&source=all|lawbank|lawdata
             if path == "/api/ccu/search":
                 q = query.get("q", [""])[0]
+                source = query.get("source", ["all"])[0]
                 from backend.ccu_crawler import CCUCrawler
                 crawler = CCUCrawler()
-                results = crawler.search_lawbank_theses(q)
-                self.send_json(200, {"success": True, "data": results, "query": q})
+                results = []
+                if source in ("all", "lawbank"):
+                    results.extend(crawler.search_lawbank_theses(q))
+                if source in ("all", "lawdata"):
+                    results.extend(crawler.search_lawdata_articles(q))
+                self.send_json(200, {"success": True, "data": results, "query": q, "source": source})
                 return
 
             # GET /api/literature/stats (文獻儲存與容量統計)
@@ -306,6 +311,9 @@ class LegalApiHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(content)))
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
         self.end_headers()
         self.wfile.write(content)
 
