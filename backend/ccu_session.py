@@ -62,12 +62,16 @@ class CCUSessionManager:
         if (raw.startswith('"') and raw.endswith('"')) or (raw.startswith("'") and raw.endswith("'")):
             raw = raw[1:-1].strip()
 
-        # If full cURL command
-        if "curl " in raw.lower():
+        # If full cURL command (bash / cmd / PowerShell)
+        if "curl " in raw.lower() or "curl.exe" in raw.lower():
             import re
-            m = re.search(r"-(?:H|b|header)\s+['\"](?:cookie:\s*)?([^'\"]+)['\"]", raw, re.IGNORECASE)
+            m = re.search(r"-(?:H|b|-header)\s+['\"](?:cookie:\s*)?([^'\"]+)['\"]", raw, re.IGNORECASE)
             if m:
                 raw = m.group(1).strip()
+            else:
+                m2 = re.search(r"['\"]cookie:\s*([^'\"]+)['\"]", raw, re.IGNORECASE)
+                if m2:
+                    raw = m2.group(1).strip()
 
         # If leading 'Cookie:' header label
         if raw.lower().startswith("cookie:"):
@@ -165,10 +169,13 @@ class CCUSessionManager:
         session["authenticated"] = lawbank_ok or lawdata_ok
 
         if not session["authenticated"]:
-            if "sessionid" not in cookies.lower():
-                session["hint"] = "貼上的內容未包含中正代理關鍵的「sessionid」（瀏覽器安全機制會將 sessionid 隱藏於主控台之外）。請依說明從 F12 的「Application -> Cookies」或「Network」複製 sessionid！"
+            low_cookies = cookies.lower()
+            if "flysheet-proxy" not in low_cookies and "lawbank" not in low_cookies and "sessionid" not in low_cookies:
+                session["hint"] = "貼上的內容缺少中正 AutoRPA 代理通行證（如 flysheet-proxy、lawbank 等）。請從 Network（網路）分頁選「Copy as cURL」整段貼上！"
+            elif "flysheet-proxy" not in low_cookies and "asp.net_sessionid" in low_cookies:
+                session["hint"] = "已偵測到 ASP.NET_SessionId，但缺少代理關鍵的 flysheet-proxy 與 lawbank。請從 Network（網路）分頁對首頁請求點右鍵選「Copy as cURL」整段貼上！"
             else:
-                session["hint"] = "已偵測到 sessionid，但伺服器回傳未登入狀態（可能 Session 已過期）。請在中正 AutoRPA 頁面重新整理或重新登入後再次複製。"
+                session["hint"] = "已接收到代理 Cookie，但連線驗證未通過（可能 Session 已過期）。請在中正 AutoRPA 頁面按 F5 重新整理後再次複製。"
         else:
             session["hint"] = "中正 AutoRPA 連線認證成功！"
 

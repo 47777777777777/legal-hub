@@ -47,10 +47,10 @@ class TestCCUSessionManager(unittest.TestCase):
         res3 = CCUSessionManager.clean_cookie_input(curl_cmd)
         self.assertEqual(res3, "sessionid=test789; csrftoken=abc")
 
-        # 4. Hint on missing sessionid
+        # 4. Hint on missing proxy credentials
         sess = CCUSessionManager.save_session("_ga=12345; _gid=67890")
         self.assertFalse(sess["authenticated"])
-        self.assertIn("sessionid", sess.get("hint", "").lower())
+        self.assertTrue("flysheet-proxy" in sess.get("hint", "").lower() or "sessionid" in sess.get("hint", "").lower())
 
 
 if __name__ == "__main__":
