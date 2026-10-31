@@ -261,9 +261,9 @@
                 <span id="harvest-active-dot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#71717a; transition:background 0.2s ease;" title="採集狀態"></span>
               </div>
               <div style="display:flex; gap:0.45rem;">
-                <button id="ccu-start-harvest-btn" type="button" onclick="window.handleStartHarvest && window.handleStartHarvest(false)" class="filter-chip active" style="padding:0.4rem 1rem; font-size:0.82rem; font-weight:700; cursor:pointer; background:#2563eb; color:#ffffff;">▶️ 啟動 / 續採</button>
-                <button id="ccu-reset-harvest-btn" type="button" onclick="window.handleStartHarvest && window.handleStartHarvest(true)" title="重設斷點自 2026 重新全盤巡檢" style="padding:0.4rem 0.75rem; font-size:0.78rem; background:transparent; border:1px solid #3f3f46; color:#a1a1aa; border-radius:6px; cursor:pointer;">🔄 重新巡檢</button>
-                <button id="ccu-stop-harvest-btn" type="button" onclick="window.handleStopHarvest && window.handleStopHarvest()" class="filter-chip" style="display:none; padding:0.4rem 1rem; font-size:0.82rem; font-weight:700; cursor:pointer; background:#7f1d1d; color:#fca5a5; border-color:#991b1b;">⏹️ 暫停保存</button>
+                <button id="ccu-start-harvest-btn" type="button" onclick="if (window.handleStartHarvest) { window.handleStartHarvest(false); } else { alert('系統腳本載入中，請稍候重試'); }" class="filter-chip active" style="padding:0.4rem 1rem; font-size:0.82rem; font-weight:700; cursor:pointer; background:#2563eb; color:#ffffff;">▶️ 啟動 / 續採</button>
+                <button id="ccu-reset-harvest-btn" type="button" onclick="if (window.handleStartHarvest) { window.handleStartHarvest(true); } else { alert('系統腳本載入中，請稍候重試'); }" title="重設斷點自 2026 重新全盤巡檢" style="padding:0.4rem 0.75rem; font-size:0.78rem; background:transparent; border:1px solid #3f3f46; color:#a1a1aa; border-radius:6px; cursor:pointer;">🔄 重新巡檢</button>
+                <button id="ccu-stop-harvest-btn" type="button" onclick="if (window.handleStopHarvest) { window.handleStopHarvest(); }" class="filter-chip" style="display:none; padding:0.4rem 1rem; font-size:0.82rem; font-weight:700; cursor:pointer; background:#7f1d1d; color:#fca5a5; border-color:#991b1b;">⏹️ 暫停保存</button>
               </div>
             </div>
 
@@ -393,8 +393,8 @@
     </div>
   </div>
 
-  <script src="/js/icons.js?v=20261031_07"></script>
-  <script src="/js/dialer.js?v=20261031_07"></script>
-  <script src="/js/app.js?v=20261031_07"></script>
+  <script src="/js/icons.js?v=20261101_01"></script>
+  <script src="/js/dialer.js?v=20261101_01"></script>
+  <script src="/js/app.js?v=20261101_01"></script>
 </body>
 </html>
