@@ -11,36 +11,37 @@
    ========================================================================== */
 
 :root {
-  --bg-primary: #0b0f17;
-  --bg-surface: #121a27;
-  --bg-surface-elevated: #182335;
-  --bg-surface-hover: #1f2c42;
+  /* Ultra True Black & Neutral Zinc Palette (Zero bluish tint) */
+  --bg-primary: #000000;
+  --bg-surface: #0a0a0c;
+  --bg-surface-elevated: #141417;
+  --bg-surface-hover: #1f1f23;
 
-  --text-main: #f1f5f9;
-  --text-muted: #cbd5e1;
-  --text-dim: #7f91a8;
+  --text-main: #fafafa;
+  --text-muted: #d4d4d8;
+  --text-dim: #71717a;
 
-  --border-color: #243247;
-  --border-subtle: #192333;
+  --border-color: #27272a;
+  --border-subtle: #18181b;
 
-  --accent-primary: #38bdf8;
-  --accent-glow: rgba(56, 189, 248, 0.14);
-  --accent-emerald: #34d399;
+  --accent-primary: #fafafa;
+  --accent-glow: rgba(255, 255, 255, 0.08);
+  --accent-emerald: #10b981;
   --accent-amber: #f59e0b;
-  --accent-rose: #fb7185;
+  --accent-rose: #f43f5e;
 
-  --callout-bg: rgba(245, 158, 11, 0.07);
-  --callout-border: rgba(245, 158, 11, 0.3);
-  --callout-text: #fde68a;
+  --callout-bg: #111114;
+  --callout-border: #27272a;
+  --callout-text: #f4f4f5;
 
-  --mark-bg: rgba(250, 204, 21, 0.3);
+  --mark-bg: rgba(250, 204, 21, 0.25);
   --mark-text: #fef08a;
 
-  --scroll-thumb: rgba(148, 163, 184, 0.3);
+  --scroll-thumb: rgba(113, 113, 122, 0.4);
 
   --font-size-base: 15px;
-  --stream-row-padding: 0.75rem 1.25rem;
-  --stream-row-gap: 0.4rem;
+  --stream-row-padding: 0.85rem 1.25rem;
+  --stream-row-gap: 0.5rem;
   --drawer-width: 50%;
 }
 
@@ -439,7 +440,7 @@ mark {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-left: 3px solid var(--accent-indigo);
+  border-left: 3px solid #71717a;
   user-select: none;
 }
 .toc-part-header:hover { color: var(--accent-primary); }
@@ -484,50 +485,68 @@ mark {
   flex-direction: column;
 }
 
-/* Flat List Item with inline Title & hanging indent */
+/* Distinct Demarcated Surface Card with clear boundaries */
 .stream-article-card {
-  padding: var(--stream-row-padding);
-  border-bottom: 1px solid var(--border-subtle);
-  background: transparent;
-  transition: background 0.12s;
+  padding: 0.95rem 1.25rem;
+  margin-bottom: 0.85rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: all 0.15s ease;
   cursor: pointer;
   position: relative;
 }
 .stream-article-card:hover {
-  background: var(--bg-surface);
+  background: var(--bg-surface-elevated);
+  border-color: #3f3f46;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
 }
 .stream-article-card.active {
-  background: var(--accent-glow);
-  border-left: 3px solid var(--accent-primary);
+  background: var(--bg-surface-elevated);
+  border-color: #52525b;
+  border-left: 4px solid #ffffff;
+}
+
+[data-density="compact"] .stream-article-card {
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.55rem;
 }
 
 .article-card-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: var(--stream-row-gap);
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .article-card-no {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.5rem;
   font-weight: 800;
   font-size: 0.95rem;
   color: var(--text-main);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
+  padding: 0.15rem 0.55rem;
+  border-radius: 4px;
 }
 .article-card-title {
-  font-size: 0.86rem;
+  font-size: 0.88rem;
   font-weight: 700;
-  color: var(--accent-primary);
+  color: #e4e4e7;
+  letter-spacing: 0.02em;
 }
 
 .article-card-actions {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  opacity: 0.7;
+  opacity: 0.75;
   transition: opacity 0.15s;
 }
 .stream-article-card:hover .article-card-actions {
@@ -535,19 +554,22 @@ mark {
 }
 
 .article-study-btn {
-  background: transparent;
-  color: var(--accent-primary);
+  background: var(--bg-surface-elevated);
+  color: var(--text-main);
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  padding: 0.15rem 0.5rem;
+  padding: 0.2rem 0.6rem;
   font: inherit;
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.12s;
 }
 .article-study-btn:hover {
-  border-color: var(--accent-primary);
-  background: var(--accent-glow);
+  border-color: #52525b;
+  background: var(--bg-surface-hover);
+  color: #ffffff;
+}
 }
 
 /* 项 (Roman) & 款/目 Layout */
@@ -817,39 +839,124 @@ mark {
 }
 .flowchart-fullscreen-btn:hover { color: var(--accent-primary); }
 
-.flowchart-container { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 1.25rem 0.5rem; }
-.flow-step-box {
-  padding: 0.35rem 0.9rem;
+/* Compact Legal Review Decision Flow (Pill / Rounded Rect only, No Diamonds) */
+.flowchart-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0.25rem;
+  width: 100%;
+}
+
+.flow-step-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  transition: border-color 0.15s;
+}
+.flow-step-card:hover {
+  border-color: #3f3f46;
+}
+
+.flow-step-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.flow-step-pill-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.45rem;
+  border-radius: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.flow-step-title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* Rounded Rectangle / Pill Decision Node (Zero space waste) */
+.flow-decision-rect {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: 6px;
-  background: var(--bg-surface-elevated);
-  font-size: 0.82rem;
-  font-weight: 700;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #e4e4e7;
+  line-height: 1.4;
 }
-.flow-indicator { color: var(--text-dim); font-size: 0.85rem; }
-.flow-decision-diamond {
-  padding: 0.4rem 1rem;
-  border: 1px solid var(--accent-primary);
-  border-radius: 999px;
-  background: var(--accent-glow);
-  color: var(--accent-primary);
-  font-size: 0.82rem;
+
+.flow-step-branches {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.15rem;
+}
+
+.flow-branch-pill {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px; /* Pill / Oval shape */
+  font-size: 0.76rem;
   font-weight: 700;
+  border: 1px solid transparent;
   text-align: center;
 }
-.flow-branch-row { display: flex; gap: 1.25rem; margin-top: 0.35rem; width: 100%; justify-content: center; flex-wrap: wrap; }
-.flow-sub-branch { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; }
-.flow-no { color: var(--accent-rose); font-size: 0.76rem; font-weight: 800; }
-.flow-yes { color: var(--accent-emerald); font-size: 0.76rem; font-weight: 800; }
-.flow-outcome-no-crime, .flow-outcome-penalty {
-  padding: 0.3rem 0.75rem;
-  border-radius: 5px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  border: 1px solid;
+
+.flow-branch-pill.yes {
+  background: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.3);
 }
-.flow-outcome-no-crime { color: var(--accent-rose); border-color: var(--accent-rose); background: rgba(251, 113, 133, 0.08); }
-.flow-outcome-penalty { color: var(--accent-emerald); border-color: var(--accent-emerald); background: rgba(52, 211, 153, 0.08); }
+
+.flow-branch-pill.no {
+  background: rgba(244, 63, 94, 0.1);
+  color: #fb7185;
+  border-color: rgba(244, 63, 94, 0.3);
+}
+
+.flow-step-connector {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  line-height: 1;
+  margin: -0.2rem 0;
+}
+
+.flow-conclusion-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
 
 /* Accordion FAQs */
 .faq-item-box { border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 0.4rem; overflow: hidden; background: var(--bg-primary); }

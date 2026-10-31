@@ -1009,35 +1009,11 @@ class LegalHubApp {
       </div>
     </section>`;
 
-    // Flowchart with Fullscreen button
-    html += `<section>${sectionHeading("branch", "思考脈絡流程圖")}
+    // Flowchart with Fullscreen button (Decision tree with Pill & Rounded Rect, no diamonds)
+    html += `<section>${sectionHeading("branch", "思考脈絡審查路徑圖")}
       <div class="card flowchart-wrapper">
         <button class="flowchart-fullscreen-btn" title="全螢幕檢視">${icon("maximize", 12)} 放大檢視</button>
-        <div class="flowchart-container">
-          <div class="flow-step-box">生活事實行為發生</div>
-          <div class="flow-indicator">↓</div>
-          <div class="flow-decision-diamond">行為時是否有成文法律明文規定？</div>
-          <div class="flow-branch-row">
-            <div class="flow-sub-branch">
-              <span class="flow-no">否 →</span>
-              <div class="flow-outcome-no-crime">不構成犯罪 (罪刑法定)</div>
-            </div>
-            <div class="flow-sub-branch">
-              <span class="flow-yes">是 ↓</span>
-              <div class="flow-decision-diamond">是否為不利於行為人之類推適用？</div>
-              <div class="flow-branch-row">
-                <div class="flow-sub-branch">
-                  <span class="flow-no">是 →</span>
-                  <div class="flow-outcome-no-crime">嚴格禁止 (不罰)</div>
-                </div>
-                <div class="flow-sub-branch">
-                  <span class="flow-yes">否 ↓</span>
-                  <div class="flow-outcome-penalty">依法成立並處罰</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        ${this.renderDecisionFlowHtml(art)}
       </div>
     </section>`;
 
@@ -1052,6 +1028,113 @@ class LegalHubApp {
     </section>`;
 
     return html;
+  }
+
+  // ---------------- Decision Flow Tree (Pill & Rounded Rect only) ----------------
+  renderDecisionFlowHtml(art) {
+    const actName = this.currentAct ? this.currentAct.name : "";
+    const isCriminal = actName.includes("刑法") || actName.includes("懲治") || actName.includes("毒品");
+    const artNo = esc(art.article_no);
+
+    if (isCriminal) {
+      return `
+        <div class="flowchart-container">
+          <div class="flow-step-card">
+            <div class="flow-step-header">
+              <span class="flow-step-pill-tag">第 1 階層審查</span>
+              <span class="flow-step-title">構成要件該當性 (Tatbestand)</span>
+            </div>
+            <div class="flow-decision-rect">
+              <span>行為是否該當本條第 ${artNo} 條之客觀與主觀法定構成要件？</span>
+            </div>
+            <div class="flow-step-branches">
+              <div class="flow-branch-pill yes"><span>✓ 是</span> 進入違法性審查</div>
+              <div class="flow-branch-pill no"><span>✗ 否</span> 構成要件不該當 (不罰)</div>
+            </div>
+          </div>
+
+          <div class="flow-step-connector">↓</div>
+
+          <div class="flow-step-card">
+            <div class="flow-step-header">
+              <span class="flow-step-pill-tag">第 2 階層審查</span>
+              <span class="flow-step-title">違法性阻卻事由 (Rechtswidrigkeit)</span>
+            </div>
+            <div class="flow-decision-rect">
+              <span>是否存在正當防衛(§23)、緊急避難(§24)或依法令之行為(§21)？</span>
+            </div>
+            <div class="flow-step-branches">
+              <div class="flow-branch-pill no"><span>✗ 存在</span> 阻卻違法 (不罰)</div>
+              <div class="flow-branch-pill yes"><span>✓ 無阻卻</span> 具備實質違法性</div>
+            </div>
+          </div>
+
+          <div class="flow-step-connector">↓</div>
+
+          <div class="flow-step-card">
+            <div class="flow-step-header">
+              <span class="flow-step-pill-tag">第 3 階層審查</span>
+              <span class="flow-step-title">有責性與責任能力 (Schuld)</span>
+            </div>
+            <div class="flow-decision-rect">
+              <span>行為人是否具完全責任能力(§18, §19)且具期待可能性？</span>
+            </div>
+            <div class="flow-step-branches">
+              <div class="flow-branch-pill yes"><span>✓ 具備</span> 犯罪完全成立</div>
+              <div class="flow-branch-pill no"><span>✗ 欠缺</span> 不罰或得減輕其刑</div>
+            </div>
+          </div>
+
+          <div class="flow-step-connector">↓</div>
+
+          <div class="flow-conclusion-box">
+            <span>⚖️ 法律效果審查</span>
+            <span>依法科處本條刑罰或宣告保安處分</span>
+          </div>
+        </div>
+      `;
+    } else {
+      return `
+        <div class="flowchart-container">
+          <div class="flow-step-card">
+            <div class="flow-step-header">
+              <span class="flow-step-pill-tag">第 1 階段</span>
+              <span class="flow-step-title">權利行使或要件成就</span>
+            </div>
+            <div class="flow-decision-rect">
+              <span>行為事實是否完全該當本條法定構成要件？</span>
+            </div>
+            <div class="flow-step-branches">
+              <div class="flow-branch-pill yes"><span>✓ 是</span> 進入阻卻/抗辯審查</div>
+              <div class="flow-branch-pill no"><span>✗ 否</span> 要件不該當 (無法律效果)</div>
+            </div>
+          </div>
+
+          <div class="flow-step-connector">↓</div>
+
+          <div class="flow-step-card">
+            <div class="flow-step-header">
+              <span class="flow-step-pill-tag">第 2 階段</span>
+              <span class="flow-step-title">抗辯權與障礙事由審查</span>
+            </div>
+            <div class="flow-decision-rect">
+              <span>是否存在時效抗辯、權利行使阻卻或約定排除條款？</span>
+            </div>
+            <div class="flow-step-branches">
+              <div class="flow-branch-pill no"><span>✗ 存在</span> 請求權被阻卻 / 障礙成就</div>
+              <div class="flow-branch-pill yes"><span>✓ 無阻卻</span> 權利健全且有效</div>
+            </div>
+          </div>
+
+          <div class="flow-step-connector">↓</div>
+
+          <div class="flow-conclusion-box">
+            <span>⚖️ 法律效果與裁判</span>
+            <span>發生法定權利義務變動或履行責任</span>
+          </div>
+        </div>
+      `;
+    }
   }
 
   // ---------------- Tab 2: 實務見解 (Dedicated Tab) ----------------
