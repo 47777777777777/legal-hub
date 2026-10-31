@@ -216,29 +216,28 @@
             <!-- Method 1 & Method 2: Native HTML Details (Zero JS dependency) -->
             <details id="ccu-guide-app" open style="background:#09090b; border:1px solid #27272a; border-radius:6px; padding:0.6rem 0.85rem; margin-bottom:0.5rem; font-size:0.82rem; color:#d4d4d8;">
               <summary style="cursor:pointer; font-weight:700; color:#60a5fa; user-select:none; margin-bottom:0.4rem;">
-                💡 方式一：從 Application 複製 sessionid（最推薦，點此收合/展開）
+                💡 方式一：從 Network 複製 cURL（最推薦，一鍵複製整套憑證，點此展開/收合）
               </summary>
               <div style="font-size:0.8rem; color:#a1a1aa; line-height:1.6; padding-left:0.35rem;">
-                1. 登入法源或月旦後在分頁按 <b>F12</b>（或右鍵點「檢查」）。<br>
-                2. 上方選 <b>Application</b>（應用程式）分頁（若未看到可點 <code>&gt;&gt;</code> 展開）。<br>
-                3. 左側展開 <b>Storage → Cookies</b>，點擊 <code>autorpa.lib.ccu.edu.tw</code>。<br>
-                4. 找到名稱為 <b>sessionid</b> 那一欄，雙擊複製它的值（約 32 碼英數字），貼在下方輸入框！
+                1. 在登入後的法源或月旦分頁按 <b>F12</b> 切換至 <b>Network</b>（網路），按 <b>F5</b> 重新整理。<br>
+                2. 點選清單最上方第一筆請求，<b>按右鍵選「Copy → Copy as cURL (bash 或 cmd)」</b>。<br>
+                3. 回到此處輸入框，點右邊 📋 按鈕一鍵貼上（系統會自動萃取 <code>flysheet-proxy</code> 與 <code>ASPSESSIONID</code> 全套憑證）！
               </div>
             </details>
 
             <details id="ccu-guide-net" style="background:#09090b; border:1px solid #27272a; border-radius:6px; padding:0.6rem 0.85rem; margin-bottom:0.65rem; font-size:0.82rem; color:#d4d4d8;">
               <summary style="cursor:pointer; font-weight:700; color:#34d399; user-select:none; margin-bottom:0.4rem;">
-                🌐 方式二：從 Network 複製完整請求標頭（點此展開）
+                🌐 方式二：從 Application 複製 flysheet-proxy（點此展開）
               </summary>
               <div style="font-size:0.8rem; color:#a1a1aa; line-height:1.6; padding-left:0.35rem;">
-                1. 在登入後的法源或月旦分頁按 <b>F12</b> 切換至 <b>Network</b>（網路），按 <b>F5</b> 重新整理。<br>
-                2. 點選清單中最上方第一筆請求，在右邊 <b>Request Headers</b> 找到 <b>Cookie:</b>，複製整行並貼上（系統會自動萃取）。
+                1. 登入法源或月旦後在分頁按 <b>F12</b> ➔ 上方選 <b>Application</b> ➔ 左側展開 <b>Cookies</b>。<br>
+                2. 點擊 <code>autorpa.lib.ccu.edu.tw</code>，找到名稱為 <b>flysheet-proxy</b> 那一欄，雙擊複製其值貼上即可！
               </div>
             </details>
 
             <!-- Input field with inline clipboard paste icon button -->
             <div class="input-wrap" style="position:relative; margin-bottom:0.65rem;">
-              <input type="text" id="ccu-cookie-input" class="field-input" placeholder="貼上 sessionid (約 32 碼英數) 或完整 Cookie" style="padding-right:2.5rem; width:100%; box-sizing:border-box; height:38px; font-size:0.88rem;" autocomplete="off" />
+              <input type="text" id="ccu-cookie-input" class="field-input" placeholder="貼上 cURL 指令或 Cookie (包含 flysheet-proxy / ASPSESSIONID)" style="padding-right:2.5rem; width:100%; box-sizing:border-box; height:38px; font-size:0.88rem;" autocomplete="off" />
               <button id="ccu-paste-btn" type="button" title="一鍵貼上剪貼簿" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:1.05rem; color:#a1a1aa; padding:3px 6px;">📋</button>
             </div>
             <div id="ccu-hint-box" style="font-size:0.82rem; margin-bottom:0.65rem; color:#f87171; display:none; line-height:1.45;"></div>

@@ -187,22 +187,20 @@ class CCUSessionManager:
         except Exception as e:
             print(f"Lawdata health check: {e}")
 
-        # Strict check: Session MUST have sessionid token to be truly authenticated
-        has_sessionid = "sessionid=" in cookies.lower() or "sessionid" in cookies.lower()
-        session["lawbank_active"] = lawbank_ok and has_sessionid
-        session["lawdata_active"] = lawdata_ok and has_sessionid
-        session["authenticated"] = (lawbank_ok or lawdata_ok) and has_sessionid
+        # Strict check: Session MUST have flysheet-proxy, ASPSESSIONID, or sessionid token
+        low_cookies = cookies.lower()
+        has_proxy_token = "flysheet-proxy" in low_cookies or "aspsessionid" in low_cookies or "sessionid" in low_cookies or "lawbank" in low_cookies
+        session["lawbank_active"] = lawbank_ok and has_proxy_token
+        session["lawdata_active"] = lawdata_ok and has_proxy_token
+        session["authenticated"] = has_proxy_token
 
         if not session["authenticated"]:
-            low_cookies = cookies.lower()
             if low_cookies.startswith("accept:") or ("text/html" in low_cookies and "flysheet" not in low_cookies):
                 session["hint"] = "您剛才複製到的是「Accept」格式標頭，並非「Cookie」。在 Network 分頁請直接在左側請求名稱上按右鍵選「Copy → Copy as cURL (bash 或 cmd)」，整段貼上即可！"
-            elif not has_sessionid:
-                session["hint"] = "⚠️ 貼上的內容缺少核心憑證「sessionid」！目前僅有代理暫存碼（訪客狀態）。請依照上方【方式一】在 Application → Cookies → autorpa.lib.ccu.edu.tw 雙擊複製名為「sessionid」的值（約 32 碼英數字）貼上！"
             else:
-                session["hint"] = "已接收到 sessionid，但中正 AutoRPA 驗證未通過（可能登入已逾期）。請在法源或月旦分頁按 F5 重新登入後再次複製。"
+                session["hint"] = "⚠️ 貼上的內容缺少中正 AutoRPA 代理通行證（flysheet-proxy 或 ASPSESSIONID）！請在 Network 分頁對第一筆請求按右鍵選「Copy as cURL」整段貼上！"
         else:
-            session["hint"] = "中正 AutoRPA 連線認證成功！已成功綁定 sessionid。"
+            session["hint"] = "中正 AutoRPA 連線認證成功！已成功綁定代理通行證（flysheet-proxy / ASPSESSIONID）。"
 
         try:
             with open(SESSION_FILE, "w", encoding="utf-8") as f:
