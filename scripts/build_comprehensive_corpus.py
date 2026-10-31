@@ -613,5 +613,63 @@ def build_corpus():
         json.dump(civil_data, f, ensure_ascii=False, indent=2)
     print(f"Updated civil_code.json with {len(CIVIL_ARTICLES)} full-enrichment articles!")
 
+    # 3. Sync rich articles into SQLite DB if exists
+    db_path = os.path.join(BASE_DIR, "data", "legal_hub.db")
+    if os.path.exists(db_path):
+        import sqlite3
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        for act_id, arts in [("criminal_code", CRIMINAL_ARTICLES), ("civil_code", CIVIL_ARTICLES)]:
+            for art in arts:
+                art_no = art["article_no"]
+                cur.execute("""
+                    INSERT INTO article_enrichments (
+                        act_id, article_no, summary, reading_time, vernacular_qa_json,
+                        elements_json, key_issues_json, legislative_reasons,
+                        amendment_history_json, practical_insights_json, lawplayer_link,
+                        related_articles_json, attachments_json, faqs_json,
+                        comparison_table_json, legal_definition, flowchart_json, official_letters_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(act_id, article_no) DO UPDATE SET
+                        summary = CASE WHEN excluded.summary != '' THEN excluded.summary ELSE article_enrichments.summary END,
+                        reading_time = excluded.reading_time,
+                        vernacular_qa_json = excluded.vernacular_qa_json,
+                        elements_json = excluded.elements_json,
+                        key_issues_json = excluded.key_issues_json,
+                        legislative_reasons = CASE WHEN excluded.legislative_reasons != '' THEN excluded.legislative_reasons ELSE article_enrichments.legislative_reasons END,
+                        amendment_history_json = excluded.amendment_history_json,
+                        practical_insights_json = excluded.practical_insights_json,
+                        lawplayer_link = excluded.lawplayer_link,
+                        related_articles_json = excluded.related_articles_json,
+                        attachments_json = excluded.attachments_json,
+                        faqs_json = excluded.faqs_json,
+                        comparison_table_json = excluded.comparison_table_json,
+                        legal_definition = excluded.legal_definition,
+                        flowchart_json = excluded.flowchart_json,
+                        official_letters_json = excluded.official_letters_json
+                """, (
+                    act_id,
+                    art_no,
+                    art.get("summary", ""),
+                    art.get("reading_time", "3 分鐘"),
+                    json.dumps(art.get("vernacular_qa", []), ensure_ascii=False),
+                    json.dumps(art.get("elements", []), ensure_ascii=False),
+                    json.dumps(art.get("key_issues", []), ensure_ascii=False),
+                    art.get("legislative_reasons", ""),
+                    json.dumps(art.get("amendment_history", []), ensure_ascii=False),
+                    json.dumps(art.get("practical_insights", []), ensure_ascii=False),
+                    art.get("lawplayer_link", ""),
+                    json.dumps(art.get("related_articles", []), ensure_ascii=False),
+                    json.dumps(art.get("attachments", []), ensure_ascii=False),
+                    json.dumps(art.get("faqs", []), ensure_ascii=False),
+                    json.dumps(art.get("comparison_table", {}), ensure_ascii=False),
+                    art.get("legal_definition", ""),
+                    json.dumps(art.get("flowchart", {}), ensure_ascii=False),
+                    json.dumps(art.get("official_letters", []), ensure_ascii=False)
+                ))
+        conn.commit()
+        conn.close()
+        print("Successfully synced rich seed data to SQLite database!")
+
 if __name__ == "__main__":
     build_corpus()

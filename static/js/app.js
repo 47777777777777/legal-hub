@@ -984,21 +984,33 @@ class LegalHubApp {
     const parsed = this.parseArticleElements(art);
     let html = "";
 
-    html += `
-      <div class="callout-box">
-        <div class="callout-title">${icon("lightbulb", 15)}<span>重點摘要</span></div>
-        <div>${art.summary || parsed.autoSummary}</div>
-      </div>`;
+    if (art.summary) {
+      html += `
+        <div class="callout-box">
+          <div class="callout-title">${icon("lightbulb", 15)}<span>重點摘要 (法律人核心提煉)</span></div>
+          <div>${esc(art.summary)}</div>
+        </div>`;
+    }
 
-    const qas = art.vernacular_qa && art.vernacular_qa.length ? art.vernacular_qa : parsed.autoVernacular;
-    html += `<section>${sectionHeading("book", "白話與實務解讀")}
-      ${qas.map((item) => `
+    const qas = art.vernacular_qa && art.vernacular_qa.length ? art.vernacular_qa : [];
+    if (qas.length) {
+      html += `<section>${sectionHeading("book", "白話與實務解讀 (法律人真實問答)", `${qas.length}`)}
+        ${qas.map((item) => `
+          <div class="card">
+            <div class="card-title">${esc(item.question || item.q || "")}</div>
+            <div class="card-body" style="white-space: pre-wrap; line-height: 1.65;">${esc(item.answer || item.a || "")}</div>
+          </div>
+        `).join("")}
+      </section>`;
+    }
+
+    if (art.legal_definition) {
+      html += `<section>${sectionHeading("file", "法律人專業深度解讀")}
         <div class="card">
-          <div class="card-title">${item.question || item.q}</div>
-          <div class="card-body">${item.answer || item.a}</div>
+          <div class="card-body" style="white-space: pre-wrap; line-height: 1.7; font-size: 0.95rem; color: #d0d0d8;">${esc(art.legal_definition)}</div>
         </div>
-      `).join("")}
-    </section>`;
+      </section>`;
+    }
 
     html += `<section>${sectionHeading("landmark", "構成要件與法律效果")}
       <div class="card kv-card">
@@ -1019,15 +1031,17 @@ class LegalHubApp {
       </div>
     </section>`;
 
-    const faqs = art.faqs && art.faqs.length ? art.faqs : parsed.autoFaqs;
-    html += `<section>${sectionHeading("help", "大家也在問", `${faqs.length}`)}
-      ${faqs.map((faq) => `
-        <div class="faq-item-box">
-          <div class="faq-q-trigger"><span>${faq.q}</span><span class="faq-chevron">${icon("plus", 14)}</span></div>
-          <div class="faq-a-content">${faq.a || faq.answer}</div>
-        </div>
-      `).join("")}
-    </section>`;
+    const faqs = art.faqs && art.faqs.length ? art.faqs : [];
+    if (faqs.length) {
+      html += `<section>${sectionHeading("help", "大家也在問", `${faqs.length}`)}
+        ${faqs.map((faq) => `
+          <div class="faq-item-box">
+            <div class="faq-q-trigger"><span>${esc(faq.q)}</span><span class="faq-chevron">${icon("plus", 14)}</span></div>
+            <div class="faq-a-content">${esc(faq.a || faq.answer || "")}</div>
+          </div>
+        `).join("")}
+      </section>`;
+    }
 
     return html;
   }
@@ -1236,22 +1250,36 @@ class LegalHubApp {
   // ---------------- Tab 2: 實務見解 (Dedicated Tab) ----------------
   renderInsightsHtml(art) {
     const insights = art.practical_insights || [];
+    const letters = art.official_letters || [];
     const actName = esc(this.currentAct.name);
 
-    return `
-      <section>${sectionHeading("gavel", "大法庭裁定、憲法法庭判決與最高法院裁判", `${insights.length}`)}
+    let html = `
+      <section>${sectionHeading("gavel", "大法庭裁定、憲法法庭判決與最高法院裁判 (法律人/司法院)", `${insights.length}`)}
         ${insights.length ? insights.map((ins) => `
           <div class="card">
-            <div class="card-title accent">${ins.court || "最高法院"} · ${ins.ref || "重要裁判"}</div>
-            <div class="card-body">${ins.summary}</div>
+            <div class="card-title accent">${esc(ins.court || "最高法院")} · ${esc(ins.ref || "重要裁判")}</div>
+            <div class="card-body" style="line-height: 1.6;">${esc(ins.summary || "")}</div>
           </div>
         `).join("") : `
           <div class="card">
             <div class="card-body">本條尚未收錄重點精選摘要，您可透過下方資料庫即時查詢引用本條之所有裁判全文：</div>
           </div>
         `}
-      </section>
+      </section>`;
 
+    if (letters.length) {
+      html += `
+        <section>${sectionHeading("book", "法務部令函與行政函釋 (法律人)", `${letters.length}`)}
+          ${letters.map((letItem) => `
+            <div class="card">
+              <div class="card-title accent">${esc(letItem.ref || "法務部令函")} · ${esc(letItem.date || "")}</div>
+              <div class="card-body" style="line-height: 1.6; white-space: pre-wrap;">${esc(letItem.summary || letItem.content || "")}</div>
+            </div>
+          `).join("")}
+        </section>`;
+    }
+
+    html += `
       <section>${sectionHeading("search", "權威判解檢索 (含 AutoRPA 代理)")}
         <div class="link-grid">
           <a href="https://judgment.judicial.gov.tw/FJUD/default.aspx" target="_blank" rel="noopener noreferrer" class="judgment-link-btn">
@@ -1265,6 +1293,7 @@ class LegalHubApp {
           </a>
         </div>
       </section>`;
+    return html;
   }
 
   // ---------------- Tab 3: 內容連結 ----------------
@@ -1477,28 +1506,17 @@ class LegalHubApp {
   parseArticleElements(art) {
     const content = art.content || "";
     const actName = this.currentAct.name;
-    let autoSummary = `規範 ${actName} ${art.chapter ? `(${art.chapter})` : ""} 之核心構成要件與法律效果。`;
-    if (content.includes("處") && (content.includes("年") || content.includes("役") || content.includes("罰金"))) {
-      autoSummary = "本條明定犯罪行為構成要件與法定刑度。";
-    }
-    const autoVernacular = [{
-      question: "本條核心意旨與適用情況？",
-      answer: `本條為 ${actName} 之重要準據。行為事實須逐項檢視構成要件，始生法律效果。`
-    }];
-    const autoFaqs = [
-      { q: "訴訟實務之舉證責任分配？", a: "主張權利或犯罪成立之一方負積極舉證責任。" },
-      { q: "本條常見爭點為何？", a: "多聚焦於不確定法律概念解釋與法規競合。" }
-    ];
-    let behaviorType = "法定一般規範行為";
+    let autoSummary = `規範 ${actName} ${art.chapter ? `(${art.chapter})` : ""} 之條文規範。`;
+    let behaviorType = "法定要件行為態樣";
     if (content.includes("駕駛")) behaviorType = "交通工具駕駛行為";
     let intentType = content.includes("過失") ? "故意或過失均罰" : "故意責任";
-    let penaltyType = "民事法律效果";
+    let penaltyType = "法定效果";
     if (content.includes("有期徒刑") || content.includes("拘役")) {
       const m = content.match(/處([^，。]+)/);
       penaltyType = m ? m[1].trim() : "自由刑/罰金";
     }
     let prosecutionType = content.includes("告訴乃論") ? "告訴乃論之罪" : "公訴追訴";
-    return { autoSummary, autoVernacular, autoFaqs, behaviorType, intentType, penaltyType, prosecutionType };
+    return { autoSummary, behaviorType, intentType, penaltyType, prosecutionType };
   }
 
   bindClearable(inputEl, clearEl, onChange) {
