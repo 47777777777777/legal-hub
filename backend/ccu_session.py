@@ -160,9 +160,12 @@ class CCUSessionManager:
             )
             with urllib.request.urlopen(req, context=ctx, timeout=8) as resp:
                 final_url = resp.url
+                html_sample = resp.read(2048).decode("utf-8", errors="ignore")
                 # If redirected to SSO login page, not authenticated
                 if "idm.lib.ccu.edu.tw" not in final_url and "login" not in final_url.lower():
-                    lawbank_ok = True
+                    # Must contain sessionid or authenticated proxy identity, not bare guest buy auth
+                    if "BuyAuth.aspx" not in html_sample or "sessionid" in cookies.lower():
+                        lawbank_ok = True
         except Exception as e:
             print(f"Lawbank health check: {e}")
 
@@ -179,26 +182,27 @@ class CCUSessionManager:
             with urllib.request.urlopen(req, context=ctx, timeout=8) as resp:
                 final_url = resp.url
                 if "idm.lib.ccu.edu.tw" not in final_url and "login" not in final_url.lower():
-                    lawdata_ok = True
+                    if "sessionid" in cookies.lower() or "flysheet-proxy" in cookies.lower():
+                        lawdata_ok = True
         except Exception as e:
             print(f"Lawdata health check: {e}")
 
-        session["lawbank_active"] = lawbank_ok
-        session["lawdata_active"] = lawdata_ok
-        session["authenticated"] = lawbank_ok or lawdata_ok
+        # Strict check: Session MUST have sessionid token to be truly authenticated
+        has_sessionid = "sessionid=" in cookies.lower() or "sessionid" in cookies.lower()
+        session["lawbank_active"] = lawbank_ok and has_sessionid
+        session["lawdata_active"] = lawdata_ok and has_sessionid
+        session["authenticated"] = (lawbank_ok or lawdata_ok) and has_sessionid
 
         if not session["authenticated"]:
             low_cookies = cookies.lower()
             if low_cookies.startswith("accept:") or ("text/html" in low_cookies and "flysheet" not in low_cookies):
                 session["hint"] = "您剛才複製到的是「Accept」格式標頭，並非「Cookie」。在 Network 分頁請直接在左側請求名稱上按右鍵選「Copy → Copy as cURL (bash 或 cmd)」，整段貼上即可！"
-            elif "flysheet-proxy" not in low_cookies and "lawbank" not in low_cookies and "sessionid" not in low_cookies:
-                session["hint"] = "貼上的內容缺少中正 AutoRPA 代理通行證（如 flysheet-proxy、lawbank 等）。請從 Network（網路）分頁對首頁請求點右鍵選「Copy as cURL」整段貼上！"
-            elif "flysheet-proxy" not in low_cookies and "asp.net_sessionid" in low_cookies:
-                session["hint"] = "已偵測到 ASP.NET_SessionId，但缺少代理關鍵的 flysheet-proxy 與 lawbank。請從 Network（網路）分頁對首頁請求點右鍵選「Copy as cURL」整段貼上！"
+            elif not has_sessionid:
+                session["hint"] = "⚠️ 貼上的內容缺少核心憑證「sessionid」！目前僅有代理暫存碼（訪客狀態）。請依照上方【方式一】在 Application → Cookies → autorpa.lib.ccu.edu.tw 雙擊複製名為「sessionid」的值（約 32 碼英數字）貼上！"
             else:
-                session["hint"] = "已接收到代理 Cookie，但連線驗證未通過（可能 Session 已過期）。請在中正 AutoRPA 頁面按 F5 重新整理後再次複製。"
+                session["hint"] = "已接收到 sessionid，但中正 AutoRPA 驗證未通過（可能登入已逾期）。請在法源或月旦分頁按 F5 重新登入後再次複製。"
         else:
-            session["hint"] = "中正 AutoRPA 連線認證成功！"
+            session["hint"] = "中正 AutoRPA 連線認證成功！已成功綁定 sessionid。"
 
         try:
             with open(SESSION_FILE, "w", encoding="utf-8") as f:

@@ -84,7 +84,12 @@ class BatchHarvester:
         try:
             with open(CHECKPOINT_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                return {**default_cp, **data}
+                res = {**default_cp, **data}
+                # Fix false-positive completed state: if downloaded is 0 but all years marked completed
+                if res.get("total_downloaded", 0) == 0 and len(res.get("completed_years", [])) > 5:
+                    res["completed_years"] = []
+                    res["current_year"] = 2026
+                return res
         except Exception:
             return default_cp
 
@@ -368,7 +373,15 @@ class BatchHarvester:
                 self.progress["total_skipped_duplicates"] = self.checkpoint["total_skipped_duplicates"]
                 self._add_log(f"  ⚡ {year} 年度目錄比對完成：新增入庫 {year_new_count} 篇，略過重複 {year_dup_count} 篇")
 
-                # Mark year as completed in checkpoint
+                # If zero articles found at all (neither new nor duplicate), do NOT mark completed
+                if year_new_count == 0 and year_dup_count == 0:
+                    self._add_log(f"⚠️ {year} 年度未收到任何期刊專論（檢索結果為 0 筆），可能中正 AutoRPA 憑證缺少授權或校外代理連線中斷。")
+                    self._add_log("⏹️ 採集已安全暫停，保留該年份為待採集。請確認中正圖書館已登入並具有有效 sessionid。")
+                    self.progress["status"] = "stopped"
+                    self.progress["current_action"] = f"因無資料已於 {year} 年暫停"
+                    break
+
+                # Mark year as completed only when actual papers were processed
                 if not self.should_stop:
                     completed.add(year)
                     self.checkpoint["completed_years"] = sorted(list(completed), reverse=True)
