@@ -252,29 +252,36 @@
             </div>
           </section>
 
-          <!-- Auto-Harvest Background Engine Panel (Enhanced with Live Terminal & Progress Bar) -->
+          <!-- Auto-Harvest Background Engine Panel (Enhanced with Live Terminal, Progress Bar & Checkpoint) -->
           <div id="ccu-harvest-panel" style="background:#131318; border:1px solid #27272a; border-radius:8px; padding:0.85rem 1rem; display:flex; flex-direction:column; gap:0.6rem;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
               <div style="font-size:0.88rem; color:#fafafa; display:flex; align-items:center; gap:0.5rem;">
                 <span style="font-size:1.1rem;">⚡</span>
-                <span style="font-weight:700;">背景自動採集引擎 (由新修訂條文往舊倒序研析 · 法源與月旦)</span>
+                <span style="font-weight:700;">期刊專論自動採集 (2026 最新往舊回溯 · 斷點續傳 · 先掃防重)</span>
                 <span id="harvest-active-dot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#71717a; transition:background 0.2s ease;" title="採集狀態"></span>
               </div>
-              <div style="display:flex; gap:0.5rem;">
-                <button id="ccu-start-harvest-btn" type="button" class="filter-chip active" style="padding:0.4rem 1.1rem; font-size:0.84rem; font-weight:700; cursor:pointer; background:#2563eb; color:#ffffff;">▶️ 啟動自動採集</button>
-                <button id="ccu-stop-harvest-btn" type="button" class="filter-chip" style="display:none; padding:0.4rem 1.1rem; font-size:0.84rem; font-weight:700; cursor:pointer; background:#7f1d1d; color:#fca5a5; border-color:#991b1b;">⏹️ 停止採集</button>
+              <div style="display:flex; gap:0.45rem;">
+                <button id="ccu-start-harvest-btn" type="button" onclick="window.handleStartHarvest && window.handleStartHarvest(false)" class="filter-chip active" style="padding:0.4rem 1rem; font-size:0.82rem; font-weight:700; cursor:pointer; background:#2563eb; color:#ffffff;">▶️ 啟動 / 續採</button>
+                <button id="ccu-reset-harvest-btn" type="button" onclick="window.handleStartHarvest && window.handleStartHarvest(true)" title="重設斷點自 2026 重新全盤巡檢" style="padding:0.4rem 0.75rem; font-size:0.78rem; background:transparent; border:1px solid #3f3f46; color:#a1a1aa; border-radius:6px; cursor:pointer;">🔄 重新巡檢</button>
+                <button id="ccu-stop-harvest-btn" type="button" onclick="window.handleStopHarvest && window.handleStopHarvest()" class="filter-chip" style="display:none; padding:0.4rem 1rem; font-size:0.82rem; font-weight:700; cursor:pointer; background:#7f1d1d; color:#fca5a5; border-color:#991b1b;">⏹️ 暫停保存</button>
               </div>
             </div>
 
             <!-- Progress Bar -->
             <div style="display:flex; flex-direction:column; gap:0.25rem;">
               <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; color:#a1a1aa;">
-                <span id="harvest-status-text">待命中（登入後點擊啟動，系統將由最新條文往舊逐條自動採集）</span>
+                <span id="harvest-status-text">待命中（點擊啟動，優先巡檢最新期別 ➔ 自 2026 年往舊歷史回溯）</span>
                 <span id="harvest-percent-text" style="font-weight:700; color:#60a5fa;">0%</span>
               </div>
               <div style="width:100%; height:6px; background:#27272a; border-radius:3px; overflow:hidden;">
                 <div id="harvest-progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #2563eb, #34d399); transition:width 0.3s ease;"></div>
               </div>
+            </div>
+
+            <!-- Size Estimation & Aggregated Duplicate Indicator -->
+            <div id="harvest-estimation-bar" style="font-size:0.75rem; color:#93c5fd; background:#0b1329; border:1px solid #1e3a8a; border-radius:4px; padding:0.3rem 0.65rem; display:flex; justify-content:space-between; align-items:center;">
+              <span id="harvest-calc-text">📊 容量精算：均篇約 1.20 MB ｜ 推估 10 年歷史總量約 1,400 篇 (~1.65 GB)</span>
+              <span id="harvest-dup-stat" style="color:#a5b4fc; font-weight:600;">⚡ 輕量比對已略過重複: 0 篇</span>
             </div>
 
             <!-- Live Terminal Activity Box (Realtime log of provisions and papers) -->
@@ -284,7 +291,7 @@
                 <span id="harvest-current-action" style="color:#38bdf8;">待機</span>
               </div>
               <div id="harvest-terminal-logs" style="background:#060608; border:1px solid #1f1f23; border-radius:6px; padding:0.55rem 0.75rem; height:120px; max-height:130px; overflow-y:auto; font-family:Consolas, Monaco, monospace; font-size:0.76rem; color:#86efac; line-height:1.5; white-space:pre-wrap;">
-[系統] 等候指示中。請確認上方 AutoRPA 連線認證後，點擊「▶️ 啟動自動採集」。
+[系統] 等候指示中。請確認上方 AutoRPA 連線認證後，點擊「▶️ 啟動 / 續採」。
               </div>
             </div>
           </div>
@@ -386,8 +393,8 @@
     </div>
   </div>
 
-  <script src="/js/icons.js?v=20261031_06"></script>
-  <script src="/js/dialer.js?v=20261031_06"></script>
-  <script src="/js/app.js?v=20261031_06"></script>
+  <script src="/js/icons.js?v=20261031_07"></script>
+  <script src="/js/dialer.js?v=20261031_07"></script>
+  <script src="/js/app.js?v=20261031_07"></script>
 </body>
 </html>

@@ -420,6 +420,38 @@ class LegalStorage:
         self.cache.invalidate("lit:")
         return lit.id
 
+    def find_literature_by_title_author(self, title: str, author: str) -> Optional[Dict[str, Any]]:
+        """
+        Pre-flight check: returns existing record if title and author match (ignoring whitespace).
+        """
+        clean_title = (title or "").strip()
+        clean_author = (author or "").strip()
+        if not clean_title:
+            return None
+        conn = get_connection(self.db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT id, title, author, file_size_bytes FROM literature WHERE TRIM(title) = ? AND TRIM(author) = ?", (clean_title, clean_author))
+        row = cur.fetchone()
+        conn.close()
+        if row:
+            return dict(row)
+        return None
+
+    def bind_article(self, lit_id: str, act_id: str, article_no: str):
+        """
+        Binds an existing literature item to an article without re-inserting or downloading.
+        """
+        if not lit_id or not act_id or not article_no:
+            return
+        conn = get_connection(self.db_path)
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT OR IGNORE INTO literature_articles (literature_id, act_id, article_no)
+            VALUES (?, ?, ?)
+        """, (lit_id, act_id, str(article_no).strip()))
+        conn.commit()
+        conn.close()
+
     def get_literature(self, lit_id: str) -> Optional[Dict[str, Any]]:
         conn = get_connection(self.db_path)
         cur = conn.cursor()

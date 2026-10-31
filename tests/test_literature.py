@@ -194,6 +194,26 @@ class TestLiteratureUnitAndIntegration(unittest.TestCase):
             self.assertIn("message", data)
             self.assertIn("progress", data)
             self.assertIn("logs", data["progress"])
+            self.assertIn("estimation", data["progress"])
+
+    def test_preflight_title_author_check_and_checkpoint(self):
+        # 1. Test storage.find_literature_by_title_author
+        found = self.storage.find_literature_by_title_author("論罪刑法定原則與溯及既往之禁止", "林山田")
+        self.assertIsNotNone(found)
+        self.assertEqual(found["id"], "test_lit_2026_001")
+
+        # 2. Non-existent should return None (0s check before downloading)
+        not_found = self.storage.find_literature_by_title_author("不存在的論文標題xyz", "張三")
+        self.assertIsNone(not_found)
+
+        # 3. Test BatchHarvester checkpoint & estimation
+        from backend.batch_crawler import BatchHarvester
+        harvester = BatchHarvester.get_instance()
+        status = harvester.get_status()
+        self.assertIn("estimation", status)
+        self.assertIn("current_year", status)
+        self.assertIn("total_skipped_duplicates", status)
+        self.assertGreater(status["estimation"]["estimated_10y_gb"], 0)
 
 
 if __name__ == "__main__":

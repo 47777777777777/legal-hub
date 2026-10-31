@@ -97,15 +97,17 @@ class LegalApiHandler(BaseHTTPRequestHandler):
         if path == "/api/ccu/harvest/start":
             content_length = int(self.headers.get("Content-Length", 0))
             act_id = "criminal_code"
+            reset_cp = False
             if content_length > 0:
                 try:
                     body_raw = self.rfile.read(content_length).decode("utf-8")
                     payload = json.loads(body_raw)
                     act_id = payload.get("act_id") or "criminal_code"
+                    reset_cp = bool(payload.get("reset_checkpoint", False))
                 except Exception:
                     pass
             from backend.batch_crawler import BatchHarvester
-            res = BatchHarvester.get_instance().start_harvest(act_id=act_id)
+            res = BatchHarvester.get_instance().start_harvest(act_id=act_id, reset_checkpoint=reset_cp)
             self.send_json(200, res)
             return
 
