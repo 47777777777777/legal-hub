@@ -593,25 +593,48 @@ class LegalHubApp {
       const json = await res.json();
       const st = json.data || {};
       const statusText = document.getElementById("harvest-status-text");
+      const percentText = document.getElementById("harvest-percent-text");
+      const progressBar = document.getElementById("harvest-progress-bar");
+      const actionText = document.getElementById("harvest-current-action");
+      const terminalBox = document.getElementById("harvest-terminal-logs");
       const activeDot = document.getElementById("harvest-active-dot");
       const startBtn = document.getElementById("ccu-start-harvest-btn");
       const stopBtn = document.getElementById("ccu-stop-harvest-btn");
 
+      if (progressBar) progressBar.style.width = `${st.percent || 0}%`;
+      if (percentText) percentText.textContent = `${st.percent || 0}%`;
+      if (actionText) actionText.textContent = st.current_action || (st.is_running ? "採集中" : "待機");
+
+      if (terminalBox && Array.isArray(st.logs) && st.logs.length > 0) {
+        terminalBox.textContent = st.logs.join("\n");
+        terminalBox.scrollTop = terminalBox.scrollHeight;
+      }
+
       if (st.is_running) {
-        if (activeDot) activeDot.style.background = "#10b981";
+        if (activeDot) {
+          activeDot.style.background = "#10b981";
+          activeDot.style.boxShadow = "0 0 8px #10b981";
+        }
         if (startBtn) startBtn.style.display = "none";
         if (stopBtn) stopBtn.style.display = "inline-block";
         if (statusText) {
-          statusText.innerHTML = `<span style="color:#6ee7b7; font-weight:700;">採集中</span> ｜ 已抓取 <b>${st.total_harvested || 0}</b> 篇 ｜ 正處理：<b>${esc(st.current_act || '')} ${esc(st.current_art || '')}</b>${st.last_saved_title ? ` (最新：${esc(st.last_saved_title)})` : ''}`;
+          statusText.innerHTML = `<span style="color:#6ee7b7; font-weight:700;">● 正在自動採集</span> ｜ 已掃描 <b>${st.total_scanned || 0} / ${st.total_targets || 0}</b> 條 ｜ 收錄 <b>${st.total_harvested || 0}</b> 篇${st.last_saved_title ? ` ｜ 最新：《${esc(st.last_saved_title)}》` : ''}`;
         }
       } else {
-        if (activeDot) activeDot.style.background = "#71717a";
+        if (activeDot) {
+          activeDot.style.background = "#71717a";
+          activeDot.style.boxShadow = "none";
+        }
         if (startBtn) startBtn.style.display = "inline-block";
         if (stopBtn) stopBtn.style.display = "none";
-        if (statusText && st.status === "completed") {
-          statusText.innerHTML = `<span style="color:#34d399; font-weight:700;">採集完成</span> ｜ 共收錄 ${st.total_in_db || 0} 篇文獻 (${st.downloaded_size_mb || 0} MB)`;
-        } else if (statusText && st.status === "stopped") {
-          statusText.innerHTML = `已停止 ｜ 現有快取 ${st.total_in_db || 0} 篇文獻`;
+        if (statusText) {
+          if (st.status === "completed") {
+            statusText.innerHTML = `<span style="color:#34d399; font-weight:700;">🎉 採集完成</span> ｜ 共收錄 ${st.total_in_db || 0} 篇文獻 (${st.downloaded_size_mb || 0} MB)`;
+          } else if (st.status === "stopped") {
+            statusText.innerHTML = `<span style="color:#f59e0b; font-weight:700;">⏹️ 已手動停止</span> ｜ 目前累計 ${st.total_in_db || 0} 篇文獻`;
+          } else if (st.status === "error") {
+            statusText.innerHTML = `<span style="color:#ef4444; font-weight:700;">⚠️ 採集中斷</span> ｜ ${esc(st.errors ? st.errors.join("; ") : "連線異常")}`;
+          }
         }
       }
 
@@ -879,14 +902,36 @@ class LegalHubApp {
     if (startHarvestBtn) {
       startHarvestBtn.addEventListener("click", async () => {
         startHarvestBtn.disabled = true;
+        startHarvestBtn.textContent = "啟動中...";
         try {
-          const res = await fetch("/api/ccu/harvest/start", { method: "POST" });
+          const actId = this.currentActId || "criminal_code";
+          const res = await fetch("/api/ccu/harvest/start", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ act_id: actId })
+          });
           const json = await res.json();
+          if (!json.success) {
+            alert(json.message || "啟動採集失敗");
+            if (configBox && (json.message || "").includes("sessionid")) {
+              configBox.style.display = "block";
+              if (cookieInput) {
+                cookieInput.focus();
+                cookieInput.style.borderColor = "#ef4444";
+                cookieInput.style.boxShadow = "0 0 10px rgba(239, 68, 68, 0.4)";
+                setTimeout(() => {
+                  cookieInput.style.borderColor = "";
+                  cookieInput.style.boxShadow = "";
+                }, 3000);
+              }
+            }
+          }
           await this.pollHarvestStatus();
         } catch (e) {
           alert("啟動採集出錯：" + e.message);
         } finally {
           startHarvestBtn.disabled = false;
+          startHarvestBtn.textContent = "▶️ 啟動自動採集";
         }
       });
     }
@@ -894,6 +939,7 @@ class LegalHubApp {
     if (stopHarvestBtn) {
       stopHarvestBtn.addEventListener("click", async () => {
         stopHarvestBtn.disabled = true;
+        stopHarvestBtn.textContent = "停止中...";
         try {
           const res = await fetch("/api/ccu/harvest/stop", { method: "POST" });
           const json = await res.json();
@@ -902,6 +948,7 @@ class LegalHubApp {
           alert("停止採集出錯：" + e.message);
         } finally {
           stopHarvestBtn.disabled = false;
+          stopHarvestBtn.textContent = "⏹️ 停止採集";
         }
       });
     }

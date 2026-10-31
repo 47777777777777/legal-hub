@@ -186,6 +186,15 @@ class TestLiteratureUnitAndIntegration(unittest.TestCase):
             self.assertTrue(data.get("success"))
             self.assertIn("progress", data)
 
+        # 8. POST /api/ccu/harvest/start (validation on session check)
+        req = urllib.request.Request(f"{self.base_url}/api/ccu/harvest/start", data=b"{}", headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            # Either fails with friendly session error or starts if session mocked
+            self.assertIn("message", data)
+            self.assertIn("progress", data)
+            self.assertIn("logs", data["progress"])
+
 
 if __name__ == "__main__":
     unittest.main()

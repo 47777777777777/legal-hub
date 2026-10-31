@@ -30,12 +30,17 @@ class BatchHarvester:
         self.progress = {
             "status": "idle",
             "total_harvested": 0,
+            "total_scanned": 0,
+            "total_targets": 0,
+            "percent": 0,
             "current_query": "",
             "current_act": "",
             "current_art": "",
+            "current_action": "待命中",
             "last_saved_title": "",
             "last_updated": None,
-            "errors": []
+            "errors": [],
+            "logs": ["系統待命中，請確認 AutoRPA 認證後點擊「▶️ 啟動自動採集」"]
         }
 
     @classmethod
@@ -45,14 +50,35 @@ class BatchHarvester:
                 cls._instance = BatchHarvester()
             return cls._instance
 
+    def _add_log(self, text: str):
+        ts = time.strftime("%H:%M:%S")
+        entry = f"[{ts}] {text}"
+        logs = self.progress.get("logs", [])
+        logs.append(entry)
+        if len(logs) > 25:
+            logs = logs[-25:]
+        self.progress["logs"] = logs
+
     def start_harvest(self, act_id: str = "criminal_code") -> Dict[str, Any]:
         with self._lock:
             if self.is_running:
                 return {"success": False, "message": "採集排程已在執行中", "progress": self.get_status()}
+
+            # Validate CCU AutoRPA Session existence
+            session_info = CCUSessionManager.load_session()
+            if not session_info.get("cookies"):
+                return {
+                    "success": False,
+                    "message": "⚠️ 尚未設定中正 AutoRPA 的 sessionid！請先在上方完成登入與貼上 sessionid，驗證通過後即可一鍵自動採集。",
+                    "progress": self.get_status()
+                }
+
             self.is_running = True
             self.should_stop = False
             self.progress["status"] = "running"
             self.progress["errors"] = []
+            self.progress["total_scanned"] = 0
+            self._add_log(f"🚀 啟動自動採集任務（法規目標：{act_id}，由新修訂條文往舊倒序研析）")
             self.thread = threading.Thread(target=self._run_loop, args=(act_id,), daemon=True)
             self.thread.start()
             return {"success": True, "message": "已啟動背景自動採集 (由新至舊)", "progress": self.get_status()}
@@ -63,6 +89,7 @@ class BatchHarvester:
                 return {"success": True, "message": "採集排程未在執行", "progress": self.get_status()}
             self.should_stop = True
             self.progress["status"] = "stopping"
+            self._add_log("⏹️ 使用者手動請求停止採集，正在等待當前條文處理完成...")
             return {"success": True, "message": "正在停止採集...", "progress": self.get_status()}
 
     def get_status(self) -> Dict[str, Any]:
@@ -80,36 +107,56 @@ class BatchHarvester:
             act = storage.get_act(act_id)
             if not act:
                 self.progress["status"] = "error"
-                self.progress["errors"].append(f"法規 '{act_id}' 不存在")
+                err_msg = f"法規 '{act_id}' 不存在"
+                self.progress["errors"].append(err_msg)
+                self._add_log(f"❌ 錯誤：{err_msg}")
                 self.is_running = False
                 return
 
             articles = act.articles or []
+            total_target = len(articles)
+            self.progress["total_targets"] = total_target
             # Order: newest provisions backward (reverse order so modern amendments come first)
             ordered_articles = list(reversed(articles))
+            self._add_log(f"📚 目標法規：{act.name}，共 {total_target} 個法條，準備自第 {ordered_articles[0].article_no} 條開始逐條採集")
 
+            scanned_count = 0
             for art in ordered_articles:
                 if self.should_stop:
                     break
 
+                scanned_count += 1
+                self.progress["total_scanned"] = scanned_count
+                self.progress["percent"] = int((scanned_count / max(total_target, 1)) * 100)
                 art_no = art.article_no
                 self.progress["current_act"] = act.name
                 self.progress["current_art"] = f"第 {art_no} 條"
                 query = f"{act.name} 第{art_no}條"
                 self.progress["current_query"] = query
+                self.progress["current_action"] = f"正在向法源與月旦檢索：{query}"
                 self.progress["last_updated"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                self._add_log(f"🔍 [{scanned_count}/{total_target}] 檢索：{query}")
 
                 # Harvest both LawBank and LawData
                 items: List[Dict[str, Any]] = []
                 try:
-                    items.extend(crawler.search_lawbank_theses(query))
-                except Exception:
-                    pass
+                    lb_items = crawler.search_lawbank_theses(query)
+                    if lb_items:
+                        items.extend(lb_items)
+                        self._add_log(f"  ⚖️ 法源法律網檢索到 {len(lb_items)} 筆相關文獻")
+                except Exception as e:
+                    self._add_log(f"  ⚠️ 法源連線異常: {e}")
 
                 try:
-                    items.extend(crawler.search_lawdata_articles(query))
-                except Exception:
-                    pass
+                    ld_items = crawler.search_lawdata_articles(query)
+                    if ld_items:
+                        items.extend(ld_items)
+                        self._add_log(f"  📚 月旦知識庫檢索到 {len(ld_items)} 筆相關專論")
+                except Exception as e:
+                    self._add_log(f"  ⚠️ 月旦連線異常: {e}")
+
+                if not items:
+                    self._add_log(f"  — 第 {art_no} 條目前無新收錄文獻或受連線限制")
 
                 for item in items:
                     if self.should_stop:
@@ -139,17 +186,26 @@ class BatchHarvester:
                     }
 
                     # add_literature enforces deduplication by (title, author)
-                    storage.add_literature(lit_payload)
+                    saved_id = storage.add_literature(lit_payload)
                     self.progress["last_saved_title"] = title
                     self.progress["total_harvested"] += 1
+                    if saved_id == lit_payload["id"]:
+                        self._add_log(f"  ✅ 成功收錄新文獻：《{title}》")
+                    else:
+                        self._add_log(f"  🔗 發現同標題+作者文獻，已自動關聯第 {art_no} 條並防重儲存")
                     time.sleep(0.3)
 
-                time.sleep(0.5)
+                time.sleep(0.6)
 
             self.progress["status"] = "completed" if not self.should_stop else "stopped"
+            if not self.should_stop:
+                self._add_log(f"🎉 自動採集完成！共掃描 {scanned_count} 條法規，已更新法學文獻庫。")
+            else:
+                self._add_log(f"⏹️ 已依使用者指令停止採集（已掃描 {scanned_count} 條）。")
         except Exception as e:
             self.progress["status"] = "error"
             self.progress["errors"].append(str(e))
+            self._add_log(f"❌ 採集異常中斷: {str(e)}")
         finally:
             self.is_running = False
             self.should_stop = False
