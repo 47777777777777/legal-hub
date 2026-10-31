@@ -89,6 +89,11 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                 self.send_error_json(500, str(e), "ServerError")
             return
 
+        if path == "/api/cache/clear":
+            storage.cache.invalidate()
+            self.send_json(200, {"success": True, "message": "快取已清理完畢。"})
+            return
+
         if path == "/api/acts":
             content_length = int(self.headers.get("Content-Length", 0))
             if content_length == 0:
@@ -161,14 +166,9 @@ class LegalApiHandler(BaseHTTPRequestHandler):
             # GET /api/ccu/search?q=...
             if path == "/api/ccu/search":
                 q = query.get("q", [""])[0]
-                source = query.get("source", ["all"])[0]
                 from backend.ccu_crawler import CCUCrawler
                 crawler = CCUCrawler()
-                results = []
-                if source in ("all", "lawbank"):
-                    results.extend(crawler.search_lawbank_theses(q))
-                if source in ("all", "lawdata"):
-                    results.extend(crawler.search_lawdata_articles(q))
+                results = crawler.search_lawbank_theses(q)
                 self.send_json(200, {"success": True, "data": results, "query": q})
                 return
 

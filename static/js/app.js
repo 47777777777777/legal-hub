@@ -538,6 +538,73 @@ class LegalHubApp {
     modal.classList.remove("hidden");
     await this.refreshCCUStatus();
     await this.loadLiteratureMetrics();
+    const searchInput = document.getElementById("ccu-search-input");
+    const resultsContainer = document.getElementById("ccu-search-results");
+    if (resultsContainer && (!searchInput || !searchInput.value.trim())) {
+      this.renderLiteratureEmptyState();
+    }
+  }
+
+  renderLiteratureEmptyState() {
+    const resultsContainer = document.getElementById("ccu-search-results");
+    if (!resultsContainer) return;
+
+    let quickTags = [];
+    const act = this.currentAct;
+    const artNo = this.selectedArticleNo;
+    const actName = act ? act.name : "刑法";
+
+    if (artNo) {
+      if (this.currentActId === "criminal_code" && artNo === "10") {
+        quickTags = ["公務員定義最新文獻", "重傷判準實務評析", "性交定義之演進", "刑法第10條"];
+      } else if (this.currentActId === "criminal_code" && artNo === "185-3") {
+        quickTags = ["酒駕不能安全駕駛評釋", "吐氣酒精濃度認定", "刑法第185條之3", "罪刑相當原則"];
+      } else {
+        quickTags = [
+          `${actName}第${artNo}條`,
+          `${actName} 第${artNo}條 專論評釋`,
+          `第${artNo}條 構成要件爭議`,
+          `${actName} 最新期刊`
+        ];
+      }
+    } else {
+      quickTags = ["刑法修正爭點評析", "公務員定義實務論述", "酒後駕車罪刑爭端", "沒收新制實務分析", "正當防衛裁判評釋"];
+    }
+
+    resultsContainer.innerHTML = `
+      <div style="padding: 1.25rem 0.5rem; text-align: center; color: #a1a1aa;">
+        <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">📖</div>
+        <div style="font-weight: 600; font-size: 0.92rem; color: #d4d4d8; margin-bottom: 0.35rem;">尚無檢索結果</div>
+        <div style="font-size: 0.8rem; color: #71717a; margin-bottom: 1.25rem;">
+          輸入關鍵字，或直接點選下方與目前研析條文最關聯的推薦標籤：
+        </div>
+        <div style="text-align: left; background: #0f0f13; border: 1px solid #202025; border-radius: 8px; padding: 0.85rem;">
+          <div style="font-size: 0.78rem; font-weight: 700; color: #60a5fa; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.3rem;">
+            <span>⚡</span>
+            <span>${artNo ? `針對目前條文 (${actName} 第${esc(artNo)}條) 的推薦標籤：` : '推薦熱門法學檢索標籤：'}</span>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.45rem;">
+            ${quickTags.map(tag => `
+              <button type="button" class="quick-tag-chip" data-query="${esc(tag)}" style="background: #18181b; border: 1px solid #2e2e36; color: #e4e4e7; border-radius: 6px; padding: 0.35rem 0.7rem; font-size: 0.8rem; cursor: pointer; transition: all 0.15s ease;">
+                🔍 ${esc(tag)}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+
+    resultsContainer.querySelectorAll(".quick-tag-chip").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const q = btn.dataset.query;
+        const searchInput = document.getElementById("ccu-search-input");
+        if (searchInput) {
+          searchInput.value = q;
+        }
+        const searchBtn = document.getElementById("ccu-do-search-btn");
+        if (searchBtn) searchBtn.click();
+      });
+    });
   }
 
   async loadLiteratureMetrics() {
@@ -545,21 +612,12 @@ class LegalHubApp {
       const res = await fetch("/api/literature/stats");
       const json = await res.json();
       const s = json.data || {};
-      const totalEl = document.getElementById("lit-stat-total");
-      const downEl = document.getElementById("lit-stat-downloaded");
-      const sizeEl = document.getElementById("lit-stat-size");
-      const avgEl = document.getElementById("lit-stat-avg");
-      const breakdownEl = document.getElementById("lit-year-breakdown");
-
-      if (totalEl) totalEl.textContent = `${s.total_articles || 0} 篇`;
-      if (downEl) downEl.textContent = `${s.downloaded_articles || 0} 篇`;
-      if (sizeEl) sizeEl.textContent = `${s.downloaded_size_mb || 0} MB`;
-      if (avgEl) avgEl.textContent = `${s.average_file_size_mb || 0} MB`;
-
-      if (breakdownEl && s.year_distribution && s.year_distribution.length) {
-        breakdownEl.innerHTML = `<b>最新年份統計：</b> ` + s.year_distribution.slice(0, 5).map(y => `${y.year}年 (${y.count}篇 / ${y.mb}MB)`).join(" · ");
-      } else if (breakdownEl) {
-        breakdownEl.innerHTML = `<span style="color:#71717a;">尚無預載文獻，排程將依最新年份倒序進行採集。</span>`;
+      const statSummary = document.getElementById("lit-stat-summary");
+      if (statSummary) {
+        const total = s.total_articles || 0;
+        const downloaded = s.downloaded_articles || 0;
+        const sizeMb = s.downloaded_size_mb || 0;
+        statSummary.textContent = `${total} 篇文獻 (${sizeMb} MB，已下載 ${downloaded} 篇 PDF)`;
       }
     } catch (e) {
       console.warn("Load literature stats failed:", e);
@@ -570,33 +628,41 @@ class LegalHubApp {
     const badge = document.getElementById("ccu-auth-badge");
     const indicator = document.getElementById("ccu-header-indicator");
     const hintBox = document.getElementById("ccu-hint-box");
+    const connectedBar = document.getElementById("ccu-auth-connected-bar");
+    const configBox = document.getElementById("ccu-auth-config-box");
+    const collapseConfigBtn = document.getElementById("ccu-collapse-config-btn");
+
     try {
       const res = await fetch("/api/ccu/status");
       const json = await res.json();
       const data = json.data || {};
       if (data.authenticated) {
         if (badge) {
-          badge.textContent = "● 已通過中正認證";
+          badge.textContent = "● 連線正常 (有效)";
           badge.style.background = "#052e16";
           badge.style.color = "#86efac";
         }
         if (indicator) {
           indicator.style.background = "#10b981";
-          indicator.title = "中正 AutoRPA 已認證";
+          indicator.title = "法源 AutoRPA 連線正常";
         }
-        if (hintBox) {
-          hintBox.style.display = "none";
-        }
+        if (connectedBar) connectedBar.style.display = "flex";
+        if (configBox) configBox.style.display = "none";
+        if (collapseConfigBtn) collapseConfigBtn.style.display = "inline-block";
+        if (hintBox) hintBox.style.display = "none";
       } else {
         if (badge) {
-          badge.textContent = "● 未認證 (請依說明填入 sessionid)";
+          badge.textContent = "● 未認證 (需填 sessionid)";
           badge.style.background = "#2a2a32";
           badge.style.color = "#a1a1aa";
         }
         if (indicator) {
           indicator.style.background = "#71717a";
-          indicator.title = "中正 AutoRPA 未認證 (點擊設定)";
+          indicator.title = "法源 AutoRPA 未認證 (點擊設定)";
         }
+        if (connectedBar) connectedBar.style.display = "none";
+        if (configBox) configBox.style.display = "block";
+        if (collapseConfigBtn) collapseConfigBtn.style.display = "none";
         if (hintBox && data.hint) {
           hintBox.textContent = data.hint;
           hintBox.style.display = "block";
@@ -618,25 +684,67 @@ class LegalHubApp {
     const searchBtn = document.getElementById("ccu-do-search-btn");
     const searchInput = document.getElementById("ccu-search-input");
     const resultsContainer = document.getElementById("ccu-search-results");
+    const toggleConfigBtn = document.getElementById("ccu-toggle-config-btn");
+    const collapseConfigBtn = document.getElementById("ccu-collapse-config-btn");
+    const configBox = document.getElementById("ccu-auth-config-box");
+    const clearCacheBtn = document.getElementById("ccu-clear-cache-btn");
+    const tabAppBtn = document.getElementById("ccu-tab-app-btn");
+    const tabNetBtn = document.getElementById("ccu-tab-net-btn");
+    const tabAppPanel = document.getElementById("ccu-tab-app-panel");
+    const tabNetPanel = document.getElementById("ccu-tab-net-panel");
 
+    // Segmented Tabs
+    if (tabAppBtn && tabNetBtn) {
+      tabAppBtn.addEventListener("click", () => {
+        tabAppBtn.style.background = "#27272a";
+        tabAppBtn.style.color = "#fafafa";
+        tabNetBtn.style.background = "transparent";
+        tabNetBtn.style.color = "#a1a1aa";
+        if (tabAppPanel) tabAppPanel.style.display = "block";
+        if (tabNetPanel) tabNetPanel.style.display = "none";
+      });
+      tabNetBtn.addEventListener("click", () => {
+        tabNetBtn.style.background = "#27272a";
+        tabNetBtn.style.color = "#fafafa";
+        tabAppBtn.style.background = "transparent";
+        tabAppBtn.style.color = "#a1a1aa";
+        if (tabNetPanel) tabNetPanel.style.display = "block";
+        if (tabAppPanel) tabAppPanel.style.display = "none";
+      });
+    }
+
+    // Toggle Re-configure Box
+    if (toggleConfigBtn && configBox) {
+      toggleConfigBtn.addEventListener("click", () => {
+        configBox.style.display = configBox.style.display === "none" ? "block" : "none";
+      });
+    }
+    if (collapseConfigBtn && configBox) {
+      collapseConfigBtn.addEventListener("click", () => {
+        configBox.style.display = "none";
+      });
+    }
+
+    // Paste from Clipboard
     if (pasteBtn && cookieInput) {
       pasteBtn.addEventListener("click", async () => {
         try {
           const clipText = await navigator.clipboard.readText();
           if (clipText && clipText.trim()) {
             cookieInput.value = clipText.trim();
-            pasteBtn.textContent = "✅ 已成功貼上！";
-            setTimeout(() => { pasteBtn.textContent = "📋 貼上剪貼簿"; }, 1500);
+            pasteBtn.textContent = "✅";
+            setTimeout(() => { pasteBtn.textContent = "📋"; }, 1500);
           } else {
             alert("剪貼簿目前沒有內容，請先複製 sessionid 或 Cookie");
           }
         } catch (e) {
           cookieInput.focus();
-          alert("瀏覽器剪貼簿存取受限，請直接在輸入框內按鍵盤「Ctrl + V」貼上！");
+          alert("瀏覽器剪貼簿存取受限，請直接在輸入框內按「Ctrl + V」貼上！");
         }
       });
     }
 
+    // Save and Verify Session
     if (saveBtn) {
       saveBtn.addEventListener("click", async () => {
         const val = cookieInput ? cookieInput.value.trim() : "";
@@ -661,15 +769,15 @@ class LegalHubApp {
           }
           await this.refreshCCUStatus();
           if (d.authenticated) {
-            alert("✅ 中正 AutoRPA 認證成功！已成功連通法源與月旦資料庫。");
+            alert("✅ 法源 AutoRPA 認證成功！已成功連通法源法律網資料庫。");
           } else {
-            alert("⚠️ " + (d.hint || "尚未通過中正 AutoRPA 驗證，請確認 sessionid 是否正確。"));
+            alert("⚠️ " + (d.hint || "尚未通過法源 AutoRPA 驗證，請確認 sessionid 是否正確。"));
           }
         } catch (e) {
           alert("儲存失敗：" + e.message);
         } finally {
           saveBtn.disabled = false;
-          saveBtn.textContent = "儲存並驗證連線";
+          saveBtn.textContent = "儲存並連線驗證";
         }
       });
     }
@@ -683,29 +791,70 @@ class LegalHubApp {
       refreshStatsBtn.addEventListener("click", () => this.loadLiteratureMetrics());
     }
 
+    if (clearCacheBtn) {
+      clearCacheBtn.addEventListener("click", async () => {
+        if (!confirm("確定要清理本地快取嗎？")) return;
+        try {
+          const res = await fetch("/api/cache/clear", { method: "POST" });
+          const json = await res.json();
+          alert(json.message || "快取已清理完畢。");
+          await this.loadLiteratureMetrics();
+        } catch (e) {
+          alert("清理快取失敗：" + e.message);
+        }
+      });
+    }
+
+    // Literature Search (LawBank only)
     if (searchBtn && searchInput) {
       const doSearch = async () => {
         const q = searchInput.value.trim();
-        if (!q) return;
+        if (!q) {
+          this.renderLiteratureEmptyState();
+          return;
+        }
         searchBtn.disabled = true;
         searchBtn.textContent = "檢索中...";
-        if (resultsContainer) resultsContainer.innerHTML = '<div style="color:#71717a; text-align:center; padding:1rem;">正在檢索中正法源與月旦論文...</div>';
+        if (resultsContainer) resultsContainer.innerHTML = '<div style="color:#71717a; text-align:center; padding:2rem;">正在向法源法律網檢索期刊專論...</div>';
         try {
           const res = await fetch(`/api/ccu/search?q=${encodeURIComponent(q)}`);
           const json = await res.json();
           const items = json.data || [];
           if (!items.length) {
-            resultsContainer.innerHTML = '<div style="color:#71717a; text-align:center; padding:1rem;">查無相關文獻，或尚未通過中正校園認證。</div>';
-          } else {
-            resultsContainer.innerHTML = items.map(item => `
-              <div class="card" style="margin-bottom:0.5rem; padding:0.6rem;">
-                <div style="font-weight:700; color:#60a5fa;"><a href="${item.url}" target="_blank" rel="noopener noreferrer" style="color:inherit; text-decoration:none;">${esc(item.title)} ↗</a></div>
-                <div style="font-size:0.75rem; color:#8e8e93; margin-top:0.25rem;">來源：${esc(item.source)}</div>
+            resultsContainer.innerHTML = `
+              <div style="color:#71717a; text-align:center; padding:2rem;">
+                <div>查無相關法源文獻，或尚未通過 AutoRPA 認證。</div>
+                <div style="margin-top:0.75rem;"><button id="ccu-back-empty-btn" class="filter-chip" style="cursor:pointer; font-size:0.8rem; padding:0.3rem 0.8rem;">返回推薦標籤</button></div>
               </div>
-            `).join('');
+            `;
+            const backBtn = document.getElementById("ccu-back-empty-btn");
+            if (backBtn) backBtn.addEventListener("click", () => this.renderLiteratureEmptyState());
+          } else {
+            resultsContainer.innerHTML = `
+              <div style="font-size:0.8rem; color:#a1a1aa; margin-bottom:0.6rem; display:flex; justify-content:space-between; align-items:center;">
+                <span>檢索到 <b>${items.length}</b> 篇法源專論文獻：</span>
+                <button id="ccu-back-empty-btn" style="background:none; border:none; color:#60a5fa; cursor:pointer; font-size:0.75rem; text-decoration:underline;">清除搜尋</button>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                ${items.map(item => `
+                  <div class="card" style="padding:0.75rem; background:#111115; border:1px solid #232329; border-radius:6px;">
+                    <div style="font-weight:700; font-size:0.9rem;"><a href="${item.url}" target="_blank" rel="noopener noreferrer" style="color:#60a5fa; text-decoration:none;">${esc(item.title)} ↗</a></div>
+                    <div style="font-size:0.75rem; color:#8e8e93; margin-top:0.35rem; display:flex; justify-content:space-between; align-items:center;">
+                      <span>來源：${esc(item.source)}</span>
+                      <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="filter-chip" style="padding:0.2rem 0.55rem; font-size:0.75rem; text-decoration:none;">全文閱覽 ↗</a>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `;
+            const backBtn = document.getElementById("ccu-back-empty-btn");
+            if (backBtn) backBtn.addEventListener("click", () => {
+              if (searchInput) searchInput.value = "";
+              this.renderLiteratureEmptyState();
+            });
           }
         } catch (e) {
-          if (resultsContainer) resultsContainer.innerHTML = `<div style="color:#ef4444; padding:0.5rem;">檢索出錯：${e.message}</div>`;
+          if (resultsContainer) resultsContainer.innerHTML = `<div style="color:#ef4444; padding:1rem;">檢索出錯：${e.message}</div>`;
         } finally {
           searchBtn.disabled = false;
           searchBtn.textContent = "🔍 檢索論文";
@@ -1180,13 +1329,13 @@ class LegalHubApp {
         if (!box) return;
         btn.disabled = true;
         btn.textContent = "檢索中...";
-        box.innerHTML = '<div style="color:#a1a1aa; padding:0.4rem 0;">正在透過中正 AutoRPA 檢索法源與月旦文獻...</div>';
+        box.innerHTML = '<div style="color:#a1a1aa; padding:0.4rem 0;">正在透過 AutoRPA 檢索法源期刊專論...</div>';
         try {
           const res = await fetch(`/api/ccu/search?q=${encodeURIComponent(query)}`);
           const json = await res.json();
           const items = json.data || [];
           if (!items.length) {
-            box.innerHTML = '<div style="color:#71717a; padding:0.4rem 0;">查無相關文獻，或中正校園代理尚未認證（可點選導覽列 🏛️ 按鈕確認連線）。</div>';
+            box.innerHTML = '<div style="color:#71717a; padding:0.4rem 0;">查無相關文獻，或法源校園代理尚未認證（可點選導覽列 🏛️ 按鈕確認連線）。</div>';
           } else {
             box.innerHTML = items.map(item => `
               <div style="padding:0.5rem 0; border-bottom:1px solid #27272a;">
@@ -1199,7 +1348,7 @@ class LegalHubApp {
           box.innerHTML = `<div style="color:#ef4444; padding:0.4rem 0;">檢索失敗：${e.message}</div>`;
         } finally {
           btn.disabled = false;
-          btn.textContent = "🔍 檢索本條相關論文";
+          btn.textContent = "🔍 檢索法源論文";
         }
       });
     });
@@ -1212,7 +1361,7 @@ class LegalHubApp {
         .then(json => {
           const items = json.data || [];
           if (!items.length) {
-            litContainer.innerHTML = '<div class="card" style="padding:0.75rem; color:#71717a; font-size:0.85rem;">本條目前尚無預載文獻，您可透過下方「中正 AutoRPA」即時檢索法源與月旦最新期刊。</div>';
+            litContainer.innerHTML = '<div class="card" style="padding:0.75rem; color:#71717a; font-size:0.85rem;">本條目前尚無預載文獻，您可透過下方即時檢索法源法律網最新期刊專論。</div>';
             return;
           }
           litContainer.innerHTML = items.map(lit => `
@@ -1563,10 +1712,7 @@ class LegalHubApp {
             <span>🏛️ 司法院裁判書系統 (${actName} 第${esc(art.article_no)}條)</span>${icon("external", 13)}
           </a>
           <a href="https://www-lawbank-com-tw.autorpa.lib.ccu.edu.tw:8443/" target="_blank" rel="noopener noreferrer" class="judgment-link-btn">
-            <span>⚖️ 法源法律網精選裁判 (AutoRPA)</span>${icon("external", 13)}
-          </a>
-          <a href="https://www-lawdata-com-tw.autorpa.lib.ccu.edu.tw:8443/anglekmc/ttswebx?@0:0:1:lawkm@@0.1702332962648232" target="_blank" rel="noopener noreferrer" class="judgment-link-btn">
-            <span>📚 月旦知識庫論文與爭點 (AutoRPA)</span>${icon("external", 13)}
+            <span>⚖️ 法源法律網精選裁判與期刊 (AutoRPA)</span>${icon("external", 13)}
           </a>
         </div>
       </section>
@@ -1577,21 +1723,21 @@ class LegalHubApp {
         </div>
       </section>
 
-      <section id="drawer-ccu-papers-section">${sectionHeading("book", "中正 AutoRPA 法源與月旦相關論文檢索")}
+      <section id="drawer-ccu-papers-section">${sectionHeading("book", "法源法律網期刊專論文獻檢索")}
         <div class="card" style="padding: 0.85rem;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.6rem; flex-wrap:wrap; gap:0.5rem;">
-            <span style="font-size:0.85rem; color:#d4d4d8;">查閱探討本條之法源/月旦期刊文獻</span>
+            <span style="font-size:0.85rem; color:#d4d4d8;">查閱探討本條之法源法學期刊專論</span>
             <div style="display:flex; gap:0.4rem;">
-              <button class="filter-chip drawer-open-ccu-config-btn" style="padding:0.3rem 0.75rem; font-size:0.8rem; cursor:pointer;" title="開啟中正校園代理設定視窗">
-                ⚙️ 設定中正 Cookie
+              <button class="filter-chip drawer-open-ccu-config-btn" style="padding:0.3rem 0.75rem; font-size:0.8rem; cursor:pointer;" title="開啟法源連線設定視窗">
+                ⚙️ 連線設定
               </button>
               <button class="filter-chip active drawer-ccu-fetch-btn" data-query="${actName} 第${esc(art.article_no)}條" style="padding:0.3rem 0.8rem; font-size:0.8rem; cursor:pointer;">
-                🔍 檢索本條相關論文
+                🔍 檢索法源論文
               </button>
             </div>
           </div>
           <div class="drawer-ccu-results-box" style="font-size:0.85rem; color:#71717a; min-height:36px;">
-            點擊上方按鈕立即向中正法源與月旦檢索關聯論文與裁判解析。
+            點擊上方按鈕立即向法源法律網檢索關聯專論文章。
           </div>
         </div>
       </section>`;

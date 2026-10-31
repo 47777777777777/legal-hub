@@ -43,11 +43,10 @@
         <span data-icon="table" data-size="16"></span>
       </button>
 
-      <!-- CCU AutoRPA Proxy Connection Modal Button -->
-      <button id="ccu-proxy-btn" class="icon-btn" title="中正校園資源代理 (AutoRPA & 論文下載)" aria-label="中正校園資源代理" style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.3rem 0.65rem; border-radius:6px; font-size:0.8rem; font-weight:600; border:1px solid #3f3f46; background:#18181b; cursor:pointer;">
-        <span data-icon="landmark" data-size="15"></span>
-        <span>中正代理</span>
-        <span id="ccu-header-indicator" style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#71717a;" title="連線狀態"></span>
+      <!-- LawBank Connection & Literature Search Modal Button -->
+      <button id="ccu-proxy-btn" class="icon-btn" title="法源文獻檢索與連線設定" aria-label="法源文獻檢索與連線設定" style="position:relative; display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; padding:0; border-radius:6px; border:1px solid #3f3f46; background:#18181b; cursor:pointer;">
+        <span data-icon="landmark" data-size="16"></span>
+        <span id="ccu-header-indicator" style="position:absolute; top:4px; right:4px; width:7px; height:7px; border-radius:50%; background:#71717a;" title="連線狀態"></span>
       </button>
 
       <div class="font-size-controls" title="調整字體大小">
@@ -166,106 +165,111 @@
     </div>
   </div>
 
-  <!-- CCU AutoRPA & Journal Downloader Modal -->
+  <!-- LawBank Literature & AutoRPA Modal -->
   <div class="modal-backdrop hidden" id="ccu-modal">
-    <div class="modal-dialog" style="max-width: 650px;">
-      <div class="modal-header">
-        <h3 class="modal-title">🏛️ 中正 AutoRPA 校園資源與文獻下載</h3>
-        <button class="icon-btn" id="ccu-modal-close" aria-label="關閉" data-icon="x" data-size="18"></button>
+    <div class="modal-dialog" style="max-width: 680px; width: 95vw; display: flex; flex-direction: column; max-height: 88vh; border-radius: 12px; border: 1px solid #27272a; background: #0c0c0f; box-shadow: 0 20px 50px rgba(0,0,0,0.85); overflow: hidden;">
+      <!-- Standard Modal Header -->
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; padding: 0.85rem 1.25rem; border-bottom: 1px solid #27272a; background: #121216;">
+        <div style="display:flex; align-items:center; gap:0.6rem;">
+          <span style="font-size:1.1rem;">📚</span>
+          <h3 class="modal-title" style="font-size:1rem; font-weight:700; color:#fafafa; margin:0;">文獻庫與法源期刊檢索</h3>
+        </div>
+        <button class="icon-btn" id="ccu-modal-close" aria-label="關閉" data-icon="x" data-size="18" style="color:#a1a1aa; cursor:pointer; background:none; border:none; padding:4px;"></button>
       </div>
-      <div class="modal-body">
-        <div class="callout-box" style="margin-bottom: 1rem; border-color: #2f2f37; background: #0c0c0f;">
-          <div class="callout-title" style="display:flex; justify-content:space-between; align-items:center;">
-            <span>連線狀態</span>
-            <span id="ccu-auth-badge" class="badge" style="background:#2a2a32; color:#8e8e93;">檢查中...</span>
+
+      <div class="modal-body" style="padding: 1.1rem; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:0.9rem;">
+        
+        <!-- Connected Status Bar (Collapsed by default when authenticated) -->
+        <div id="ccu-auth-connected-bar" style="display:none; align-items:center; justify-content:space-between; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.3); border-radius:8px; padding:0.5rem 0.85rem;">
+          <div style="display:flex; align-items:center; gap:0.55rem; font-size:0.85rem; color:#6ee7b7;">
+            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow: 0 0 6px #10b981;"></span>
+            <span><b>法源連線正常</b> (AutoRPA 認證有效)</span>
           </div>
-          <div style="font-size:0.875rem; color:#a1a1aa; margin-top:0.5rem; line-height:1.5;">
-            ⚡ <b>已內建 ddddocr 深度學習自動秒解驗證碼</b>：下載法源與月旦之論文與裁判文獻時，系統將自動擷取辨識並提交驗證碼，免除手動輸入痛點。
+          <div style="display:flex; align-items:center; gap:0.6rem;">
+            <button id="ccu-toggle-config-btn" type="button" style="background:none; border:none; color:#93c5fd; font-size:0.8rem; cursor:pointer; text-decoration:underline;">重新設定</button>
           </div>
         </div>
 
-        <section style="margin-bottom: 1.25rem;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-            <label style="font-weight:700; font-size:0.9rem;">校外連線認證 (無需 VPN，中正帳號直接登入)</label>
-            <a href="https://idm.lib.ccu.edu.tw/sso/idm/oidc/login/?next=/openid/idm/authorize/%3Fclient_id%3D616339%26response_type%3Dcode%26redirect_uri%3Dhttps%253A%252F%252Fautorpa.lib.ccu.edu.tw%252Flogin%26scope%3Dopenid%26state%3Dhttps%253A%252F%252Fautorpa.lib.ccu.edu.tw%252Flogin%252F%253Furl%253Dhttps%25253A%252F%252Fwww-lawbank-com-tw.autorpa.lib.ccu.edu.tw%25253A8443%252F" target="_blank" rel="noopener noreferrer" style="font-size:0.85rem; color:#60a5fa; text-decoration:none; font-weight:600;">
-              點此開啟中正登入頁 ↗
+        <!-- Connection Configuration Box (Shown when disconnected or user clicks 重新設定) -->
+        <section id="ccu-auth-config-box" style="background:#141417; border:1px solid #27272a; border-radius:8px; padding:0.9rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <span id="ccu-auth-badge" class="badge" style="background:#2a2a32; color:#8e8e93; font-size:0.75rem;">檢查中...</span>
+              <span style="font-weight:700; font-size:0.88rem; color:#fafafa;">校外連線認證 (中正帳號直接登入)</span>
+            </div>
+            <a href="https://idm.lib.ccu.edu.tw/sso/idm/oidc/login/?next=/openid/idm/authorize/%3Fclient_id%3D616339%26response_type%3Dcode%26redirect_uri%3Dhttps%253A%252F%252Fautorpa.lib.ccu.edu.tw%252Flogin%26scope%3Dopenid%26state%3Dhttps%253A%252F%252Fautorpa.lib.ccu.edu.tw%252Flogin%252F%253Furl%253Dhttps%25253A%252F%252Fwww-lawbank-com-tw.autorpa.lib.ccu.edu.tw%25253A8443%252F" target="_blank" rel="noopener noreferrer" style="font-size:0.82rem; color:#60a5fa; text-decoration:none; font-weight:600;">
+              開啟中正登入頁 ↗
             </a>
           </div>
 
-          <!-- Step-by-step Cookie retrieval help -->
-          <details open style="background:#18181b; border:1px solid #27272a; border-radius:6px; padding:0.6rem 0.8rem; margin-bottom:0.75rem; font-size:0.825rem; color:#d4d4d8;">
-            <summary style="cursor:pointer; font-weight:700; color:#93c5fd; user-select:none;">
-              💡 如何複製中正 AutoRPA 的 sessionid（必看指引）
-            </summary>
-            <div style="margin-top:0.5rem; line-height:1.6; color:#a1a1aa;">
-              <div style="margin-bottom:0.4rem;">中正校園代理的通行證為 <b>sessionid</b>（瀏覽器 HttpOnly 安全機制會將其隱藏，無法從主控台讀取）。請選以下任一種方式複製：</div>
-              
-              <div style="background:#09090b; border:1px solid #27272a; border-radius:4px; padding:0.5rem; margin-bottom:0.5rem;">
-                <b style="color:#60a5fa;">【方式一：最推薦】從 Application 複製 sessionid</b><br>
-                1. 登入法源後在分頁按鍵盤 <b>F12</b>（或右鍵點「檢查」）。<br>
-                2. 上方切換至 <b>Application</b>（應用程式）分頁（若沒看到可點 <code>&gt;&gt;</code> 展開）。<br>
-                3. 左側清單展開 <b>Storage → Cookies</b>，點擊 <code>autorpa.lib.ccu.edu.tw</code>。<br>
-                4. 在表格中找到名稱為 <b>sessionid</b> 的那一欄，雙擊複製它的值（約 32 碼英數字），貼在下方輸入框即可！
-              </div>
-
-              <div style="background:#09090b; border:1px solid #27272a; border-radius:4px; padding:0.5rem;">
-                <b style="color:#34d399;">【方式二】從 Network 複製完整請求標頭</b><br>
-                1. 在登入後的法源分頁按 <b>F12</b> 切換至 <b>Network</b>（網路），按 <b>F5</b> 重新整理。<br>
-                2. 點選清單中最上方第一筆請求，在右邊 <b>Request Headers</b> 找到 <b>Cookie:</b>，複製整行並貼上（系統會自動萃取）。
-              </div>
-            </div>
-          </details>
-
-          <div class="input-wrap" style="margin-bottom: 0.5rem;">
-            <input type="text" id="ccu-cookie-input" class="field-input" placeholder="貼上 sessionid (約 32 碼英數) 或完整 Cookie / cURL" autocomplete="off" />
+          <!-- Segmented Tabs for Method 1 vs Method 2 -->
+          <div class="segmented-control" style="display:flex; background:#0c0c0f; border:1px solid #27272a; border-radius:6px; padding:2px; margin-bottom:0.75rem;">
+            <button id="ccu-tab-app-btn" type="button" style="flex:1; padding:0.35rem 0.6rem; font-size:0.8rem; font-weight:600; border-radius:4px; border:none; cursor:pointer; background:#27272a; color:#fafafa;">方式一：Application (推薦)</button>
+            <button id="ccu-tab-net-btn" type="button" style="flex:1; padding:0.35rem 0.6rem; font-size:0.8rem; font-weight:600; border-radius:4px; border:none; cursor:pointer; background:transparent; color:#a1a1aa;">方式二：Network (標頭整行)</button>
           </div>
-          <div id="ccu-hint-box" style="font-size:0.8rem; margin-bottom:0.5rem; color:#f87171; display:none; line-height:1.4;"></div>
-          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <button id="ccu-paste-btn" class="filter-chip" style="padding:0.4rem 0.8rem; cursor:pointer;" title="一鍵從剪貼簿貼上">📋 貼上剪貼簿</button>
-            <button id="ccu-save-session-btn" class="filter-chip active" style="padding:0.4rem 1rem; cursor:pointer;">儲存並驗證連線</button>
-            <button id="ccu-refresh-status-btn" class="filter-chip" style="padding:0.4rem 0.8rem; cursor:pointer;">重新檢測狀態</button>
+
+          <div id="ccu-tab-app-panel" style="font-size:0.8rem; color:#a1a1aa; line-height:1.55; margin-bottom:0.75rem; background:#09090b; border:1px solid #202024; border-radius:6px; padding:0.6rem 0.8rem;">
+            1. 登入法源後在分頁按 <b>F12</b>（或右鍵點「檢查」）。<br>
+            2. 上方選 <b>Application</b>（應用程式）分頁（若未看到可點 <code>&gt;&gt;</code> 展開）。<br>
+            3. 左側展開 <b>Storage → Cookies</b>，點擊 <code>autorpa.lib.ccu.edu.tw</code>。<br>
+            4. 找到名稱為 <b>sessionid</b> 那一欄，雙擊複製它的值（約 32 碼英數字），貼在下方輸入框！
+          </div>
+
+          <div id="ccu-tab-net-panel" style="display:none; font-size:0.8rem; color:#a1a1aa; line-height:1.55; margin-bottom:0.75rem; background:#09090b; border:1px solid #202024; border-radius:6px; padding:0.6rem 0.8rem;">
+            1. 在登入後的法源分頁按 <b>F12</b> 切換至 <b>Network</b>（網路），按 <b>F5</b> 重新整理。<br>
+            2. 點選清單中最上方第一筆請求，在右邊 <b>Request Headers</b> 找到 <b>Cookie:</b>，複製整行並貼上（系統會自動萃取）。
+          </div>
+
+          <!-- Input field with inline clipboard paste icon button -->
+          <div class="input-wrap" style="position:relative; margin-bottom:0.6rem;">
+            <input type="text" id="ccu-cookie-input" class="field-input" placeholder="貼上 sessionid (約 32 碼英數) 或完整 Cookie" style="padding-right:2.4rem; width:100%; box-sizing:border-box;" autocomplete="off" />
+            <button id="ccu-paste-btn" type="button" title="一鍵貼上剪貼簿" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:0.95rem; color:#a1a1aa; padding:2px 4px;">📋</button>
+          </div>
+          <div id="ccu-hint-box" style="font-size:0.8rem; margin-bottom:0.6rem; color:#f87171; display:none; line-height:1.4;"></div>
+          
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; gap:0.5rem;">
+              <button id="ccu-save-session-btn" type="button" style="background:#2563eb; color:#ffffff; font-weight:700; border:none; padding:0.45rem 1.15rem; border-radius:6px; font-size:0.82rem; cursor:pointer;">儲存並連線驗證</button>
+              <button id="ccu-refresh-status-btn" type="button" style="background:transparent; border:1px solid #3f3f46; color:#a1a1aa; padding:0.45rem 0.85rem; border-radius:6px; font-size:0.82rem; cursor:pointer;">重新檢測</button>
+            </div>
+            <button id="ccu-collapse-config-btn" type="button" style="display:none; background:none; border:none; color:#71717a; font-size:0.8rem; cursor:pointer;">收合 ▲</button>
           </div>
         </section>
 
-        <section>
-          <div style="font-weight:700; font-size:0.9rem; margin-bottom:0.5rem;">文獻與期刊論文搜尋 (法源 / 月旦)</div>
-          <div class="input-wrap" style="margin-bottom: 0.5rem;">
-            <input type="text" id="ccu-search-input" class="field-input" placeholder="輸入關鍵字或條文搜尋期刊論文，例如：185-3 酒駕 或 配偶權" autocomplete="off" />
+        <!-- Literature Search Section (Core Hero Section) -->
+        <section style="display:flex; flex-direction:column; flex:1; min-height:350px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.4rem;">
+            <span style="font-weight:700; font-size:0.9rem; color:#fafafa;">法源法律網期刊論文檢索</span>
+            <!-- Micro badge for ddddocr -->
+            <span class="badge" title="系統內建 ddddocr 深度學習秒解圖形驗證碼，下載法源期刊全文時自動辨識免手動輸入" style="display:inline-flex; align-items:center; gap:0.25rem; font-size:0.75rem; color:#6ee7b7; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.25); padding:2px 7px; border-radius:10px; cursor:help;">
+              ⚡ 自動驗證碼辨識已啟用 ✓
+            </span>
           </div>
-          <div style="display:flex; gap:0.5rem; margin-bottom: 0.75rem;">
-            <button id="ccu-do-search-btn" class="filter-chip active" style="padding:0.4rem 1rem; cursor:pointer;">🔍 檢索論文</button>
+
+          <div style="display:flex; gap:0.5rem; margin-bottom:0.6rem;">
+            <div class="input-wrap" style="flex:1;">
+              <input type="text" id="ccu-search-input" class="field-input" placeholder="輸入關鍵字或法條搜尋期刊論文，例如：185-3 酒駕 或 刑法第10條" autocomplete="off" style="width:100%; box-sizing:border-box;" />
+            </div>
+            <button id="ccu-do-search-btn" class="filter-chip active" style="padding:0.45rem 1.1rem; font-weight:700; cursor:pointer; flex-shrink:0;">🔍 檢索論文</button>
           </div>
-          <div id="ccu-search-results" style="max-height: 220px; overflow-y: auto; font-size:0.875rem;">
-            <div style="color:#71717a; text-align:center; padding:1rem;">尚無檢索結果，請先確認認證並輸入關鍵字搜尋。</div>
+
+          <!-- Search Results / Empty State Container -->
+          <div id="ccu-search-results" style="flex:1; min-height:320px; max-height:460px; overflow-y:auto; font-size:0.875rem; background:#08080a; border:1px solid #1f1f23; border-radius:8px; padding:0.75rem;">
+            <!-- Dynamic Content or Smart Quick Tags will be rendered here -->
           </div>
         </section>
 
-        <!-- Literature Storage & Metrics Dashboard -->
-        <section style="margin-top: 1rem; border-top: 1px solid #27272a; padding-top: 0.85rem;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-            <div style="font-weight:700; font-size:0.9rem;">📊 文獻庫儲存容量與下載監控 (由新至舊)</div>
-            <button id="ccu-refresh-stats-btn" class="filter-chip" style="padding:0.25rem 0.6rem; font-size:0.75rem; cursor:pointer;">重新計算</button>
-          </div>
-          <div id="ccu-storage-metrics" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:0.5rem; margin-bottom:0.6rem;">
-            <div class="card" style="padding:0.6rem; text-align:center;">
-              <div style="font-size:0.75rem; color:#8e8e93;">已收錄文獻</div>
-              <div id="lit-stat-total" style="font-size:1.1rem; font-weight:800; color:#fafafa; margin-top:2px;">- 篇</div>
-            </div>
-            <div class="card" style="padding:0.6rem; text-align:center;">
-              <div style="font-size:0.75rem; color:#8e8e93;">已下載 PDF</div>
-              <div id="lit-stat-downloaded" style="font-size:1.1rem; font-weight:800; color:#34d399; margin-top:2px;">- 篇</div>
-            </div>
-            <div class="card" style="padding:0.6rem; text-align:center;">
-              <div style="font-size:0.75rem; color:#8e8e93;">已佔用容量</div>
-              <div id="lit-stat-size" style="font-size:1.1rem; font-weight:800; color:#60a5fa; margin-top:2px;">- MB</div>
-            </div>
-            <div class="card" style="padding:0.6rem; text-align:center;">
-              <div style="font-size:0.75rem; color:#8e8e93;">平均單篇大小</div>
-              <div id="lit-stat-avg" style="font-size:1.1rem; font-weight:800; color:#fbbf24; margin-top:2px;">- MB</div>
-            </div>
-          </div>
-          <div id="lit-year-breakdown" style="font-size:0.8rem; color:#a1a1aa; line-height:1.5;"></div>
-        </section>
+      </div>
+
+      <!-- Bottom StatusBar -->
+      <div class="modal-footer-statusbar" style="border-top:1px solid #27272a; padding:0.55rem 1rem; font-size:0.8rem; color:#a1a1aa; display:flex; justify-content:space-between; align-items:center; background:#101014; border-bottom-left-radius:12px; border-bottom-right-radius:12px;">
+        <div>
+          📁 本地快取：<span id="lit-stat-summary" style="font-weight:700; color:#fafafa;">載入中...</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+          <button id="ccu-refresh-stats-btn" style="background:none; border:none; color:#60a5fa; cursor:pointer; font-size:0.8rem; text-decoration:underline;">[重新計算]</button>
+          <button id="ccu-clear-cache-btn" style="background:none; border:none; color:#71717a; cursor:pointer; font-size:0.8rem; text-decoration:underline;">[清理快取]</button>
+        </div>
       </div>
     </div>
   </div>

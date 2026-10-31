@@ -145,6 +145,13 @@ class TestLiteratureUnitAndIntegration(unittest.TestCase):
             self.assertTrue(data.get("total") >= 1)
             self.assertEqual(data["data"][0]["id"], "test_lit_2026_001")
 
+        # 5. POST /api/cache/clear
+        req = urllib.request.Request(f"{self.base_url}/api/cache/clear", data=b"{}", headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertTrue(data.get("success"))
+
 
 if __name__ == "__main__":
     unittest.main()
+
