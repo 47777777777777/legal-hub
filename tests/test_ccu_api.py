@@ -51,6 +51,14 @@ class TestCCUApiIntegration(unittest.TestCase):
             self.assertTrue(data.get("success"))
             self.assertFalse(data.get("data", {}).get("authenticated"))
 
+    def test_get_ccu_search(self):
+        req = urllib.request.Request(f"{self.base_url}/api/ccu/search?q=185-3")
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertTrue(data.get("success"))
+            self.assertEqual(data.get("query"), "185-3")
+            self.assertIsInstance(data.get("data"), list)
+
 
 if __name__ == "__main__":
     unittest.main()

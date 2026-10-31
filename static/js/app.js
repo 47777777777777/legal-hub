@@ -1079,6 +1079,39 @@ class LegalHubApp {
         this.bindDynamicContent(area);
       });
     });
+
+    // Drawer CCU Paper Search Trigger
+    root.querySelectorAll(".drawer-ccu-fetch-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const query = btn.dataset.query;
+        const card = btn.closest(".card");
+        const box = card ? card.querySelector(".drawer-ccu-results-box") : null;
+        if (!box) return;
+        btn.disabled = true;
+        btn.textContent = "檢索中...";
+        box.innerHTML = '<div style="color:#a1a1aa; padding:0.4rem 0;">正在透過中正 AutoRPA 檢索法源與月旦文獻...</div>';
+        try {
+          const res = await fetch(`/api/ccu/search?q=${encodeURIComponent(query)}`);
+          const json = await res.json();
+          const items = json.data || [];
+          if (!items.length) {
+            box.innerHTML = '<div style="color:#71717a; padding:0.4rem 0;">查無相關文獻，或中正校園代理尚未認證（可點選導覽列 🏛️ 按鈕確認連線）。</div>';
+          } else {
+            box.innerHTML = items.map(item => `
+              <div style="padding:0.5rem 0; border-bottom:1px solid #27272a;">
+                <div style="font-weight:600;"><a href="${item.url}" target="_blank" rel="noopener noreferrer" style="color:#60a5fa; text-decoration:none;">${esc(item.title)} ↗</a></div>
+                <div style="font-size:0.75rem; color:#8e8e93; margin-top:2px;">來源：${esc(item.source)}</div>
+              </div>
+            `).join('');
+          }
+        } catch (e) {
+          box.innerHTML = `<div style="color:#ef4444; padding:0.4rem 0;">檢索失敗：${e.message}</div>`;
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "🔍 檢索本條相關論文";
+        }
+      });
+    });
   }
 
   generateTabContentHtml(art) {
@@ -1408,6 +1441,20 @@ class LegalHubApp {
           <a href="https://www-lawdata-com-tw.autorpa.lib.ccu.edu.tw:8443/anglekmc/ttswebx?@0:0:1:lawkm@@0.1702332962648232" target="_blank" rel="noopener noreferrer" class="judgment-link-btn">
             <span>📚 月旦知識庫論文與爭點 (AutoRPA)</span>${icon("external", 13)}
           </a>
+        </div>
+      </section>
+
+      <section id="drawer-ccu-papers-section">${sectionHeading("book", "中正 AutoRPA 法源與月旦相關論文檢索")}
+        <div class="card" style="padding: 0.85rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.6rem; flex-wrap:wrap; gap:0.5rem;">
+            <span style="font-size:0.85rem; color:#d4d4d8;">查閱探討本條之法源/月旦期刊文獻</span>
+            <button class="filter-chip active drawer-ccu-fetch-btn" data-query="${actName} 第${esc(art.article_no)}條" style="padding:0.3rem 0.8rem; font-size:0.8rem; cursor:pointer;">
+              🔍 檢索本條相關論文
+            </button>
+          </div>
+          <div class="drawer-ccu-results-box" style="font-size:0.85rem; color:#71717a; min-height:36px;">
+            點擊上方按鈕立即向中正法源與月旦檢索關聯論文與裁判解析。
+          </div>
         </div>
       </section>`;
     return html;
