@@ -73,6 +73,22 @@ class LegalApiHandler(BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
 
+        if path == "/api/ccu/session":
+            content_length = int(self.headers.get("Content-Length", 0))
+            if content_length == 0:
+                self.send_error_json(400, "Empty request body.", "BadRequest")
+                return
+            try:
+                body_raw = self.rfile.read(content_length).decode("utf-8")
+                payload = json.loads(body_raw)
+                cookies = payload.get("cookies", "")
+                from backend.ccu_session import CCUSessionManager
+                updated_session = CCUSessionManager.save_session(cookies)
+                self.send_json(200, {"success": True, "data": updated_session})
+            except Exception as e:
+                self.send_error_json(500, str(e), "ServerError")
+            return
+
         if path == "/api/acts":
             content_length = int(self.headers.get("Content-Length", 0))
             if content_length == 0:
@@ -110,6 +126,34 @@ class LegalApiHandler(BaseHTTPRequestHandler):
             if path == "/api/cache/stats":
                 stats = storage.cache.stats()
                 self.send_json(200, {"success": True, "data": stats})
+                return
+
+            # GET /api/ccu/status
+            if path == "/api/ccu/status":
+                from backend.ccu_session import CCUSessionManager
+                session_status = CCUSessionManager.load_session()
+                self.send_json(200, {"success": True, "data": session_status})
+                return
+
+            # GET /api/ccu/documents
+            if path == "/api/ccu/documents":
+                from backend.ccu_crawler import CCUCrawler
+                docs = CCUCrawler().list_archived_documents()
+                self.send_json(200, {"success": True, "data": docs})
+                return
+
+            # GET /api/ccu/search?q=...
+            if path == "/api/ccu/search":
+                q = query.get("q", [""])[0]
+                source = query.get("source", ["all"])[0]
+                from backend.ccu_crawler import CCUCrawler
+                crawler = CCUCrawler()
+                results = []
+                if source in ("all", "lawbank"):
+                    results.extend(crawler.search_lawbank_theses(q))
+                if source in ("all", "lawdata"):
+                    results.extend(crawler.search_lawdata_articles(q))
+                self.send_json(200, {"success": True, "data": results, "query": q})
                 return
 
             # Paths like /api/acts/<act_id>...

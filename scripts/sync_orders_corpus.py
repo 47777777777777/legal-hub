@@ -193,3 +193,4 @@ def sync_orders(db_path: str = DB_FILE):
 
 if __name__ == "__main__":
     sync_orders()
+

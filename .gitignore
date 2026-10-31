@@ -29,6 +29,9 @@ downloads/
 temp/
 data/cache/
 data/ChLaw.json
+data/ChOrder.json
+data/ccu_session.json
+data/ccu_downloads.json
 
 # OS & Editor specific files
 .DS_Store

@@ -19,3 +19,4 @@ if not os.path.exists(order_path):
 
 from scripts.sync_orders_corpus import sync_orders
 sync_orders()
+
