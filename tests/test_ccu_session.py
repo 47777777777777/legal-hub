@@ -47,10 +47,20 @@ class TestCCUSessionManager(unittest.TestCase):
         res3 = CCUSessionManager.clean_cookie_input(curl_cmd)
         self.assertEqual(res3, "sessionid=test789; csrftoken=abc")
 
-        # 4. Hint on missing proxy credentials
+        # 4. Multi-line headers (Copy request headers)
+        multi_headers = "accept: text/html\r\ncookie: flysheet-proxy=8eb292; lawbank=af7c\r\nuser-agent: curl"
+        res4 = CCUSessionManager.clean_cookie_input(multi_headers)
+        self.assertEqual(res4, "flysheet-proxy=8eb292; lawbank=af7c")
+
+        # 5. Hint on missing proxy credentials
         sess = CCUSessionManager.save_session("_ga=12345; _gid=67890")
         self.assertFalse(sess["authenticated"])
         self.assertTrue("flysheet-proxy" in sess.get("hint", "").lower() or "sessionid" in sess.get("hint", "").lower())
+
+        # 6. Hint on Accept header
+        sess_accept = CCUSessionManager.save_session("accept: text/html,application/xhtml+xml")
+        self.assertFalse(sess_accept["authenticated"])
+        self.assertIn("accept", sess_accept.get("hint", "").lower())
 
 
 if __name__ == "__main__":

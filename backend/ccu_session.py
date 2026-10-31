@@ -51,10 +51,13 @@ class CCUSessionManager:
         """
         Normalizes and sanitizes cookie input from user.
         Accepts:
-        - Raw Cookie string (e.g. 'sessionid=abc; ...')
-        - Header format (e.g. 'Cookie: sessionid=abc')
-        - Bare sessionid token (e.g. 'mgw0fifytmkbv0kvvgku73lrougb8jzs')
-        - Full cURL command (e.g. "curl '...' -H 'cookie: sessionid=...'")
+        - Raw Cookie string (e.g. 'flysheet-proxy=abc; lawbank=def')
+        - Header format (e.g. 'Cookie: flysheet-proxy=abc')
+        - Multi-line Request Headers (e.g. from Chrome 'Copy request headers')
+        - Full cURL command (bash, cmd, PowerShell)
+        - PowerShell Invoke-WebRequest / Invoke-RestMethod headers block
+        - JavaScript fetch snippet
+        - Bare session/proxy token
         """
         if not raw:
             return ""
@@ -62,23 +65,39 @@ class CCUSessionManager:
         if (raw.startswith('"') and raw.endswith('"')) or (raw.startswith("'") and raw.endswith("'")):
             raw = raw[1:-1].strip()
 
-        # If full cURL command (bash / cmd / PowerShell)
-        if "curl " in raw.lower() or "curl.exe" in raw.lower():
-            import re
-            m = re.search(r"-(?:H|b|-header)\s+['\"](?:cookie:\s*)?([^'\"]+)['\"]", raw, re.IGNORECASE)
-            if m:
-                raw = m.group(1).strip()
-            else:
-                m2 = re.search(r"['\"]cookie:\s*([^'\"]+)['\"]", raw, re.IGNORECASE)
-                if m2:
-                    raw = m2.group(1).strip()
+        import re
 
-        # If leading 'Cookie:' header label
+        # 1. Multi-line headers (e.g. 'Copy request headers' from DevTools)
+        m_head = re.search(r"(?:^|\n)\s*cookie:\s*([^\r\n]+)", raw, re.IGNORECASE)
+        if m_head:
+            return m_head.group(1).strip()
+
+        # 2. PowerShell format: @{"cookie"="..."} or headers['cookie'] = '...'
+        m_ps = re.search(r"cookie[\"']?\s*(?:=|=>|:)\s*[\"']([^\"'\r\n]+)[\"']", raw, re.IGNORECASE)
+        if m_ps and ("powershell" in raw.lower() or "$headers" in raw.lower() or "@{" in raw):
+            return m_ps.group(1).strip()
+
+        # 3. If full cURL command (bash / cmd / PowerShell)
+        if "curl " in raw.lower() or "curl.exe" in raw.lower():
+            raw_clean = raw.replace('^"', '"').replace("^'", "'").replace("`", "")
+            m_curl = re.search(r"-(?:H|b|-header)\s+[\"']?(?:cookie:\s*)?([^\"']+)[\"']?", raw_clean, re.IGNORECASE)
+            if m_curl:
+                return m_curl.group(1).strip()
+            m_curl2 = re.search(r"[\"']cookie:\s*([^\"'\r\n]+)[\"']", raw_clean, re.IGNORECASE)
+            if m_curl2:
+                return m_curl2.group(1).strip()
+
+        # 4. Fetch format: 'cookie': '...'
+        if "fetch(" in raw.lower():
+            m_fetch = re.search(r"[\"']cookie[\"']\s*:\s*[\"']([^\"'\r\n]+)[\"']", raw, re.IGNORECASE)
+            if m_fetch:
+                return m_fetch.group(1).strip()
+
+        # 5. If leading 'Cookie:' header label
         if raw.lower().startswith("cookie:"):
             raw = raw[7:].strip()
 
-        # If user pasted only the bare sessionid token (20-50 chars alphanumeric)
-        import re
+        # 6. If user pasted only the bare sessionid/proxy token (20-50 chars alphanumeric)
         if re.match(r"^[a-zA-Z0-9_-]{20,50}$", raw):
             raw = f"sessionid={raw}"
 
@@ -170,8 +189,10 @@ class CCUSessionManager:
 
         if not session["authenticated"]:
             low_cookies = cookies.lower()
-            if "flysheet-proxy" not in low_cookies and "lawbank" not in low_cookies and "sessionid" not in low_cookies:
-                session["hint"] = "貼上的內容缺少中正 AutoRPA 代理通行證（如 flysheet-proxy、lawbank 等）。請從 Network（網路）分頁選「Copy as cURL」整段貼上！"
+            if low_cookies.startswith("accept:") or ("text/html" in low_cookies and "flysheet" not in low_cookies):
+                session["hint"] = "您剛才複製到的是「Accept」格式標頭，並非「Cookie」。在 Network 分頁請直接在左側請求名稱上按右鍵選「Copy → Copy as cURL (bash 或 cmd)」，整段貼上即可！"
+            elif "flysheet-proxy" not in low_cookies and "lawbank" not in low_cookies and "sessionid" not in low_cookies:
+                session["hint"] = "貼上的內容缺少中正 AutoRPA 代理通行證（如 flysheet-proxy、lawbank 等）。請從 Network（網路）分頁對首頁請求點右鍵選「Copy as cURL」整段貼上！"
             elif "flysheet-proxy" not in low_cookies and "asp.net_sessionid" in low_cookies:
                 session["hint"] = "已偵測到 ASP.NET_SessionId，但缺少代理關鍵的 flysheet-proxy 與 lawbank。請從 Network（網路）分頁對首頁請求點右鍵選「Copy as cURL」整段貼上！"
             else:
