@@ -5,7 +5,7 @@ import os
 import sys
 import json
 import urllib.parse
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from typing import Optional
 
 # Setup sys.path so direct execution works
@@ -27,6 +27,8 @@ storage = LegalStorage(DATA_DIR)
 
 
 class LegalApiHandler(BaseHTTPRequestHandler):
+    timeout = 15  # Timeout for slow/stalled client connections
+
     def send_json(self, status_code: int, data: dict):
         body = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
         self.send_response(status_code)
@@ -206,6 +208,11 @@ class LegalApiHandler(BaseHTTPRequestHandler):
         self.wfile.write(content)
 
 
+class ThreadingLegalServer(ThreadingHTTPServer):
+    daemon_threads = True
+    request_queue_size = 128
+
+
 def run_server(port: int = None, host: str = "0.0.0.0"):
     if port is None:
         port = int(os.environ.get("PORT", 8080))
@@ -222,7 +229,7 @@ def run_server(port: int = None, host: str = "0.0.0.0"):
         print(f"Corpus check info: {e}")
 
     server_address = (host, port)
-    httpd = HTTPServer(server_address, LegalApiHandler)
+    httpd = ThreadingLegalServer(server_address, LegalApiHandler)
     print(f"Legal Hub Server running at http://{host}:{port}/")
     print(f"LAN Access for Mobile Phone: http://192.168.1.103:{port}/")
     try:
