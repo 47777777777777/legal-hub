@@ -47,19 +47,54 @@ class CCUSessionManager:
             }
 
     @staticmethod
+    def clean_cookie_input(raw: str) -> str:
+        """
+        Normalizes and sanitizes cookie input from user.
+        Accepts:
+        - Raw Cookie string (e.g. 'sessionid=abc; ...')
+        - Header format (e.g. 'Cookie: sessionid=abc')
+        - Bare sessionid token (e.g. 'mgw0fifytmkbv0kvvgku73lrougb8jzs')
+        - Full cURL command (e.g. "curl '...' -H 'cookie: sessionid=...'")
+        """
+        if not raw:
+            return ""
+        raw = raw.strip()
+        if (raw.startswith('"') and raw.endswith('"')) or (raw.startswith("'") and raw.endswith("'")):
+            raw = raw[1:-1].strip()
+
+        # If full cURL command
+        if "curl " in raw.lower():
+            import re
+            m = re.search(r"-(?:H|b|header)\s+['\"](?:cookie:\s*)?([^'\"]+)['\"]", raw, re.IGNORECASE)
+            if m:
+                raw = m.group(1).strip()
+
+        # If leading 'Cookie:' header label
+        if raw.lower().startswith("cookie:"):
+            raw = raw[7:].strip()
+
+        # If user pasted only the bare sessionid token (20-50 chars alphanumeric)
+        import re
+        if re.match(r"^[a-zA-Z0-9_-]{20,50}$", raw):
+            raw = f"sessionid={raw}"
+
+        return raw
+
+    @staticmethod
     def save_session(cookies: str) -> Dict[str, Any]:
         """
-        Saves raw Cookie header string and verifies against CCU AutoRPA gateways.
+        Saves Cookie header string and verifies against CCU AutoRPA gateways.
         """
         os.makedirs(DATA_DIR, exist_ok=True)
-        cookies = (cookies or "").strip()
+        cookies = CCUSessionManager.clean_cookie_input(cookies)
         data = {
             "authenticated": False,
             "cookies": cookies,
             "lawbank_active": False,
             "lawdata_active": False,
             "last_checked": None,
-            "institution": "國立中正大學圖書館 (AutoRPA)"
+            "institution": "國立中正大學圖書館 (AutoRPA)",
+            "hint": None
         }
         with open(SESSION_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
@@ -129,6 +164,14 @@ class CCUSessionManager:
         session["lawdata_active"] = lawdata_ok
         session["authenticated"] = lawbank_ok or lawdata_ok
 
+        if not session["authenticated"]:
+            if "sessionid" not in cookies.lower():
+                session["hint"] = "貼上的內容未包含中正代理關鍵的「sessionid」（瀏覽器安全機制會將 sessionid 隱藏於主控台之外）。請依說明從 F12 的「Application -> Cookies」或「Network」複製 sessionid！"
+            else:
+                session["hint"] = "已偵測到 sessionid，但伺服器回傳未登入狀態（可能 Session 已過期）。請在中正 AutoRPA 頁面重新整理或重新登入後再次複製。"
+        else:
+            session["hint"] = "中正 AutoRPA 連線認證成功！"
+
         try:
             with open(SESSION_FILE, "w", encoding="utf-8") as f:
                 json.dump(session, f, ensure_ascii=False, indent=2)
@@ -136,3 +179,4 @@ class CCUSessionManager:
             pass
 
         return session
+

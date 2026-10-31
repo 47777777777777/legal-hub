@@ -193,26 +193,33 @@
           </div>
 
           <!-- Step-by-step Cookie retrieval help -->
-          <details style="background:#18181b; border:1px solid #27272a; border-radius:6px; padding:0.6rem 0.8rem; margin-bottom:0.75rem; font-size:0.825rem; color:#d4d4d8;">
+          <details open style="background:#18181b; border:1px solid #27272a; border-radius:6px; padding:0.6rem 0.8rem; margin-bottom:0.75rem; font-size:0.825rem; color:#d4d4d8;">
             <summary style="cursor:pointer; font-weight:700; color:#93c5fd; user-select:none;">
-              💡 找不到 Cookie？點此查看「3 秒取得 Cookie」超簡易教學
+              💡 如何複製中正 AutoRPA 的 sessionid（必看指引）
             </summary>
-            <ol style="margin:0.5rem 0 0 1.2rem; padding:0; line-height:1.6; color:#a1a1aa;">
-              <li>先點上方 <b>「點此開啟中正登入頁 ↗」</b>，登入中正單一簽入帳號（SSO）。</li>
-              <li>登入完成後會自動導向法源法律網首頁。在該分頁按下鍵盤 <b>F12</b>（或按右鍵選「檢查」）。</li>
-              <li>點上方切換到 <b>Console（主控台）</b>，貼上這行指令並按 Enter：
-                <div style="background:#09090b; padding:0.3rem 0.5rem; margin:0.3rem 0; border-radius:4px; font-family:monospace; color:#34d399; user-select:all;">
-                  copy(document.cookie)
-                </div>
-                （這行指令會直接將完整的 Cookie 自動複製到你的剪貼簿！）
-              </li>
-              <li>回到本畫面，點擊下方的 <b>「📋 貼上剪貼簿」</b> 或在框內按 <b>Ctrl + V</b>，再按 <b>「儲存並驗證連線」</b> 即可！</li>
-            </ol>
+            <div style="margin-top:0.5rem; line-height:1.6; color:#a1a1aa;">
+              <div style="margin-bottom:0.4rem;">中正校園代理的通行證為 <b>sessionid</b>（瀏覽器 HttpOnly 安全機制會將其隱藏，無法從主控台讀取）。請選以下任一種方式複製：</div>
+              
+              <div style="background:#09090b; border:1px solid #27272a; border-radius:4px; padding:0.5rem; margin-bottom:0.5rem;">
+                <b style="color:#60a5fa;">【方式一：最推薦】從 Application 複製 sessionid</b><br>
+                1. 登入法源後在分頁按鍵盤 <b>F12</b>（或右鍵點「檢查」）。<br>
+                2. 上方切換至 <b>Application</b>（應用程式）分頁（若沒看到可點 <code>&gt;&gt;</code> 展開）。<br>
+                3. 左側清單展開 <b>Storage → Cookies</b>，點擊 <code>autorpa.lib.ccu.edu.tw</code>。<br>
+                4. 在表格中找到名稱為 <b>sessionid</b> 的那一欄，雙擊複製它的值（約 32 碼英數字），貼在下方輸入框即可！
+              </div>
+
+              <div style="background:#09090b; border:1px solid #27272a; border-radius:4px; padding:0.5rem;">
+                <b style="color:#34d399;">【方式二】從 Network 複製完整請求標頭</b><br>
+                1. 在登入後的法源分頁按 <b>F12</b> 切換至 <b>Network</b>（網路），按 <b>F5</b> 重新整理。<br>
+                2. 點選清單中最上方第一筆請求，在右邊 <b>Request Headers</b> 找到 <b>Cookie:</b>，複製整行並貼上（系統會自動萃取）。
+              </div>
+            </div>
           </details>
 
           <div class="input-wrap" style="margin-bottom: 0.5rem;">
-            <input type="text" id="ccu-cookie-input" class="field-input" placeholder="在法源頁面複製 document.cookie 後在此貼上 (Ctrl+V)" autocomplete="off" />
+            <input type="text" id="ccu-cookie-input" class="field-input" placeholder="貼上 sessionid (約 32 碼英數) 或完整 Cookie / cURL" autocomplete="off" />
           </div>
+          <div id="ccu-hint-box" style="font-size:0.8rem; margin-bottom:0.5rem; color:#f87171; display:none; line-height:1.4;"></div>
           <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
             <button id="ccu-paste-btn" class="filter-chip" style="padding:0.4rem 0.8rem; cursor:pointer;" title="一鍵從剪貼簿貼上">📋 貼上剪貼簿</button>
             <button id="ccu-save-session-btn" class="filter-chip active" style="padding:0.4rem 1rem; cursor:pointer;">儲存並驗證連線</button>

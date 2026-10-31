@@ -542,6 +542,7 @@ class LegalHubApp {
   async refreshCCUStatus() {
     const badge = document.getElementById("ccu-auth-badge");
     const indicator = document.getElementById("ccu-header-indicator");
+    const hintBox = document.getElementById("ccu-hint-box");
     try {
       const res = await fetch("/api/ccu/status");
       const json = await res.json();
@@ -556,15 +557,23 @@ class LegalHubApp {
           indicator.style.background = "#10b981";
           indicator.title = "中正 AutoRPA 已認證";
         }
+        if (hintBox) {
+          hintBox.style.display = "none";
+        }
       } else {
         if (badge) {
-          badge.textContent = "● 未認證 (請登入後貼上 Cookie)";
+          badge.textContent = "● 未認證 (請依說明填入 sessionid)";
           badge.style.background = "#2a2a32";
           badge.style.color = "#a1a1aa";
         }
         if (indicator) {
           indicator.style.background = "#71717a";
           indicator.title = "中正 AutoRPA 未認證 (點擊設定)";
+        }
+        if (hintBox && data.hint) {
+          hintBox.textContent = data.hint;
+          hintBox.style.display = "block";
+          hintBox.style.color = "#f87171";
         }
       }
     } catch (e) {
@@ -578,6 +587,7 @@ class LegalHubApp {
     const refreshBtn = document.getElementById("ccu-refresh-status-btn");
     const cookieInput = document.getElementById("ccu-cookie-input");
     const pasteBtn = document.getElementById("ccu-paste-btn");
+    const hintBox = document.getElementById("ccu-hint-box");
     const searchBtn = document.getElementById("ccu-do-search-btn");
     const searchInput = document.getElementById("ccu-search-input");
     const resultsContainer = document.getElementById("ccu-search-results");
@@ -591,7 +601,7 @@ class LegalHubApp {
             pasteBtn.textContent = "✅ 已成功貼上！";
             setTimeout(() => { pasteBtn.textContent = "📋 貼上剪貼簿"; }, 1500);
           } else {
-            alert("剪貼簿目前沒有內容，請先在登入後的法源分頁執行 copy(document.cookie)");
+            alert("剪貼簿目前沒有內容，請先複製 sessionid 或 Cookie");
           }
         } catch (e) {
           cookieInput.focus();
@@ -612,8 +622,22 @@ class LegalHubApp {
             body: JSON.stringify({ cookies: val })
           });
           const json = await res.json();
+          const d = json.data || {};
+          if (hintBox) {
+            if (d.hint) {
+              hintBox.textContent = d.hint;
+              hintBox.style.display = "block";
+              hintBox.style.color = d.authenticated ? "#34d399" : "#f87171";
+            } else {
+              hintBox.style.display = "none";
+            }
+          }
           await this.refreshCCUStatus();
-          alert(json.data && json.data.authenticated ? "✅ 中正 AutoRPA 認證成功！" : "⚠️ Cookie 已儲存，但尚未通過中正 AutoRPA 驗證，請確認登入狀態。");
+          if (d.authenticated) {
+            alert("✅ 中正 AutoRPA 認證成功！已成功連通法源與月旦資料庫。");
+          } else {
+            alert("⚠️ " + (d.hint || "尚未通過中正 AutoRPA 驗證，請確認 sessionid 是否正確。"));
+          }
         } catch (e) {
           alert("儲存失敗：" + e.message);
         } finally {
