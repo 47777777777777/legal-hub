@@ -485,32 +485,33 @@ mark {
   flex-direction: column;
 }
 
-/* Distinct Demarcated Surface Card with clear boundaries */
+/* Highly Distinct Standalone Surface Card with high contrast boundaries */
 .stream-article-card {
-  padding: 0.95rem 1.25rem;
-  margin-bottom: 0.85rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  padding: 1.1rem 1.35rem;
+  margin-bottom: 1.25rem;
+  background: #111115;
+  border: 1px solid #2f2f37;
+  border-radius: 9px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7);
   transition: all 0.15s ease;
   cursor: pointer;
   position: relative;
 }
 .stream-article-card:hover {
-  background: var(--bg-surface-elevated);
-  border-color: #3f3f46;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  background: #16161b;
+  border-color: #4b4b56;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.9);
+  transform: translateY(-1px);
 }
 .stream-article-card.active {
-  background: var(--bg-surface-elevated);
-  border-color: #52525b;
-  border-left: 4px solid #ffffff;
+  background: #17171d;
+  border-color: #636370;
+  border-left: 5px solid #ffffff;
 }
 
 [data-density="compact"] .stream-article-card {
-  padding: 0.75rem 1rem;
-  margin-bottom: 0.55rem;
+  padding: 0.85rem 1.15rem;
+  margin-bottom: 0.95rem;
 }
 
 .article-card-header {
@@ -518,9 +519,17 @@ mark {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.65rem;
-  padding-bottom: 0.45rem;
-  border-bottom: 1px solid var(--border-subtle);
+  margin: -1.1rem -1.35rem 0.95rem -1.35rem;
+  padding: 0.65rem 1.35rem;
+  background: #17171c;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  border-bottom: 1px solid #282830;
+}
+
+[data-density="compact"] .article-card-header {
+  margin: -0.85rem -1.15rem 0.75rem -1.15rem;
+  padding: 0.5rem 1.15rem;
 }
 
 .article-card-no {
@@ -528,15 +537,16 @@ mark {
   align-items: center;
   gap: 0.5rem;
   font-weight: 800;
-  font-size: 0.95rem;
-  color: var(--text-main);
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-color);
-  padding: 0.15rem 0.55rem;
-  border-radius: 4px;
+  font-size: 0.98rem;
+  color: #ffffff;
+  background: #24242c;
+  border: 1px solid #3c3c46;
+  padding: 0.2rem 0.65rem;
+  border-radius: 5px;
+  letter-spacing: 0.02em;
 }
 .article-card-title {
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: #e4e4e7;
   letter-spacing: 0.02em;
@@ -839,123 +849,59 @@ mark {
 }
 .flowchart-fullscreen-btn:hover { color: var(--accent-primary); }
 
-/* Compact Legal Review Decision Flow (Pill / Rounded Rect only, No Diamonds) */
-.flowchart-container {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem 0.25rem;
-  width: 100%;
-}
-
-.flow-step-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-color);
+/* True Vector Flowchart Diagram (SVG Picture Canvas) */
+.flowchart-svg-card {
+  position: relative;
+  background: #0d0d11;
+  border: 1px solid #282830;
   border-radius: 8px;
-  padding: 0.65rem 0.85rem;
-  transition: border-color 0.15s;
-}
-.flow-step-card:hover {
-  border-color: #3f3f46;
-}
-
-.flow-step-header {
+  padding: 1.25rem 0.5rem 0.85rem;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  overflow: hidden;
 }
 
-.flow-step-pill-tag {
+.flowchart-svg-diagram {
+  width: 100%;
+  max-width: 520px;
+  height: auto;
+  display: block;
+}
+
+.flowchart-svg-toolbar {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.35rem;
+  z-index: 5;
+}
+
+.flowchart-btn {
+  background: #18181f;
+  border: 1px solid #363640;
+  border-radius: 4px;
+  color: var(--text-muted);
+  padding: 0.2rem 0.55rem;
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
-  padding: 0.12rem 0.45rem;
-  border-radius: 4px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--text-dim);
+  gap: 0.3rem;
+  transition: all 0.12s;
+}
+.flowchart-btn:hover {
+  background: #23232c;
+  border-color: #52525e;
+  color: #ffffff;
 }
 
-.flow-step-title {
-  font-size: 0.84rem;
-  font-weight: 700;
-  color: var(--text-main);
-}
-
-/* Rounded Rectangle / Pill Decision Node (Zero space waste) */
-.flow-decision-rect {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 0.45rem 0.75rem;
-  font-size: 0.84rem;
-  font-weight: 600;
-  color: #e4e4e7;
-  line-height: 1.4;
-}
-
-.flow-step-branches {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.15rem;
-}
-
-.flow-branch-pill {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.6rem;
-  border-radius: 999px; /* Pill / Oval shape */
-  font-size: 0.76rem;
-  font-weight: 700;
-  border: 1px solid transparent;
-  text-align: center;
-}
-
-.flow-branch-pill.yes {
-  background: rgba(16, 185, 129, 0.1);
-  color: #34d399;
-  border-color: rgba(16, 185, 129, 0.3);
-}
-
-.flow-branch-pill.no {
-  background: rgba(244, 63, 94, 0.1);
-  color: #fb7185;
-  border-color: rgba(244, 63, 94, 0.3);
-}
-
-.flow-step-connector {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: var(--text-dim);
-  font-size: 0.85rem;
-  line-height: 1;
-  margin: -0.2rem 0;
-}
-
-.flow-conclusion-box {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.65rem 0.9rem;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border-color);
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--text-main);
+#flowchart-modal-body .flowchart-svg-diagram {
+  max-width: 800px;
+  width: 95%;
+  margin: 0 auto;
 }
 
 /* Accordion FAQs */

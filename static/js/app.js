@@ -942,7 +942,7 @@ class LegalHubApp {
       btn.addEventListener("click", () => {
         const modal = document.getElementById("flowchart-modal");
         const body = document.getElementById("flowchart-modal-body");
-        const chartEl = root.querySelector(".flowchart-container");
+        const chartEl = root.querySelector(".flowchart-svg-diagram") || root.querySelector(".flowchart-svg-card");
         if (modal && body && chartEl) {
           body.innerHTML = chartEl.outerHTML;
           modal.classList.remove("hidden");
@@ -1009,11 +1009,13 @@ class LegalHubApp {
       </div>
     </section>`;
 
-    // Flowchart with Fullscreen button (Decision tree with Pill & Rounded Rect, no diamonds)
-    html += `<section>${sectionHeading("branch", "思考脈絡審查路徑圖")}
-      <div class="card flowchart-wrapper">
-        <button class="flowchart-fullscreen-btn" title="全螢幕檢視">${icon("maximize", 12)} 放大檢視</button>
-        ${this.renderDecisionFlowHtml(art)}
+    // Flowchart Vector SVG Image with Fullscreen button
+    html += `<section>${sectionHeading("branch", "思考脈絡審查路徑圖 (向量流程圖)")}
+      <div class="flowchart-svg-card">
+        <div class="flowchart-svg-toolbar">
+          <button class="flowchart-btn flowchart-fullscreen-btn" title="全螢幕向量放大檢視">${icon("maximize", 12)} 放大檢視</button>
+        </div>
+        ${this.generateFlowchartSvg(art)}
       </div>
     </section>`;
 
@@ -1030,111 +1032,205 @@ class LegalHubApp {
     return html;
   }
 
-  // ---------------- Decision Flow Tree (Pill & Rounded Rect only) ----------------
-  renderDecisionFlowHtml(art) {
+  // ---------------- Flowchart Vector SVG Generator (Pure Vector Diagram / Image) ----------------
+  generateFlowchartSvg(art) {
     const actName = this.currentAct ? this.currentAct.name : "";
     const isCriminal = actName.includes("刑法") || actName.includes("懲治") || actName.includes("毒品");
-    const artNo = esc(art.article_no);
+    const artNo = String(art.article_no || "").trim();
 
-    if (isCriminal) {
+    if (artNo === "1" && isCriminal) {
+      // 刑法第 1 條 罪刑法定原則專屬審查向量流程圖 (長方形與橢圓節點，無菱形)
       return `
-        <div class="flowchart-container">
-          <div class="flow-step-card">
-            <div class="flow-step-header">
-              <span class="flow-step-pill-tag">第 1 階層審查</span>
-              <span class="flow-step-title">構成要件該當性 (Tatbestand)</span>
-            </div>
-            <div class="flow-decision-rect">
-              <span>行為是否該當本條第 ${artNo} 條之客觀與主觀法定構成要件？</span>
-            </div>
-            <div class="flow-step-branches">
-              <div class="flow-branch-pill yes"><span>✓ 是</span> 進入違法性審查</div>
-              <div class="flow-branch-pill no"><span>✗ 否</span> 構成要件不該當 (不罰)</div>
-            </div>
-          </div>
+        <svg class="flowchart-svg-diagram" viewBox="0 0 520 440" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="flow-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 1 L 8 5 L 0 9 z" fill="#8e8e93" />
+            </marker>
+          </defs>
 
-          <div class="flow-step-connector">↓</div>
+          <!-- Start Node -->
+          <rect x="180" y="16" width="160" height="38" rx="6" fill="#181820" stroke="#3e3e4a" stroke-width="1.5" />
+          <text x="260" y="40" fill="#fafafa" font-size="13" font-weight="700" text-anchor="middle">生活事實行為發生</text>
 
-          <div class="flow-step-card">
-            <div class="flow-step-header">
-              <span class="flow-step-pill-tag">第 2 階層審查</span>
-              <span class="flow-step-title">違法性阻卻事由 (Rechtswidrigkeit)</span>
-            </div>
-            <div class="flow-decision-rect">
-              <span>是否存在正當防衛(§23)、緊急避難(§24)或依法令之行為(§21)？</span>
-            </div>
-            <div class="flow-step-branches">
-              <div class="flow-branch-pill no"><span>✗ 存在</span> 阻卻違法 (不罰)</div>
-              <div class="flow-branch-pill yes"><span>✓ 無阻卻</span> 具備實質違法性</div>
-            </div>
-          </div>
+          <line x1="260" y1="54" x2="260" y2="86" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
 
-          <div class="flow-step-connector">↓</div>
+          <!-- Decision 1: Oval / Rounded Rect (長方形/橢圓) -->
+          <rect x="135" y="88" width="250" height="44" rx="22" fill="#14141c" stroke="#d4d4d8" stroke-width="1.5" />
+          <text x="260" y="115" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">行為時是否有成文法律明文規定？</text>
 
-          <div class="flow-step-card">
-            <div class="flow-step-header">
-              <span class="flow-step-pill-tag">第 3 階層審查</span>
-              <span class="flow-step-title">有責性與責任能力 (Schuld)</span>
-            </div>
-            <div class="flow-decision-rect">
-              <span>行為人是否具完全責任能力(§18, §19)且具期待可能性？</span>
-            </div>
-            <div class="flow-step-branches">
-              <div class="flow-branch-pill yes"><span>✓ 具備</span> 犯罪完全成立</div>
-              <div class="flow-branch-pill no"><span>✗ 欠缺</span> 不罰或得減輕其刑</div>
-            </div>
-          </div>
+          <!-- Branch 否 -> Curve to 不構成犯罪 -->
+          <path d="M 135 110 L 80 110 L 80 340" fill="none" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+          <rect x="92" y="98" width="24" height="18" rx="4" fill="#2d1217" stroke="#f43f5e" stroke-width="1"/>
+          <text x="104" y="111" fill="#fb7185" font-size="11" font-weight="800" text-anchor="middle">否</text>
 
-          <div class="flow-step-connector">↓</div>
+          <!-- Branch 是 -> Down -->
+          <line x1="260" y1="132" x2="260" y2="174" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+          <rect x="268" y="142" width="24" height="18" rx="4" fill="#12281e" stroke="#10b981" stroke-width="1"/>
+          <text x="280" y="155" fill="#34d399" font-size="11" font-weight="800" text-anchor="middle">是</text>
 
-          <div class="flow-conclusion-box">
-            <span>⚖️ 法律效果審查</span>
-            <span>依法科處本條刑罰或宣告保安處分</span>
-          </div>
-        </div>
-      `;
-    } else {
-      return `
-        <div class="flowchart-container">
-          <div class="flow-step-card">
-            <div class="flow-step-header">
-              <span class="flow-step-pill-tag">第 1 階段</span>
-              <span class="flow-step-title">權利行使或要件成就</span>
-            </div>
-            <div class="flow-decision-rect">
-              <span>行為事實是否完全該當本條法定構成要件？</span>
-            </div>
-            <div class="flow-step-branches">
-              <div class="flow-branch-pill yes"><span>✓ 是</span> 進入阻卻/抗辯審查</div>
-              <div class="flow-branch-pill no"><span>✗ 否</span> 要件不該當 (無法律效果)</div>
-            </div>
-          </div>
+          <!-- Decision 2: Oval / Rounded Rect (長方形/橢圓) -->
+          <rect x="135" y="176" width="250" height="44" rx="22" fill="#14141c" stroke="#d4d4d8" stroke-width="1.5" />
+          <text x="260" y="203" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">是否為不利於行為人之類推適用？</text>
 
-          <div class="flow-step-connector">↓</div>
+          <!-- Branch 是 -> Left to 違憲聲請 / 禁止 -->
+          <path d="M 135 198 L 80 198" fill="none" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+          <rect x="96" y="188" width="24" height="18" rx="4" fill="#2d1217" stroke="#f43f5e" stroke-width="1"/>
+          <text x="108" y="201" fill="#fb7185" font-size="11" font-weight="800" text-anchor="middle">是</text>
 
-          <div class="flow-step-card">
-            <div class="flow-step-header">
-              <span class="flow-step-pill-tag">第 2 階段</span>
-              <span class="flow-step-title">抗辯權與障礙事由審查</span>
-            </div>
-            <div class="flow-decision-rect">
-              <span>是否存在時效抗辯、權利行使阻卻或約定排除條款？</span>
-            </div>
-            <div class="flow-step-branches">
-              <div class="flow-branch-pill no"><span>✗ 存在</span> 請求權被阻卻 / 障礙成就</div>
-              <div class="flow-branch-pill yes"><span>✓ 無阻卻</span> 權利健全且有效</div>
-            </div>
-          </div>
+          <rect x="15" y="215" width="130" height="38" rx="6" fill="#1e1318" stroke="#f43f5e" stroke-width="1.5" />
+          <text x="80" y="239" fill="#fca5a5" font-size="12" font-weight="700" text-anchor="middle">聲請違憲審查 / 禁止</text>
 
-          <div class="flow-step-connector">↓</div>
+          <!-- Branch 否 -> Down -->
+          <line x1="260" y1="220" x2="260" y2="262" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+          <rect x="268" y="230" width="24" height="18" rx="4" fill="#12281e" stroke="#10b981" stroke-width="1"/>
+          <text x="280" y="243" fill="#34d399" font-size="11" font-weight="800" text-anchor="middle">否</text>
 
-          <div class="flow-conclusion-box">
-            <span>⚖️ 法律效果與裁判</span>
-            <span>發生法定權利義務變動或履行責任</span>
-          </div>
-        </div>
+          <!-- Decision 3: Oval / Rounded Rect (長方形/橢圓) -->
+          <rect x="135" y="264" width="250" height="44" rx="22" fill="#14141c" stroke="#d4d4d8" stroke-width="1.5" />
+          <text x="260" y="291" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">是否為事後立法 (溯及既往)？</text>
+
+          <!-- Branch 是 -> Curve to 不構成犯罪 -->
+          <path d="M 135 286 L 80 286" fill="none" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+          <rect x="96" y="276" width="24" height="18" rx="4" fill="#2d1217" stroke="#f43f5e" stroke-width="1"/>
+          <text x="108" y="289" fill="#fb7185" font-size="11" font-weight="800" text-anchor="middle">是</text>
+
+          <!-- Branch 否 -> Down to 依法處罰 -->
+          <line x1="260" y1="308" x2="260" y2="348" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+          <rect x="268" y="318" width="24" height="18" rx="4" fill="#12281e" stroke="#10b981" stroke-width="1"/>
+          <text x="280" y="331" fill="#34d399" font-size="11" font-weight="800" text-anchor="middle">否</text>
+
+          <!-- Terminal 1: 不構成犯罪 -->
+          <rect x="15" y="352" width="130" height="44" rx="6" fill="#241117" stroke="#f43f5e" stroke-width="1.5" />
+          <text x="80" y="379" fill="#fda4af" font-size="13" font-weight="800" text-anchor="middle">不構成犯罪</text>
+
+          <!-- Terminal 2: 依法處罰 -->
+          <rect x="195" y="352" width="130" height="44" rx="6" fill="#11241a" stroke="#10b981" stroke-width="1.5" />
+          <text x="260" y="379" fill="#86efac" font-size="13" font-weight="800" text-anchor="middle">依法處罰</text>
+        </svg>
       `;
     }
+
+    if (isCriminal) {
+      // 刑事法律三階層通用向量審查流程圖 (長方形與橢圓節點，無菱形)
+      return `
+        <svg class="flowchart-svg-diagram" viewBox="0 0 520 440" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="flow-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 1 L 8 5 L 0 9 z" fill="#8e8e93" />
+            </marker>
+          </defs>
+
+          <!-- Start Node -->
+          <rect x="170" y="16" width="180" height="36" rx="6" fill="#181820" stroke="#3e3e4a" stroke-width="1.5" />
+          <text x="260" y="39" fill="#fafafa" font-size="13" font-weight="700" text-anchor="middle">生活事實行為發生</text>
+
+          <line x1="260" y1="52" x2="260" y2="82" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+
+          <!-- Decision 1: 構成要件該當 (長方形與橢圓) -->
+          <rect x="120" y="84" width="280" height="44" rx="22" fill="#14141c" stroke="#d4d4d8" stroke-width="1.5" />
+          <text x="260" y="111" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">一、行為是否該當本條第 ${artNo} 條法定要件？</text>
+
+          <!-- Branch 否 -> Left to 不罰 -->
+          <path d="M 120 106 L 70 106 L 70 340" fill="none" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+          <rect x="80" y="95" width="24" height="18" rx="4" fill="#2d1217" stroke="#f43f5e" stroke-width="1"/>
+          <text x="92" y="108" fill="#fb7185" font-size="11" font-weight="800" text-anchor="middle">否</text>
+
+          <!-- Branch 是 -> Down -->
+          <line x1="260" y1="128" x2="260" y2="168" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+          <rect x="268" y="138" width="24" height="18" rx="4" fill="#12281e" stroke="#10b981" stroke-width="1"/>
+          <text x="280" y="151" fill="#34d399" font-size="11" font-weight="800" text-anchor="middle">是</text>
+
+          <!-- Decision 2: 違法性 (長方形與橢圓) -->
+          <rect x="120" y="170" width="280" height="44" rx="22" fill="#14141c" stroke="#d4d4d8" stroke-width="1.5" />
+          <text x="260" y="197" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">二、是否存在阻卻違法事由 (§21~24)？</text>
+
+          <!-- Branch 有 -> Left to 阻卻不罰 -->
+          <path d="M 120 192 L 70 192" fill="none" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+          <rect x="80" y="181" width="24" height="18" rx="4" fill="#2d1217" stroke="#f43f5e" stroke-width="1"/>
+          <text x="92" y="194" fill="#fb7185" font-size="11" font-weight="800" text-anchor="middle">有</text>
+
+          <!-- Branch 無 -> Down -->
+          <line x1="260" y1="214" x2="260" y2="254" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+          <rect x="268" y="224" width="24" height="18" rx="4" fill="#12281e" stroke="#10b981" stroke-width="1"/>
+          <text x="280" y="237" fill="#34d399" font-size="11" font-weight="800" text-anchor="middle">無</text>
+
+          <!-- Decision 3: 罪責 (長方形與橢圓) -->
+          <rect x="120" y="256" width="280" height="44" rx="22" fill="#14141c" stroke="#d4d4d8" stroke-width="1.5" />
+          <text x="260" y="283" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">三、行為人是否具責任能力 (§18, 19)？</text>
+
+          <!-- Branch 無 -> Left to 不罰/保安處分 -->
+          <path d="M 120 278 L 70 278" fill="none" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+          <rect x="80" y="267" width="24" height="18" rx="4" fill="#2d1217" stroke="#f43f5e" stroke-width="1"/>
+          <text x="92" y="280" fill="#fb7185" font-size="11" font-weight="800" text-anchor="middle">無</text>
+
+          <!-- Branch 具備 -> Down to 本罪成立處罰 -->
+          <line x1="260" y1="300" x2="260" y2="346" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+          <rect x="268" y="312" width="24" height="18" rx="4" fill="#12281e" stroke="#10b981" stroke-width="1"/>
+          <text x="280" y="325" fill="#34d399" font-size="11" font-weight="800" text-anchor="middle">有</text>
+
+          <!-- Terminal 1: 不罰 / 阻卻犯罪 -->
+          <rect x="10" y="352" width="130" height="44" rx="6" fill="#241117" stroke="#f43f5e" stroke-width="1.5" />
+          <text x="75" y="379" fill="#fda4af" font-size="12.5" font-weight="800" text-anchor="middle">不構成犯罪 (不罰)</text>
+
+          <!-- Terminal 2: 依法科刑處罰 -->
+          <rect x="195" y="352" width="130" height="44" rx="6" fill="#11241a" stroke="#10b981" stroke-width="1.5" />
+          <text x="260" y="379" fill="#86efac" font-size="12.5" font-weight="800" text-anchor="middle">依法成罪並處罰</text>
+        </svg>
+      `;
+    }
+
+    // 一般法規與民事要件審查向量流程圖 (長方形與橢圓節點，無菱形)
+    return `
+      <svg class="flowchart-svg-diagram" viewBox="0 0 520 400" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="flow-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 1 L 8 5 L 0 9 z" fill="#8e8e93" />
+          </marker>
+        </defs>
+
+        <!-- Start Node -->
+        <rect x="170" y="16" width="180" height="36" rx="6" fill="#181820" stroke="#3e3e4a" stroke-width="1.5" />
+        <text x="260" y="39" fill="#fafafa" font-size="13" font-weight="700" text-anchor="middle">法律事實關係發生</text>
+
+        <line x1="260" y1="52" x2="260" y2="86" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+
+        <!-- Decision 1: 要件成就 (長方形與橢圓) -->
+        <rect x="120" y="88" width="280" height="44" rx="22" fill="#14141c" stroke="#d4d4d8" stroke-width="1.5" />
+        <text x="260" y="115" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">一、事實是否符合本條法定構成要件？</text>
+
+        <!-- Branch 否 -> Left to 無效果 -->
+        <path d="M 120 110 L 70 110 L 70 300" fill="none" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+        <rect x="80" y="99" width="24" height="18" rx="4" fill="#2d1217" stroke="#f43f5e" stroke-width="1"/>
+        <text x="92" y="112" fill="#fb7185" font-size="11" font-weight="800" text-anchor="middle">否</text>
+
+        <!-- Branch 是 -> Down -->
+        <line x1="260" y1="132" x2="260" y2="176" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+        <rect x="268" y="144" width="24" height="18" rx="4" fill="#12281e" stroke="#10b981" stroke-width="1"/>
+        <text x="280" y="157" fill="#34d399" font-size="11" font-weight="800" text-anchor="middle">是</text>
+
+        <!-- Decision 2: 阻卻事由 (長方形與橢圓) -->
+        <rect x="120" y="178" width="280" height="44" rx="22" fill="#14141c" stroke="#d4d4d8" stroke-width="1.5" />
+        <text x="260" y="205" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">二、是否存在時效抗辯或排除事由？</text>
+
+        <!-- Branch 有 -> Left -->
+        <path d="M 120 200 L 70 200" fill="none" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+        <rect x="80" y="189" width="24" height="18" rx="4" fill="#2d1217" stroke="#f43f5e" stroke-width="1"/>
+        <text x="92" y="202" fill="#fb7185" font-size="11" font-weight="800" text-anchor="middle">有</text>
+
+        <!-- Branch 無 -> Down to 成立履行 -->
+        <line x1="260" y1="222" x2="260" y2="306" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
+        <rect x="268" y="254" width="24" height="18" rx="4" fill="#12281e" stroke="#10b981" stroke-width="1"/>
+        <text x="280" y="267" fill="#34d399" font-size="11" font-weight="800" text-anchor="middle">無</text>
+
+        <!-- Terminal 1: 權利阻卻 / 無法律效果 -->
+        <rect x="10" y="312" width="130" height="44" rx="6" fill="#241117" stroke="#f43f5e" stroke-width="1.5" />
+        <text x="75" y="339" fill="#fda4af" font-size="12.5" font-weight="800" text-anchor="middle">權利阻卻 / 不生效力</text>
+
+        <!-- Terminal 2: 法律效果成立並履行 -->
+        <rect x="195" y="312" width="130" height="44" rx="6" fill="#11241a" stroke="#10b981" stroke-width="1.5" />
+        <text x="260" y="339" fill="#86efac" font-size="12.5" font-weight="800" text-anchor="middle">權利健全依法履行</text>
+      </svg>
+    `;
   }
 
   // ---------------- Tab 2: 實務見解 (Dedicated Tab) ----------------
