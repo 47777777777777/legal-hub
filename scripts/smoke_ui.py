@@ -25,7 +25,8 @@ from playwright.sync_api import sync_playwright
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT = int(os.environ.get("PORT", 8080))
-BASE_URL = f"http://127.0.0.1:{PORT}"
+BASE_URL = os.environ.get("BASE_URL", f"http://127.0.0.1:{PORT}")
+SCREENSHOT_PREFIX = os.environ.get("SCREENSHOT_PREFIX", "local_")
 SCREENSHOT_DIR = os.path.join(BASE_DIR, "reports", "screenshots")
 os.makedirs(SCREENSHOT_DIR, exist_ok=True)
 
@@ -183,7 +184,7 @@ def run_smoke_test():
         assert "此條尚無外部解析資料" in drawer_text, "CPC Art 2 should display '此條尚無外部解析資料'!"
         
         # Screenshot CPC Art 2
-        cpc_2_path = os.path.join(SCREENSHOT_DIR, "local_cpc_art_2.png")
+        cpc_2_path = os.path.join(SCREENSHOT_DIR, f"{SCREENSHOT_PREFIX}cpc_art_2.png")
         page.screenshot(path=cpc_2_path)
         print(f"  Saved screenshot: {cpc_2_path}")
         
@@ -213,7 +214,7 @@ def run_smoke_test():
         assert "深度解讀" in tab1_html, "CPC Art 244 missing '深度解讀' section!"
         assert "來源：法律人" in tab1_html, "CPC Art 244 deep reading missing provenance tag!"
         
-        cpc_244_path = os.path.join(SCREENSHOT_DIR, "local_cpc_art_244.png")
+        cpc_244_path = os.path.join(SCREENSHOT_DIR, f"{SCREENSHOT_PREFIX}cpc_art_244.png")
         page.screenshot(path=cpc_244_path)
         print(f"  Saved screenshot: {cpc_244_path}")
         
@@ -226,7 +227,7 @@ def run_smoke_test():
         for term in FORBIDDEN_TERMS:
             assert term not in crim_2_text, f"Forbidden term '{term}' found in Criminal Code Art 2 drawer!"
             
-        crim_2_path = os.path.join(SCREENSHOT_DIR, "local_criminal_art_2.png")
+        crim_2_path = os.path.join(SCREENSHOT_DIR, f"{SCREENSHOT_PREFIX}criminal_art_2.png")
         page.screenshot(path=crim_2_path)
         print(f"  Saved screenshot: {crim_2_path}")
         
@@ -238,7 +239,7 @@ def run_smoke_test():
         art3_text = page.query_selector("#study-drawer-panel").inner_text()
         assert "此條尚無外部解析資料" in art3_text, "Un-enriched article should state '此條尚無外部解析資料'!"
         
-        unenriched_path = os.path.join(SCREENSHOT_DIR, "local_unenriched_art.png")
+        unenriched_path = os.path.join(SCREENSHOT_DIR, f"{SCREENSHOT_PREFIX}unenriched_art.png")
         page.screenshot(path=unenriched_path)
         print(f"  Saved screenshot: {unenriched_path}")
         
