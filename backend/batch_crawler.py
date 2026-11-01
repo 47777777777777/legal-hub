@@ -355,8 +355,9 @@ class BatchHarvester:
         ]
 
         for title_base, author, journal, sdb in core_topics:
+            prefix = "" if title_base.startswith("論") else "論"
             papers.append({
-                "title": f"論{title_base}（{year}年度專題）",
+                "title": f"{prefix}{title_base}（{year}年度專題）",
                 "author": author,
                 "journal_name": journal,
                 "source_db": sdb,
