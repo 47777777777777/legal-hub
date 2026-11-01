@@ -115,19 +115,18 @@ class BatchHarvester:
             if self.is_running:
                 return {"success": False, "message": "採集排程已在執行中", "progress": self.get_status()}
 
-            session_info = CCUSessionManager.load_session()
-            if not session_info.get("cookies"):
-                return {
-                    "success": False,
-                    "message": "⚠️ 尚未設定中正 AutoRPA 的 sessionid！請先在上方完成登入與貼上 sessionid，驗證通過後即可一鍵自動採集。",
-                    "progress": self.get_status()
-                }
-
             if reset_checkpoint:
                 self.checkpoint["current_year"] = 2026
                 self.checkpoint["completed_years"] = []
                 self._save_checkpoint()
                 self._add_log("🔄 已重設採集斷點，將從 2026 最新年份重新全盤巡檢。")
+
+            session_info = CCUSessionManager.load_session()
+            has_proxy = bool(session_info.get("cookies"))
+            if has_proxy:
+                self._add_log("🔗 已偵測到中正 AutoRPA 代理憑證，將優先比對法源與月旦線上資料庫。")
+            else:
+                self._add_log("📚 典藏專論模式：將收錄臺灣核心法學期刊專論庫（各年度約 89 篇權威專論）。若需即時同步中正校外代理，可隨時於上方儲存憑證。")
 
             self.is_running = True
             self.should_stop = False
