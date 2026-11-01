@@ -271,72 +271,74 @@ class BatchHarvester:
         Pre-flight Head Check: Scans the newest published issues (e.g. freshly published month)
         before historical backfill. If newly published articles are found, downloads them first.
         """
-        self.progress["current_action"] = "正在巡檢最新期別 (Head Incremental Check)..."
-        self._add_log("⚡ 階段一：正在巡檢最新發表期刊目錄（法源 / 月旦最新期別）...")
+        self.progress["current_action"] = "正在巡檢全臺 70 本核心法學期刊最新期別..."
+        self._add_log("⚡ 階段一：正在巡檢全臺 70 本核心法學期刊（臺大法學論叢、政大法學評論、月旦法學雜誌、東吳法律學報、中正法學集刊、中研院法學期刊等）最新發表期別...")
 
-        # Search recent authoritative criminal law keywords / latest journal issues
-        search_queries = ["刑法 2026", "法學期刊 2026", "最新專論 2026"]
         new_head_count = 0
         dup_head_count = 0
 
-        for q in search_queries:
+        items = []
+        try:
+            items.extend(crawler.fetch_taiwan_law_journals())
+        except Exception as e:
+            self._add_log(f"⚠️ 讀取核心期刊目錄異常: {e}")
+
+        # Also search lawbank if connected
+        try:
+            items.extend(crawler.search_lawbank_theses("刑法 2026"))
+        except Exception:
+            pass
+
+        for it in items:
             if self.should_stop:
                 break
-            items = []
-            try:
-                items.extend(crawler.search_lawbank_theses(q))
-            except Exception:
-                pass
-            try:
-                items.extend(crawler.search_lawdata_articles(q))
-            except Exception:
-                pass
+            title = it.get("title", "").strip()
+            author = it.get("author", "法學專論").strip()
+            if not title or len(title) < 2:
+                continue
 
-            for it in items:
-                title = it.get("title", "").strip()
-                author = it.get("author", "法學專論").strip()
-                if not title or len(title) < 2:
-                    continue
-
-                # Stage 1: Pre-flight check in SQLite
-                existing = storage.find_literature_by_title_author(title, author)
-                if existing:
-                    dup_head_count += 1
-                    # Associate cited articles
-                    cited = self._extract_statute_articles(title)
-                    for c in cited:
-                        storage.bind_article(existing["id"], c["act_id"], c["article_no"])
-                    continue
-
-                # Stage 2: Download new paper
-                source_db = it.get("source_db", "lawbank")
-                source_url = it.get("url", "")
+            # Stage 1: Pre-flight check in SQLite
+            existing = storage.find_literature_by_title_author(title, author)
+            if existing:
+                dup_head_count += 1
+                # Associate cited articles
                 cited = self._extract_statute_articles(title)
-                lit_payload = {
-                    "id": f"{source_db}_{int(time.time() * 1000)}_{abs(hash(title)) % 10000}",
-                    "title": title,
-                    "author": author,
-                    "journal_name": "月旦法學/專論" if source_db == "lawdata" else "法源法律專論",
-                    "pub_year": 2026,
-                    "pub_date": "2026",
-                    "source_url": source_url,
-                    "source_db": source_db,
-                    "file_size_bytes": 1250000,
-                    "download_status": "ready",
-                    "cited_articles": cited
-                }
-                storage.add_literature(lit_payload)
-                new_head_count += 1
-                self.progress["last_saved_title"] = title
-                self.progress["total_harvested"] += 1
-                self.checkpoint["total_downloaded"] += 1
-                self._add_log(f"  🆕 發現最新出版專論入庫：《{title}》 ({author})")
-                time.sleep(0.3)
+                for c in cited:
+                    storage.bind_article(existing["id"], c["act_id"], c["article_no"])
+                continue
+
+            # Stage 2: Download new paper
+            source_db = it.get("source_db", "lawdata")
+            source_url = it.get("pdf_url") or it.get("url", "")
+            journal_name = it.get("journal_name", "法學期刊專論")
+            pub_date = it.get("pub_date", "2026")
+            pub_year = it.get("pub_year", 2026)
+            cited = self._extract_statute_articles(title)
+            lit_payload = {
+                "id": f"{source_db}_{int(time.time() * 1000)}_{abs(hash(title)) % 10000}",
+                "title": title,
+                "author": author,
+                "journal_name": journal_name,
+                "pub_year": pub_year,
+                "pub_date": pub_date,
+                "source_url": source_url,
+                "source_db": source_db,
+                "file_size_bytes": 1250000,
+                "download_status": "ready",
+                "cited_articles": cited
+            }
+            storage.add_literature(lit_payload)
+            new_head_count += 1
+            self.progress["last_saved_title"] = title
+            self.progress["total_harvested"] += 1
+            self.checkpoint["total_downloaded"] += 1
+            self._add_log(f"  🆕 發現最新出版專論入庫：《{title}》 ({author} - {journal_name})")
+            time.sleep(0.08)
 
         self.checkpoint["total_skipped_duplicates"] += dup_head_count
         self.progress["total_skipped_duplicates"] = self.checkpoint["total_skipped_duplicates"]
         if new_head_count > 0:
-            self._add_log(f"  🎉 最新期別巡檢完成：收錄 {new_head_count} 篇最新專論，略過重複 {dup_head_count} 篇。")
+            self._add_log(f"  🎉 最新期別巡檢完成：收錄 {new_head_count} 篇最新學術專論，略過重複 {dup_head_count} 篇。")
         else:
             self._add_log(f"  ✓ 最新期別已是最新狀態（略過重複 {dup_head_count} 篇），即刻切入歷史回溯採集。")
         return new_head_count
@@ -431,8 +433,8 @@ class BatchHarvester:
                         "title": title,
                         "author": author,
                         "journal_name": it.get("journal_name") or ("月旦法學雜誌" if source_db == "lawdata" else "法源法律專論"),
-                        "pub_year": year,
-                        "pub_date": f"{year}",
+                        "pub_year": it.get("pub_year") or year,
+                        "pub_date": it.get("pub_date") or f"{year}",
                         "source_url": source_url,
                         "source_db": source_db,
                         "file_size_bytes": file_size_bytes,

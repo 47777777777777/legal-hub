@@ -231,7 +231,8 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                                 "author": lit.get("author") or "法學學者",
                                 "source": f"{lit.get('journal_name', '法學期刊')} ({lit.get('pub_year', '')}年) · 本地已收錄",
                                 "source_db": lit.get("source_db") or "local",
-                                "url": f"#/act/{lit.get('act_id', 'criminal_code')}/article/{lit.get('article_no', '10')}",
+                                "url": f"/api/literature/{lit.get('id')}/read" if lit.get("id") else lit.get("source_url", ""),
+                                "file_path": lit.get("file_path"),
                                 "file_size_mb": lit.get("file_size_mb", 1.2),
                                 "is_local": True
                             })
@@ -252,7 +253,8 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                                     "author": lit.get("author") or "法學學者",
                                     "source": f"{lit.get('journal_name', '法學期刊')} ({lit.get('pub_year', '')}年) · 本地已收錄",
                                     "source_db": lit.get("source_db") or "local",
-                                    "url": f"#/act/criminal_code/article/{raw_no}",
+                                    "url": f"/api/literature/{lit.get('id')}/read" if lit.get("id") else lit.get("source_url", ""),
+                                    "file_path": lit.get("file_path"),
                                     "file_size_mb": lit.get("file_size_mb", 1.2),
                                     "is_local": True
                                 })
@@ -273,6 +275,28 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                     t = rit.get("title", "").strip()
                     if t and t not in seen_titles:
                         seen_titles.add(t)
+                        lit_id = rit.get("id")
+                        if not lit_id:
+                            import hashlib
+                            h = hashlib.md5(f"{t}_{rit.get('author', '')}".encode("utf-8")).hexdigest()[:10]
+                            lit_id = f"{rit.get('source_db', 'lit')}_{h}"
+                            rit_payload = {
+                                "id": lit_id,
+                                "title": t,
+                                "author": rit.get("author") or "法學學者",
+                                "journal_name": rit.get("journal_name") or "法學期刊專論",
+                                "pub_year": rit.get("pub_year") or 2026,
+                                "pub_date": rit.get("pub_date") or "",
+                                "source_url": rit.get("pdf_url") or rit.get("url") or "",
+                                "source_db": rit.get("source_db") or "lawdata",
+                                "file_size_bytes": 0,
+                                "download_status": "ready"
+                            }
+                            try:
+                                storage.add_literature(rit_payload)
+                            except Exception:
+                                pass
+                            rit["id"] = lit_id
                         results.append(rit)
 
                 self.send_json(200, {"success": True, "data": results, "query": q, "source": source, "total": len(results)})
@@ -300,6 +324,54 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                     act_id=act_id, article_no=article_no, page=page, page_size=page_size
                 )
                 self.send_json(200, {"success": True, "data": data})
+                return
+
+            # GET /api/literature/<id>/read (串流或代理下載全文 PDF)
+            if path.startswith("/api/literature/") and path.endswith("/read"):
+                lit_id = path.split("/api/literature/")[1].rsplit("/read", 1)[0].strip()
+                lit = storage.get_literature(lit_id)
+                if not lit:
+                    self.send_error_json(404, f"Literature '{lit_id}' not found.", "NotFound")
+                    return
+                # Check if local file exists
+                file_path = lit.get("file_path")
+                if file_path:
+                    abs_path = os.path.join(BASE_DIR, file_path)
+                    if os.path.exists(abs_path) and os.path.getsize(abs_path) > 1024:
+                        with open(abs_path, "rb") as f:
+                            hdr = f.read(5)
+                        if hdr.startswith(b"%PDF"):
+                            self.send_response(200)
+                            self.send_header("Content-Type", "application/pdf")
+                            self.send_header("Content-Length", str(os.path.getsize(abs_path)))
+                            self.send_header("Content-Disposition", f"inline; filename=\"{lit_id}.pdf\"")
+                            self.end_headers()
+                            with open(abs_path, "rb") as f:
+                                self.wfile.write(f.read())
+                            return
+                        else:
+                            try:
+                                os.remove(abs_path)
+                            except Exception:
+                                pass
+                # Attempt to download via CCUCrawler
+                from backend.ccu_crawler import CCUCrawler
+                crawler = CCUCrawler()
+                res = crawler.download_pdf_for_literature(lit)
+                if res.get("success") and res.get("file_path"):
+                    abs_path = os.path.join(BASE_DIR, res["file_path"])
+                    if os.path.exists(abs_path):
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/pdf")
+                        self.send_header("Content-Length", str(os.path.getsize(abs_path)))
+                        self.send_header("Content-Disposition", f"inline; filename=\"{lit_id}.pdf\"")
+                        self.end_headers()
+                        with open(abs_path, "rb") as f:
+                            self.wfile.write(f.read())
+                        return
+
+                status_code = 401 if res.get("error") == "session_expired" else (502 if res.get("error") == "download_failed" else 400)
+                self.send_json(status_code, res)
                 return
 
             # GET /api/literature/<id>

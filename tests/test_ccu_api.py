@@ -8,6 +8,8 @@ import threading
 from http.server import HTTPServer
 
 from backend.app import LegalApiHandler
+from backend.ccu_session import SESSION_FILE
+import os
 
 
 class TestCCUApiIntegration(unittest.TestCase):
@@ -23,6 +25,17 @@ class TestCCUApiIntegration(unittest.TestCase):
     def tearDownClass(cls):
         cls.server.shutdown()
         cls.server.server_close()
+
+    def setUp(self):
+        self.backup = None
+        if os.path.exists(SESSION_FILE):
+            with open(SESSION_FILE, "r", encoding="utf-8") as f:
+                self.backup = f.read()
+
+    def tearDown(self):
+        if self.backup:
+            with open(SESSION_FILE, "w", encoding="utf-8") as f:
+                f.write(self.backup)
 
     def test_get_ccu_status(self):
         req = urllib.request.Request(f"{self.base_url}/api/ccu/status")

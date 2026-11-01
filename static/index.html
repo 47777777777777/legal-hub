@@ -32,10 +32,11 @@
     </div>
 
     <div class="nav-controls">
-      <div class="input-wrap nav-search">
+      <div class="input-wrap nav-search" style="position:relative;">
         <span class="input-icon" data-icon="search" data-size="14"></span>
         <input type="text" id="act-search-input" class="field-input" placeholder="🔍 搜尋全國法規 (Enter)" aria-label="搜尋全國法規" autocomplete="off" />
         <button class="input-clear hidden" id="act-search-clear" aria-label="清除" data-icon="x" data-size="13"></button>
+        <div id="act-search-dropdown" class="act-search-dropdown hidden"></div>
       </div>
       
       <!-- Density Toggle: Standard vs Compact -->
@@ -337,6 +338,29 @@
         <div style="display:flex; align-items:center; gap:0.75rem;">
           <button id="ccu-refresh-stats-btn" style="background:none; border:none; color:#60a5fa; cursor:pointer; font-size:0.8rem; text-decoration:underline;">[重新計算]</button>
           <button id="ccu-clear-cache-btn" style="background:none; border:none; color:#71717a; cursor:pointer; font-size:0.8rem; text-decoration:underline;">[清理快取]</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Literature Full-Text Reader Modal -->
+  <div class="modal-backdrop hidden" id="lit-reader-modal">
+    <div class="modal-dialog" style="max-width: 960px; width: 95vw; display: flex; flex-direction: column; height: 92vh; max-height: 94vh; border-radius: 12px; border: 1px solid #27272a; background: #0c0c0f; box-shadow: 0 25px 60px rgba(0,0,0,0.95); overflow: hidden;">
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; padding: 0.85rem 1.35rem; border-bottom: 1px solid #27272a; background: #121216; flex-shrink: 0;">
+        <div style="display:flex; align-items:center; gap:0.65rem; min-width: 0; overflow: hidden;">
+          <span style="font-size:1.15rem; flex-shrink: 0;">📄</span>
+          <h3 id="lit-reader-modal-title" class="modal-title" style="font-size:1.02rem; font-weight:700; color:#fafafa; margin:0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">論文全文閱讀器</h3>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.6rem; flex-shrink: 0;">
+          <a id="lit-reader-open-tab" href="#" target="_blank" rel="noopener noreferrer" class="filter-chip" style="font-size:0.75rem; padding:0.25rem 0.65rem; text-decoration:none; display:none;">在新分頁開啟 ↗</a>
+          <button class="icon-btn" id="lit-reader-modal-close" aria-label="關閉" style="color:#a1a1aa; cursor:pointer; background:none; border:none; padding:4px; font-size:1.1rem; line-height:1;">✕</button>
+        </div>
+      </div>
+      <div class="modal-body" id="lit-reader-modal-body" style="padding: 0; overflow: hidden; flex: 1; display:flex; flex-direction:column; background:#18181b; position:relative;">
+        <div id="lit-reader-loading" style="padding: 3rem 1.5rem; text-align: center; color: #a1a1aa;">
+          <div style="font-size: 2rem; margin-bottom: 0.75rem;">⏳</div>
+          <div style="font-size: 0.95rem; font-weight: 600; color: #e4e4e7;">正在載入文獻全文...</div>
+          <div style="font-size: 0.8rem; color: #71717a; margin-top: 0.35rem;">透過中正 AutoRPA 校外授權代理即時連線</div>
         </div>
       </div>
     </div>

@@ -490,7 +490,7 @@ CIVIL_ARTICLES = [
     {
         "article_no": "1",
         "chapter": "第一編 總則 / 第一章 法例",
-        "title": "法源適用順序（民事適用法規之順序）",
+        "title": "法源",
         "content": "民事，法律所未規定者，依習慣；無習慣者，依法理。",
         "summary": "確立民法法源適用順位：法律優先，無法律明文時依習慣，無習慣時依法理（法官不得以法無明文拒絕裁判）。",
         "legal_definition": "民事法源適用之裁判規範，確立『法律 → 習慣 → 法理』之嚴格順位層級。徹底排斥法官因法律漏洞而拒絕審判之可能。",
@@ -538,7 +538,7 @@ CIVIL_ARTICLES = [
     {
         "article_no": "184",
         "chapter": "第二編 債 / 第一章 通則 / 第一節 債之發生 / 第二款 侵權行為",
-        "title": "獨立侵權行為之損害賠償責任",
+        "title": "獨立侵權行為責任",
         "content": "因故意或過失，不法侵害他人之權利者，負損害賠償責任。故意以背於善良風俗之方法，加損害於他人者亦同。\n違反保護他人之法律，致生損害於他人者，負賠償責任。但能證明其行為無過失者，不在此限。",
         "summary": "台灣民事侵權行為法之帝王條款，建構三大獨立請求權基礎：第1項前段（權利侵害）、第1項後段（故意背俗加損於利益）與第2項（違反保護他人法律之推定過失）。",
         "legal_definition": "侵權行為法體系之核心。確立三大請求權基礎：第1項前段保護絕對權（生命、身體、財產權等）；第1項後段保護純粹經濟上損失及一切利益（限於故意背信侵害）；第2項為違反公私法保護法規之舉證責任倒置（推定過失）。",
@@ -595,23 +595,38 @@ CIVIL_ARTICLES = [
 ]
 
 def build_corpus():
-    # 1. Update Criminal Code
+    # 1. Update Criminal Code (Merge enrichments, do not wipe out all 422 articles)
     crim_path = os.path.join(DATA_DIR, "criminal_code.json")
-    with open(crim_path, "r", encoding="utf-8") as f:
-        crim_data = json.load(f)
-    crim_data["articles"] = CRIMINAL_ARTICLES
-    with open(crim_path, "w", encoding="utf-8") as f:
-        json.dump(crim_data, f, ensure_ascii=False, indent=2)
-    print(f"Updated criminal_code.json with {len(CRIMINAL_ARTICLES)} full-enrichment articles!")
+    if os.path.exists(crim_path):
+        with open(crim_path, "r", encoding="utf-8") as f:
+            crim_data = json.load(f)
+        art_map = {str(a["article_no"]): a for a in crim_data.get("articles", [])}
+        for rich_art in CRIMINAL_ARTICLES:
+            no = str(rich_art["article_no"])
+            if no in art_map:
+                art_map[no].update(rich_art)
+            else:
+                crim_data.setdefault("articles", []).append(rich_art)
+        with open(crim_path, "w", encoding="utf-8") as f:
+            json.dump(crim_data, f, ensure_ascii=False, indent=2)
+        print(f"Merged enrichments into criminal_code.json!")
 
-    # 2. Update Civil Code
+    # 2. Update Civil Code (Merge enrichments, do not wipe out all 1439 articles)
     civil_path = os.path.join(DATA_DIR, "civil_code.json")
-    with open(civil_path, "r", encoding="utf-8") as f:
-        civil_data = json.load(f)
-    civil_data["articles"] = CIVIL_ARTICLES
-    with open(civil_path, "w", encoding="utf-8") as f:
-        json.dump(civil_data, f, ensure_ascii=False, indent=2)
-    print(f"Updated civil_code.json with {len(CIVIL_ARTICLES)} full-enrichment articles!")
+    if os.path.exists(civil_path):
+        with open(civil_path, "r", encoding="utf-8") as f:
+            civil_data = json.load(f)
+        civil_data["name"] = "民法"
+        art_map = {str(a["article_no"]): a for a in civil_data.get("articles", [])}
+        for rich_art in CIVIL_ARTICLES:
+            no = str(rich_art["article_no"])
+            if no in art_map:
+                art_map[no].update(rich_art)
+            else:
+                civil_data.setdefault("articles", []).append(rich_art)
+        with open(civil_path, "w", encoding="utf-8") as f:
+            json.dump(civil_data, f, ensure_ascii=False, indent=2)
+        print(f"Merged enrichments into civil_code.json!")
 
     # 3. Sync rich articles into SQLite DB if exists
     db_path = os.path.join(BASE_DIR, "data", "legal_hub.db")

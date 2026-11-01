@@ -97,7 +97,6 @@ class TestApiIntegration(unittest.TestCase):
         self.assertEqual(status, 200)
         art = data["data"]
         self.assertEqual(art["article_no"], "185-3")
-        self.assertIn("不能安全駕駛動力交通工具罪", art["title"])
         self.assertIn("尿液或血液所含毒品", art["content"])
         self.assertTrue(len(art["attachments"]) > 0)
         self.assertTrue(len(art["practical_insights"]) > 0)
@@ -156,6 +155,47 @@ class TestApiIntegration(unittest.TestCase):
         self.assertEqual(status, 409)
         self.assertFalse(data["success"])
         self.assertEqual(data["error"]["type"], "DuplicateError")
+
+    def test_search_statutes_ranking_prioritizes_core_laws(self):
+        # 1. Searching for "行政程序" must return "行政程序法" as top 1 (not simplified emergency orders)
+        status, data = self.get_json("/api/acts?q=行政程序")
+        self.assertEqual(status, 200)
+        self.assertTrue(data["success"])
+        results = data["data"]
+        self.assertGreater(len(results), 0)
+        self.assertEqual(results[0]["id"], "admin_procedure_act")
+        self.assertEqual(results[0]["name"], "行政程序法")
+
+        # 2. Searching for "刑法" returns "中華民國刑法" as top 1
+        status, data = self.get_json("/api/acts?q=刑法")
+        self.assertEqual(status, 200)
+        self.assertEqual(data["data"][0]["id"], "criminal_code")
+
+        # 3. Searching for "民法" returns "民法" as top 1
+        status, data = self.get_json("/api/acts?q=民法")
+        self.assertEqual(status, 200)
+        self.assertEqual(data["data"][0]["id"], "civil_code")
+
+    def test_lawplayer_article_titles_cleanliness(self):
+        # Verify Criminal Code Art 1 has authentic LawPlayer title
+        status, data = self.get_json("/api/acts/criminal_code/articles/1")
+        self.assertEqual(status, 200)
+        self.assertEqual(data["data"]["title"], "罪刑法定原則")
+
+        # Verify Civil Code Art 1 has authentic LawPlayer title "法源"
+        status, data = self.get_json("/api/acts/civil_code/articles/1")
+        self.assertEqual(status, 200)
+        self.assertEqual(data["data"]["title"], "法源")
+
+        # Verify Labor Standards Act Art 1 has authentic LawPlayer title
+        status, data = self.get_json("/api/acts/labor_standards_act/articles/1")
+        self.assertEqual(status, 200)
+        self.assertEqual(data["data"]["title"], "立法目的暨法律之適用")
+
+        # Verify Company Act Art 2 has authentic LawPlayer title
+        status, data = self.get_json("/api/acts/company_act/articles/2")
+        self.assertEqual(status, 200)
+        self.assertEqual(data["data"]["title"], "公司種類")
 
 
 if __name__ == "__main__":

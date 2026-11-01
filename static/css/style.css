@@ -1261,3 +1261,53 @@ mark {
 }
 .act-result-row:hover { background: var(--bg-surface-elevated); }
 .act-result-cat { color: var(--text-dim); font-size: 0.72rem; }
+
+/* Global Act Search Dropdown */
+.act-search-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 320px;
+  max-height: 360px;
+  overflow-y: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+  padding: 0.25rem;
+}
+.act-dropdown-item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.65rem;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.act-dropdown-item:hover, .act-dropdown-item.active {
+  background: var(--bg-surface-elevated);
+  border-left: 3px solid var(--accent-primary);
+}
+.act-dropdown-name {
+  font-weight: 600;
+  color: var(--text-main);
+}
+.act-dropdown-cat {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+mark.search-hl {
+  background: rgba(234, 179, 8, 0.35);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}

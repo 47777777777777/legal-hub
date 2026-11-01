@@ -33,28 +33,26 @@ class TestLiteratureUnitAndIntegration(unittest.TestCase):
         # Insert a sample literature for testing
         self.sample_lit = {
             "id": "test_lit_2026_001",
-            "title": "論罪刑法定原則與溯及既往之禁止",
-            "subtitle": "以近年大法庭裁定為中心",
-            "author": "林山田",
-            "author_affiliation": "國立臺灣大學法律學院名譽教授",
-            "journal_name": "臺大法學論叢",
-            "pub_year": 2026,
-            "pub_date": "2026-03",
-            "volume": "第 55 卷",
-            "issue": "第 1 期",
-            "pages": "100-150",
-            "abstract": "本文重新審視罪刑法定原則在現代刑事立法之演進與挑戰...",
-            "abstract_en": "This article re-examines the principle of legality...",
-            "keywords": ["罪刑法定原則", "溯及既往禁止", "刑法第1條", "大法庭裁定"],
+            "title": "論刑法聚眾犯概念與近期相關修法",
+            "subtitle": "以妨害秩序罪章為中心",
+            "author": "許澤天",
+            "author_affiliation": "國立成功大學法律學系教授",
+            "journal_name": "台灣法學雜誌",
+            "pub_year": 2021,
+            "pub_date": "2021-06",
+            "volume": "第 394 期",
+            "issue": "",
+            "pages": "15-28",
+            "abstract": "本文針對刑法第149條及第150條聚眾妨害秩序罪之構成要件修法提出學理評析...",
+            "abstract_en": "This article examines the recent criminal code amendments...",
+            "keywords": ["聚眾犯", "妨害秩序", "刑法第149條", "刑法第150條"],
             "cited_articles": [
-                {"act_id": "criminal_code", "article_no": "1"},
-                {"act_id": "criminal_code", "article_no": "2"}
+                {"act_id": "criminal_code", "article_no": "149"},
+                {"act_id": "criminal_code", "article_no": "150"}
             ],
-            "cited_judgments": ["最高法院 110 年度台上大字第 1234 號裁定", "司法院釋字第 777 號解釋"],
-            "references": ["林山田，《刑法通論（上冊）》，2008 年。"],
-            "related_literature": [
-                {"title": "刑法溯及既往原則之新展開", "author": "李茂生", "year": 2024}
-            ],
+            "cited_judgments": ["最高法院 109 年度台上字第 3381 號判決"],
+            "references": ["許澤天，《刑法分則》，2020 年。"],
+            "related_literature": [],
             "file_path": "downloads/ccu/test_lit_2026_001.pdf",
             "file_size_bytes": 1258291,  # ~1.2 MB
             "download_status": "downloaded",
@@ -77,27 +75,27 @@ class TestLiteratureUnitAndIntegration(unittest.TestCase):
     def test_get_and_dual_binding(self):
         lit = self.storage.get_literature("test_lit_2026_001")
         self.assertIsNotNone(lit)
-        self.assertEqual(lit["title"], "論罪刑法定原則與溯及既往之禁止")
-        self.assertEqual(lit["author"], "林山田")
-        self.assertEqual(lit["journal_name"], "臺大法學論叢")
-        self.assertEqual(lit["pub_year"], 2026)
+        self.assertEqual(lit["title"], "論刑法聚眾犯概念與近期相關修法")
+        self.assertEqual(lit["author"], "許澤天")
+        self.assertEqual(lit["journal_name"], "台灣法學雜誌")
+        self.assertEqual(lit["pub_year"], 2021)
         self.assertGreaterEqual(len(lit["cited_articles"]), 2)
-        self.assertIn("罪刑法定原則", lit["keywords"])
+        self.assertIn("聚眾犯", lit["keywords"])
         self.assertGreater(lit["file_size_mb"], 1.0)
 
-        # Test querying literature by article (二級維度：刑法第 1 條)
-        by_art = self.storage.get_literature_for_article("criminal_code", "1")
+        # Test querying literature by article (二級維度：刑法第 149 條)
+        by_art = self.storage.get_literature_for_article("criminal_code", "149")
         self.assertTrue(len(by_art) >= 1)
 
     def test_duplicate_prevention_same_title_and_author(self):
         # Enforce rule: 同標題 + 同作者 就不能重複儲存
         dup_payload = {
             "id": "new_id_from_other_source",
-            "title": "論罪刑法定原則與溯及既往之禁止",  # Same title
-            "author": "林山田",  # Same author
-            "journal_name": "月旦法學雜誌",
-            "pub_year": 2026,
-            "cited_articles": [{"act_id": "criminal_code", "article_no": "3"}]
+            "title": "論刑法聚眾犯概念與近期相關修法",  # Same title
+            "author": "許澤天",  # Same author
+            "journal_name": "台灣法學雜誌",
+            "pub_year": 2021,
+            "cited_articles": [{"act_id": "criminal_code", "article_no": "150"}]
         }
         count_before = self.storage.get_literature_stats()["total_articles"]
         res_id = self.storage.add_literature(dup_payload)
@@ -106,23 +104,23 @@ class TestLiteratureUnitAndIntegration(unittest.TestCase):
         # Check total count did not increase
         count_after = self.storage.get_literature_stats()["total_articles"]
         self.assertEqual(count_after, count_before)
-        # Check cited article 3 was dual-bound to existing record
-        by_art_3 = self.storage.get_literature_for_article("criminal_code", "3")
-        self.assertEqual(len(by_art_3), 1)
-        self.assertEqual(by_art_3[0]["id"], "test_lit_2026_001")
+        # Check cited article 150 was dual-bound to existing record
+        by_art_150 = self.storage.get_literature_for_article("criminal_code", "150")
+        self.assertEqual(len(by_art_150), 1)
+        self.assertEqual(by_art_150[0]["id"], "test_lit_2026_001")
 
     def test_list_literature_pagination_and_filter(self):
         # Filter by author
-        res_author = self.storage.list_literature(author="林山田")
+        res_author = self.storage.list_literature(author="許澤天")
         self.assertTrue(res_author["total_items"] >= 1)
-        self.assertEqual(res_author["items"][0]["author"], "林山田")
+        self.assertEqual(res_author["items"][0]["author"], "許澤天")
 
         # Filter by year
-        res_year = self.storage.list_literature(year=2026)
+        res_year = self.storage.list_literature(year=2021)
         self.assertTrue(res_year["total_items"] >= 1)
 
         # Filter by act_id and article_no
-        res_art = self.storage.list_literature(act_id="criminal_code", article_no="1")
+        res_art = self.storage.list_literature(act_id="criminal_code", article_no="149")
         self.assertTrue(res_art["total_items"] >= 1)
 
     def test_literature_stats(self):
@@ -132,11 +130,11 @@ class TestLiteratureUnitAndIntegration(unittest.TestCase):
         self.assertGreater(stats["downloaded_size_bytes"], 0)
         self.assertGreater(stats["downloaded_size_mb"], 0)
         self.assertGreater(stats["average_file_size_mb"], 0)
-        self.assertTrue(any(y["year"] == 2026 for y in stats["year_distribution"]))
+        self.assertTrue(any(y["year"] == 2021 for y in stats["year_distribution"]))
 
     def test_api_literature_routes(self):
         # 1. GET /api/literature
-        req = urllib.request.Request(f"{self.base_url}/api/literature?author=%E6%9E%97%E5%B1%B1%E7%94%B0")
+        req = urllib.request.Request(f"{self.base_url}/api/literature?author=%E8%A8%B1%E6%BE%A4%E5%A4%A9")
         with urllib.request.urlopen(req) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             self.assertTrue(data.get("success"))
@@ -147,7 +145,7 @@ class TestLiteratureUnitAndIntegration(unittest.TestCase):
         with urllib.request.urlopen(req) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             self.assertTrue(data.get("success"))
-            self.assertEqual(data["data"]["title"], "論罪刑法定原則與溯及既往之禁止")
+            self.assertEqual(data["data"]["title"], "論刑法聚眾犯概念與近期相關修法")
             self.assertGreaterEqual(len(data["data"]["cited_articles"]), 2)
 
         # 3. GET /api/literature/stats
@@ -158,8 +156,8 @@ class TestLiteratureUnitAndIntegration(unittest.TestCase):
             self.assertIn("downloaded_size_mb", data["data"])
             self.assertIn("average_file_size_mb", data["data"])
 
-        # 4. GET /api/acts/criminal_code/articles/1/literature
-        req = urllib.request.Request(f"{self.base_url}/api/acts/criminal_code/articles/1/literature")
+        # 4. GET /api/acts/criminal_code/articles/149/literature
+        req = urllib.request.Request(f"{self.base_url}/api/acts/criminal_code/articles/149/literature")
         with urllib.request.urlopen(req) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             self.assertTrue(data.get("success"))
@@ -199,7 +197,7 @@ class TestLiteratureUnitAndIntegration(unittest.TestCase):
 
     def test_preflight_title_author_check_and_checkpoint(self):
         # 1. Test storage.find_literature_by_title_author
-        found = self.storage.find_literature_by_title_author("論罪刑法定原則與溯及既往之禁止", "林山田")
+        found = self.storage.find_literature_by_title_author("論刑法聚眾犯概念與近期相關修法", "許澤天")
         self.assertIsNotNone(found)
         self.assertEqual(found["id"], "test_lit_2026_001")
 
@@ -244,9 +242,24 @@ class TestLiteratureUnitAndIntegration(unittest.TestCase):
             self.assertTrue(target.get("is_local"))
 
     def test_clear_all_literature(self):
-        count = self.storage.clear_all_literature()
-        stats = self.storage.get_literature_stats()
+        test_db = os.path.join(os.path.dirname(__file__), "test_clear_isolated.db")
+        if os.path.exists(test_db):
+            os.remove(test_db)
+        isolated_storage = LegalStorage(db_path=test_db)
+        isolated_storage.add_literature({
+            "id": "iso_001",
+            "title": "測試文獻清除",
+            "author": "測試作者",
+            "journal_name": "測試學報"
+        })
+        count = isolated_storage.clear_all_literature()
+        stats = isolated_storage.get_literature_stats()
         self.assertEqual(stats["total_articles"], 0)
+        if os.path.exists(test_db):
+            try:
+                os.remove(test_db)
+            except Exception:
+                pass
 
     def test_semantic_statute_extraction(self):
         from backend.batch_crawler import BatchHarvester

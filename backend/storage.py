@@ -62,6 +62,76 @@ class CacheManager:
         }
 
 
+POPULAR_ACT_IDS = {
+    "criminal_code", "civil_code", "constitution", 
+    "criminal_procedure_code", "civil_procedure_code", 
+    "labor_standards_act", "admin_procedure_act", 
+    "traffic_act", "company_act"
+}
+
+POPULAR_ACT_NAMES = {
+    "中華民國刑法", "民法", "中華民國憲法",
+    "刑事訴訟法", "民事訴訟法", "勞動基準法",
+    "行政程序法", "道路交通管理處罰條例", "公司法"
+}
+
+COMMON_ALIASES = {
+    "刑法": "criminal_code",
+    "民法": "civil_code",
+    "憲法": "constitution",
+    "刑訴": "criminal_procedure_code",
+    "民訴": "civil_procedure_code",
+    "勞基法": "labor_standards_act",
+    "行政程序": "admin_procedure_act",
+    "行程序": "admin_procedure_act",
+    "公司法": "company_act",
+    "交罰條例": "traffic_act",
+    "道交條例": "traffic_act",
+}
+
+def calculate_act_relevance(item: Dict[str, Any], query_str: str) -> int:
+    name = item["name"]
+    act_id = item["id"]
+    category = item.get("category", "") or ""
+    q = query_str.strip().lower()
+    name_lower = name.lower()
+    score = 0
+    
+    # 0. Alias match
+    target_id = COMMON_ALIASES.get(query_str.strip())
+    if target_id and act_id == target_id:
+        score += 3000
+
+    # 1. Exact title match
+    if name_lower == q:
+        score += 2500
+    # 2. Prefix title match
+    elif name_lower.startswith(q):
+        score += 1000
+    # 3. Contains title match & position weighting
+    elif q in name_lower:
+        pos = name_lower.find(q)
+        score += 400 + max(0, 100 - pos * 5)
+    elif q in category.lower():
+        score += 50
+    elif q in act_id.lower():
+        score += 80
+
+    # 4. Popular core statutes boost
+    if act_id in POPULAR_ACT_IDS or name in POPULAR_ACT_NAMES:
+        score += 600
+
+    # 5. Statute hierarchy weighting (Statute vs Administrative Order/Rules)
+    if name.endswith(("法", "律", "條例", "通則")):
+        score += 200
+    elif name.endswith(("辦法", "標準", "細則", "規程", "要點", "注意事項")):
+        score -= 50
+
+    # 6. Length penalty (Longer names are penalized so 42-char orders don't override 5-char core laws)
+    score -= len(name) * 2
+
+    return score
+
 class LegalStorage:
     def __init__(self, acts_dir: Optional[str] = None, db_path: str = DB_FILE):
         self.acts_dir = acts_dir
@@ -258,7 +328,6 @@ class LegalStorage:
                 SELECT id, name, name_en, last_modified, category 
                 FROM acts 
                 WHERE lower(name) LIKE ? OR lower(category) LIKE ? OR lower(id) LIKE ?
-                ORDER BY is_enriched DESC, name ASC
             """, (f"%{q}%", f"%{q}%", f"%{q}%"))
         else:
             cur.execute("SELECT id, name, name_en, last_modified, category FROM acts ORDER BY is_enriched DESC, name ASC")
@@ -268,13 +337,22 @@ class LegalStorage:
 
         results = []
         for r in rows:
-            results.append({
+            item = {
                 "id": r["id"],
                 "name": r["name"],
                 "name_en": r["name_en"] or "",
                 "last_modified": r["last_modified"] or "",
                 "category": r["category"] or ""
-            })
+            }
+            if q:
+                item["_score"] = calculate_act_relevance(item, query)
+            results.append(item)
+
+        if q:
+            # Sort by relevance score DESC, then shorter name ASC, then alphabetical name ASC
+            results.sort(key=lambda x: (x["_score"], -len(x["name"]), x["name"]), reverse=True)
+            for res in results:
+                res.pop("_score", None)
 
         self.cache.set(cache_key, results)
         return results
@@ -480,6 +558,18 @@ class LegalStorage:
         data["file_size_kb"] = round((data.get("file_size_bytes") or 0) / 1024, 1)
         data["file_size_mb"] = round((data.get("file_size_bytes") or 0) / (1024 * 1024), 2)
         return data
+
+    def update_literature_file(self, lit_id: str, file_path: str, file_size_bytes: int):
+        conn = get_connection(self.db_path)
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE literature
+            SET file_path = ?, file_size_bytes = ?, download_status = 'downloaded', updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """, (file_path, file_size_bytes, lit_id))
+        conn.commit()
+        conn.close()
+        self.cache.invalidate("literature:")
 
     def list_literature(
         self,

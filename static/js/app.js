@@ -400,21 +400,130 @@ class LegalHubApp {
   // ---------------- Event Listeners & Global Shortcuts ----------------
   initEventListeners() {
     const actSearchInput = document.getElementById("act-search-input");
-    this.bindClearable(actSearchInput, document.getElementById("act-search-clear"), null);
+    const actSearchDropdown = document.getElementById("act-search-dropdown");
+    let activeDropdownIdx = -1;
+    let actSearchDebounce = null;
+
+    const highlightText = (text, q) => {
+      if (!q || !text) return esc(text || "");
+      const idx = text.toLowerCase().indexOf(q.toLowerCase());
+      if (idx === -1) return esc(text);
+      const before = text.substring(0, idx);
+      const match = text.substring(idx, idx + q.length);
+      const after = text.substring(idx + q.length);
+      return `${esc(before)}<mark class="search-hl">${esc(match)}</mark>${esc(after)}`;
+    };
+
+    const renderDropdown = (items, q) => {
+      if (!actSearchDropdown) return;
+      if (!items || !items.length) {
+        actSearchDropdown.innerHTML = `<div class="empty-note" style="padding:0.75rem; font-size:0.8rem; color:var(--text-dim);">查無相符法規</div>`;
+        actSearchDropdown.classList.remove("hidden");
+        return;
+      }
+      activeDropdownIdx = 0;
+      actSearchDropdown.innerHTML = items.slice(0, 8).map((act, idx) => `
+        <button class="act-dropdown-item ${idx === 0 ? 'active' : ''}" data-act-id="${esc(act.id)}" data-act-name="${esc(act.name)}" data-idx="${idx}">
+          <span class="act-dropdown-name">${highlightText(act.name, q)}</span>
+          <span class="act-dropdown-cat">${esc(act.category || "全國法規")}</span>
+        </button>
+      `).join("");
+      actSearchDropdown.classList.remove("hidden");
+
+      actSearchDropdown.querySelectorAll(".act-dropdown-item").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          this.openResearchTab(btn.dataset.actId, btn.dataset.actName);
+          actSearchDropdown.classList.add("hidden");
+          actSearchInput.value = "";
+          actSearchInput.blur();
+        });
+      });
+    };
+
+    const hideDropdown = () => {
+      if (actSearchDropdown) {
+        actSearchDropdown.classList.add("hidden");
+        actSearchDropdown.innerHTML = "";
+        activeDropdownIdx = -1;
+      }
+    };
+
+    this.bindClearable(actSearchInput, document.getElementById("act-search-clear"), () => hideDropdown());
+
     if (actSearchInput) {
-      actSearchInput.addEventListener("keydown", async (e) => {
-        if (e.key !== "Enter") return;
+      actSearchInput.addEventListener("input", (e) => {
         const query = e.target.value.trim();
+        if (actSearchDebounce) clearTimeout(actSearchDebounce);
+        if (!query) {
+          hideDropdown();
+          return;
+        }
+        actSearchDebounce = setTimeout(async () => {
+          try {
+            const resp = await fetch(`/api/acts?q=${encodeURIComponent(query)}`);
+            const json = await resp.json();
+            if (json.success) {
+              renderDropdown(json.data, query);
+            }
+          } catch (err) { console.error(err); }
+        }, 120);
+      });
+
+      actSearchInput.addEventListener("keydown", async (e) => {
+        const items = actSearchDropdown ? actSearchDropdown.querySelectorAll(".act-dropdown-item") : [];
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          if (items.length > 0) {
+            activeDropdownIdx = (activeDropdownIdx + 1) % items.length;
+            items.forEach((it, idx) => it.classList.toggle("active", idx === activeDropdownIdx));
+            items[activeDropdownIdx].scrollIntoView({ block: "nearest" });
+          }
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          if (items.length > 0) {
+            activeDropdownIdx = (activeDropdownIdx - 1 + items.length) % items.length;
+            items.forEach((it, idx) => it.classList.toggle("active", idx === activeDropdownIdx));
+            items[activeDropdownIdx].scrollIntoView({ block: "nearest" });
+          }
+          return;
+        }
+        if (e.key === "Escape") {
+          hideDropdown();
+          return;
+        }
+        if (e.key !== "Enter") return;
+
+        e.preventDefault();
+        const query = actSearchInput.value.trim();
         if (!query) return;
+
+        // If dropdown item is selected
+        if (items.length > 0 && activeDropdownIdx >= 0 && items[activeDropdownIdx]) {
+          const sel = items[activeDropdownIdx];
+          this.openResearchTab(sel.dataset.actId, sel.dataset.actName);
+          hideDropdown();
+          actSearchInput.blur();
+          return;
+        }
+
         try {
           const resp = await fetch(`/api/acts?q=${encodeURIComponent(query)}`);
           const json = await resp.json();
           if (json.success && json.data.length > 0) {
             const hit = json.data[0];
             this.openResearchTab(hit.id, hit.name);
+            hideDropdown();
             actSearchInput.blur();
           }
         } catch (err) { console.error(err); }
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest(".nav-search")) {
+          hideDropdown();
+        }
       });
     }
 
@@ -467,6 +576,14 @@ class LegalHubApp {
     });
     const tabSearchInput = document.getElementById("tab-search-input");
     tabSearchInput.addEventListener("input", (e) => this.searchActsInModal(e.target.value.trim()));
+    tabSearchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const firstRow = document.querySelector("#tab-search-results .act-result-row");
+        if (firstRow) {
+          firstRow.click();
+        }
+      }
+    });
 
     // Flowchart Modal Close
     document.getElementById("flowchart-modal-close").addEventListener("click", () => {
@@ -491,6 +608,21 @@ class LegalHubApp {
       ccuClose.addEventListener("click", closeCCU);
       ccuModal.addEventListener("click", (e) => {
         if (e.target === ccuModal) closeCCU();
+      });
+    }
+
+    // Literature Reader Modal Controls
+    const litReaderModal = document.getElementById("lit-reader-modal");
+    const litReaderClose = document.getElementById("lit-reader-modal-close");
+    const closeLitReader = () => {
+      if (litReaderModal) litReaderModal.classList.add("hidden");
+      const litBody = document.getElementById("lit-reader-modal-body");
+      if (litBody) litBody.innerHTML = "";
+    };
+    if (litReaderClose && litReaderModal) {
+      litReaderClose.addEventListener("click", closeLitReader);
+      litReaderModal.addEventListener("click", (e) => {
+        if (e.target === litReaderModal) closeLitReader();
       });
     }
 
@@ -979,17 +1111,25 @@ class LegalHubApp {
                   return `
                   <div class="card" style="padding:0.75rem; background:#111115; border:1px solid #232329; border-radius:6px;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem;">
-                      <div style="font-weight:700; font-size:0.9rem;"><a href="${item.url}" target="_blank" rel="noopener noreferrer" style="color:#60a5fa; text-decoration:none;">${esc(item.title)} ↗</a></div>
+                      <div style="font-weight:700; font-size:0.9rem;"><a href="javascript:;" class="lit-reader-trigger" data-lit-id="${item.id || ''}" data-lit-title="${esc(item.title)}" style="color:#60a5fa; text-decoration:none; cursor:pointer;">${esc(item.title)}</a></div>
                       <span class="badge" style="background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder}; font-size:0.75rem; padding:1px 6px; border-radius:4px; flex-shrink:0;">${badgeLabel}</span>
                     </div>
                     <div style="font-size:0.75rem; color:#8e8e93; margin-top:0.35rem; display:flex; justify-content:space-between; align-items:center;">
                       <span>來源：${esc(item.source)}</span>
-                      <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="filter-chip" style="padding:0.2rem 0.55rem; font-size:0.75rem; text-decoration:none;">全文閱覽 ↗</a>
+                      <button type="button" class="filter-chip lit-reader-trigger" data-lit-id="${item.id || ''}" data-lit-title="${esc(item.title)}" style="padding:0.25rem 0.65rem; font-size:0.75rem; cursor:pointer; background:#18181b; border:1px solid #3f3f46; color:#e4e4e7; border-radius:4px;">📖 全文閱覽</button>
                     </div>
                   </div>
                 `}).join('')}
               </div>
             `;
+            resultsContainer.querySelectorAll(".lit-reader-trigger").forEach(el => {
+              el.addEventListener("click", (e) => {
+                e.preventDefault();
+                const lid = el.dataset.litId;
+                const title = el.dataset.litTitle;
+                this.openLiteratureReader(lid, title);
+              });
+            });
             const backBtn = document.getElementById("ccu-back-empty-btn");
             if (backBtn) backBtn.addEventListener("click", () => {
               if (searchInput) searchInput.value = "";
@@ -1013,7 +1153,7 @@ class LegalHubApp {
     const grid = document.getElementById("popular-acts-grid");
     const popular = [
       ["criminal_code", "中華民國刑法"],
-      ["civil_code", "中華民國民法"],
+      ["civil_code", "民法"],
       ["constitution", "中華民國憲法"],
       ["criminal_procedure_code", "刑事訴訟法"],
       ["civil_procedure_code", "民事訴訟法"],
@@ -1036,6 +1176,15 @@ class LegalHubApp {
   async searchActsInModal(query) {
     const box = document.getElementById("tab-search-results");
     if (!query) { box.innerHTML = ""; return; }
+    const highlight = (text, q) => {
+      if (!q || !text) return esc(text || "");
+      const idx = text.toLowerCase().indexOf(q.toLowerCase());
+      if (idx === -1) return esc(text);
+      const before = text.substring(0, idx);
+      const match = text.substring(idx, idx + q.length);
+      const after = text.substring(idx + q.length);
+      return `${esc(before)}<mark class="search-hl">${esc(match)}</mark>${esc(after)}`;
+    };
     try {
       const resp = await fetch(`/api/acts?q=${encodeURIComponent(query)}`);
       const json = await resp.json();
@@ -1044,7 +1193,7 @@ class LegalHubApp {
         ? list
             .map(
               (act) => `<button class="act-result-row" data-act-id="${esc(act.id)}" data-act-name="${esc(act.name)}">
-                <span>${esc(act.name)}</span><span class="act-result-cat">${esc(act.category || "")}</span></button>`
+                <span>${highlight(act.name, query)}</span><span class="act-result-cat">${esc(act.category || "")}</span></button>`
             )
             .join("")
         : `<div class="empty-note">查無相符法規</div>`;
@@ -1522,10 +1671,17 @@ class LegalHubApp {
               ${lit.abstract ? `<div style="font-size:0.85rem; line-height:1.6; color:#d4d4d8; margin-bottom:0.5rem; background:#141417; padding:0.5rem; border-radius:4px;">${esc(lit.abstract)}</div>` : ''}
               <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#71717a;">
                 <span>檔案大小：${lit.file_size_mb ? `${lit.file_size_mb} MB` : '未載入'}</span>
-                ${lit.file_path ? `<a href="/${lit.file_path}" target="_blank" class="filter-chip active" style="padding:0.2rem 0.6rem; font-size:0.75rem; text-decoration:none;">📄 開啟全文 PDF</a>` : ''}
+                <button type="button" class="filter-chip active drawer-lit-read-btn" data-lit-id="${lit.id}" data-lit-title="${esc(lit.title)}" style="padding:0.25rem 0.65rem; font-size:0.75rem; cursor:pointer; background:#2563eb; color:#fff; border:none; border-radius:4px;">📄 開啟全文閱讀</button>
               </div>
             </div>
           `).join('');
+          litContainer.querySelectorAll(".drawer-lit-read-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+              const lid = btn.dataset.litId;
+              const title = btn.dataset.litTitle;
+              this.openLiteratureReader(lid, title);
+            });
+          });
         })
         .catch(() => {
           litContainer.innerHTML = '<div style="color:#71717a; font-size:0.85rem;">載入關聯文獻失敗。</div>';
@@ -2141,6 +2297,179 @@ class LegalHubApp {
       triggerEl.innerHTML = original;
       triggerEl.classList.remove("done");
     }, 1500);
+  }
+
+  openLiteratureReader(litId, title) {
+    const modal = document.getElementById("lit-reader-modal");
+    const modalTitle = document.getElementById("lit-reader-modal-title");
+    const modalBody = document.getElementById("lit-reader-modal-body");
+    const openTabBtn = document.getElementById("lit-reader-open-tab");
+    if (!modal || !modalBody) return;
+
+    if (modalTitle) modalTitle.textContent = title ? `📄 ${title}` : "論文全文閱讀器";
+    if (openTabBtn) {
+      openTabBtn.style.display = "none";
+      openTabBtn.href = "#";
+    }
+
+    modal.classList.remove("hidden");
+    modalBody.innerHTML = `
+      <div style="padding: 3.5rem 1.5rem; text-align: center; color: #a1a1aa; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+        <div style="font-size: 2.2rem; margin-bottom: 0.75rem;">⏳</div>
+        <div style="font-size: 1rem; font-weight: 600; color: #e4e4e7;">正在調閱論文全文...</div>
+        <div style="font-size: 0.82rem; color: #71717a; margin-top: 0.35rem;">透過中正校外連線 (AutoRPA) 授權代理即時連線中</div>
+      </div>
+    `;
+
+    if (!litId) {
+      modalBody.innerHTML = `
+        <div style="padding: 3rem 1.5rem; text-align: center; color: #f87171;">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
+          <div>未指定論文編號，無法調閱全文。</div>
+        </div>
+      `;
+      return;
+    }
+
+    const readUrl = `/api/literature/${encodeURIComponent(litId)}/read`;
+    fetch(readUrl)
+      .then(async (res) => {
+        if (res.status === 200) {
+          const contentType = res.headers.get("content-type") || "";
+          if (contentType.includes("application/pdf")) {
+            if (openTabBtn) {
+              openTabBtn.href = readUrl;
+              openTabBtn.style.display = "inline-block";
+            }
+            modalBody.innerHTML = `
+              <iframe src="${readUrl}" style="width: 100%; height: 100%; border: none; background: #27272a;" title="${esc(title || '文獻全文')}"></iframe>
+            `;
+            return;
+          }
+        }
+
+        let errData = {};
+        try {
+          errData = await res.json();
+        } catch (_) {}
+
+        if (res.status === 401 || errData.error === "session_expired" || errData.error === "not_authenticated") {
+          modalBody.innerHTML = `
+            <div style="max-width: 580px; margin: auto; padding: 2rem; background: #111115; border: 1px solid #dc2626; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); text-align: center;">
+              <div style="font-size: 2.4rem; margin-bottom: 0.6rem;">🔒</div>
+              <h4 style="color: #f87171; font-size: 1.05rem; font-weight: 700; margin-bottom: 0.5rem;">中正 AutoRPA 代理通行證已過期</h4>
+              <p style="color: #a1a1aa; font-size: 0.85rem; line-height: 1.6; margin-bottom: 1.25rem;">
+                中正大學校外連線認證 (AutoRPA) 具備時效保護（通常閒置 20-30 分鐘自動失效）。請貼上最新的 Session Cookie 或 cURL，即可立即續期並閱讀全文。
+              </p>
+              <textarea id="lit-reader-renew-cookie" placeholder="請在此貼上最新中正 AutoRPA Cookie (包含 flysheet-proxy) 或完整 cURL..." style="width: 100%; height: 95px; background: #18181b; border: 1px solid #3f3f46; color: #fafafa; border-radius: 6px; padding: 0.6rem; font-size: 0.8rem; font-family: monospace; resize: none; margin-bottom: 0.85rem; box-sizing: border-box;"></textarea>
+              <div style="display: flex; justify-content: center; gap: 0.75rem;">
+                <button type="button" id="lit-reader-renew-submit" class="primary-btn" style="padding: 0.45rem 1.4rem; font-size: 0.88rem; cursor: pointer; background: #2563eb; color: #fff; border: none; border-radius: 6px; font-weight: 600;">🔄 續期通行證並開啟全文</button>
+              </div>
+              <div id="lit-reader-renew-msg" style="margin-top: 0.65rem; font-size: 0.8rem; display: none;"></div>
+            </div>
+          `;
+
+          const submitBtn = modalBody.querySelector("#lit-reader-renew-submit");
+          const cookieInput = modalBody.querySelector("#lit-reader-renew-cookie");
+          const renewMsg = modalBody.querySelector("#lit-reader-renew-msg");
+
+          if (submitBtn && cookieInput) {
+            submitBtn.addEventListener("click", async () => {
+              const raw = cookieInput.value.trim();
+              if (!raw) {
+                if (renewMsg) {
+                  renewMsg.style.display = "block";
+                  renewMsg.style.color = "#ef4444";
+                  renewMsg.textContent = "請輸入有效的 Cookie 或 cURL。";
+                }
+                return;
+              }
+              submitBtn.disabled = true;
+              submitBtn.textContent = "驗證續期中...";
+              try {
+                const sRes = await fetch("/api/ccu/session", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ cookies: raw })
+                });
+                const sJson = await sRes.json();
+                if (sJson.success && sJson.data && sJson.data.authenticated) {
+                  if (renewMsg) {
+                    renewMsg.style.display = "block";
+                    renewMsg.style.color = "#22c55e";
+                    renewMsg.textContent = "✓ 憑證續期成功！即刻重新調閱全文...";
+                  }
+                  setTimeout(() => {
+                    this.openLiteratureReader(litId, title);
+                  }, 800);
+                } else {
+                  throw new Error(sJson.message || "憑證無效或仍未通過認證");
+                }
+              } catch (err) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "🔄 續期通行證並開啟全文";
+                if (renewMsg) {
+                  renewMsg.style.display = "block";
+                  renewMsg.style.color = "#ef4444";
+                  renewMsg.textContent = `續期失敗：${err.message}`;
+                }
+              }
+            });
+          }
+          return;
+        }
+
+        const mRes = await fetch(`/api/literature/${encodeURIComponent(litId)}`);
+        const mJson = await mRes.json();
+        const lit = mJson.data || {};
+
+        modalBody.innerHTML = `
+          <div style="padding: 2rem 2.5rem; overflow-y: auto; max-width: 800px; margin: 0 auto; color: #e4e4e7;">
+            <div style="font-size: 1.3rem; font-weight: 700; color: #60a5fa; margin-bottom: 0.5rem; line-height: 1.4;">
+              ${esc(lit.title || title)}
+            </div>
+            ${lit.subtitle ? `<div style="font-size: 1rem; color: #a1a1aa; margin-bottom: 0.75rem;">${esc(lit.subtitle)}</div>` : ''}
+            
+            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; background: #121216; padding: 0.85rem 1.1rem; border-radius: 8px; border: 1px solid #27272a; margin-bottom: 1.5rem; font-size: 0.85rem;">
+              <div>👤 <b>作者：</b>${esc(lit.author || "法學學者")}${lit.author_affiliation ? ` (${esc(lit.author_affiliation)})` : ''}</div>
+              <div>📚 <b>期刊：</b>${esc(lit.journal_name || "法學專論")}</div>
+              <div>📅 <b>出刊：</b>${esc(lit.pub_date || String(lit.pub_year || ''))}</div>
+              ${lit.volume || lit.issue ? `<div>🔖 <b>卷期：</b>${esc(lit.volume || '')} ${esc(lit.issue || '')}</div>` : ''}
+              ${lit.pages ? `<div>📄 <b>頁碼：</b>p. ${esc(lit.pages)}</div>` : ''}
+            </div>
+
+            ${lit.abstract ? `
+              <div style="margin-bottom: 1.5rem;">
+                <div style="font-size: 0.92rem; font-weight: 700; color: #fbbf24; margin-bottom: 0.45rem;">【中文摘要】</div>
+                <div style="font-size: 0.88rem; line-height: 1.75; color: #d4d4d8; background: #18181b; padding: 1rem 1.25rem; border-radius: 6px; border: 1px solid #2e2e36;">
+                  ${esc(lit.abstract)}
+                </div>
+              </div>
+            ` : ''}
+
+            ${lit.keywords && lit.keywords.length ? `
+              <div style="margin-bottom: 1.5rem;">
+                <div style="font-size: 0.92rem; font-weight: 700; color: #60a5fa; margin-bottom: 0.45rem;">【關鍵詞】</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.45rem;">
+                  ${lit.keywords.map(kw => `<span class="filter-chip" style="font-size:0.8rem; padding:0.25rem 0.6rem;"># ${esc(kw)}</span>`).join('')}
+                </div>
+              </div>
+            ` : ''}
+
+            <div style="margin-top: 1.5rem; padding: 1rem; background: #18181b; border: 1px dashed #3f3f46; border-radius: 8px; font-size: 0.82rem; color: #a1a1aa; text-align: center;">
+              ℹ️ 本篇論文目次與索引已完整納入系統。若需下載線上專論 PDF 原檔，請確保中正 AutoRPA 代理通行證處於有效授權連線狀態。
+            </div>
+          </div>
+        `;
+      })
+      .catch((err) => {
+        modalBody.innerHTML = `
+          <div style="padding: 3rem 1.5rem; text-align: center; color: #ef4444;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
+            <div style="font-size: 0.95rem; font-weight: 600;">連線失敗：${esc(err.message)}</div>
+          </div>
+        `;
+      });
   }
 }
 
