@@ -1,0 +1,35 @@
+URL: https://lawplayer.com/article/6438cf79e800e5f0b9328bfe
+HTTP/1.1 200 OK
+Date: Sun, 01 Nov 2026 13:34:05 GMT
+Content-Type: text/html; charset=utf-8
+Transfer-Encoding: chunked
+Connection: close
+alt-svc: h3=":443"; ma=86400
+cache-control: s-maxage=86400, stale-while-revalidate=31449600
+Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=XU3MGpcKqH5V7KeRfHmkZ5vlAiwQIxq%2FuvmLD%2Fgl1PohkhW7pBLNlmLxlc%2F%2BSlD5%2Frw2aqWxW3dtpnKmhqUtNzKfrKHWK5xeyIwLb7tNwceN5iSptSlx3kkAA1nNgrCLaj1nzWe4N0HFFH42"}]}
+Server-Timing: cfCacheStatus;desc="HIT"
+Server-Timing: cfEdge;dur=12,cfOrigin;dur=0
+link: </.well-known/ai-resource.json>; rel="ai-resource", </llms.txt>; rel="alternate"; type="text/plain"
+referrer-policy: strict-origin-when-cross-origin
+Server: cloudflare
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+tdm-policy: https://lawplayer.com/terms/ai
+tdm-policy: https://lawplayer.com/terms/ai
+tdm-reservation: 1
+tdm-reservation: 1
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding
+vary: Accept-Encoding
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-lp-build: 55ece03c
+x-lp-reader: absent
+x-nextjs-cache: MISS
+x-nextjs-prerender: 1
+x-nextjs-stale-time: 180
+x-powered-by: Next.js
+x-robots-tag: index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1
+Age: 3407
+cf-cache-status: HIT
+Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+CF-RAY: a53b4661ba13b748-NRT
+
