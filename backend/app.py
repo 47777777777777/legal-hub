@@ -193,18 +193,71 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                 self.send_json(200, {"success": True, "data": status})
                 return
 
-            # GET /api/ccu/search?q=...&source=all|lawbank|lawdata
+            # GET /api/ccu/search?q=...&source=all|lawbank|lawdata (Integrated Local DB + Remote Proxy)
             if path == "/api/ccu/search":
-                q = query.get("q", [""])[0]
+                q = query.get("q", [""])[0].strip()
                 source = query.get("source", ["all"])[0]
+                results = []
+                seen_titles = set()
+
+                # 1. Search local literature database first (guarantee instant visibility of harvested papers)
+                if q:
+                    local_res = storage.list_literature(query=q, page=1, page_size=50)
+                    for lit in local_res.get("items", []):
+                        t = lit.get("title", "").strip()
+                        if t and t not in seen_titles:
+                            seen_titles.add(t)
+                            results.append({
+                                "id": lit.get("id"),
+                                "title": t,
+                                "author": lit.get("author") or "法學學者",
+                                "source": f"{lit.get('journal_name', '法學期刊')} ({lit.get('pub_year', '')}年) · 本地已收錄",
+                                "source_db": lit.get("source_db") or "local",
+                                "url": f"#/act/{lit.get('act_id', 'criminal_code')}/article/{lit.get('article_no', '10')}",
+                                "file_size_mb": lit.get("file_size_mb", 1.2),
+                                "is_local": True
+                            })
+
+                    # Also check if q mentions an article number e.g. "185-3", "10", "第10條"
+                    import re
+                    art_m = re.search(r'(?:第\s*)?(\d+(?:-\d+|之\d+)?)\s*條?', q)
+                    if art_m:
+                        raw_no = art_m.group(1).replace("之", "-")
+                        art_res = storage.list_literature(act_id="criminal_code", article_no=raw_no, page=1, page_size=50)
+                        for lit in art_res.get("items", []):
+                            t = lit.get("title", "").strip()
+                            if t and t not in seen_titles:
+                                seen_titles.add(t)
+                                results.append({
+                                    "id": lit.get("id"),
+                                    "title": t,
+                                    "author": lit.get("author") or "法學學者",
+                                    "source": f"{lit.get('journal_name', '法學期刊')} ({lit.get('pub_year', '')}年) · 本地已收錄",
+                                    "source_db": lit.get("source_db") or "local",
+                                    "url": f"#/act/criminal_code/article/{raw_no}",
+                                    "file_size_mb": lit.get("file_size_mb", 1.2),
+                                    "is_local": True
+                                })
+
+                # 2. Query remote AutoRPA proxy if active
                 from backend.ccu_crawler import CCUCrawler
                 crawler = CCUCrawler()
-                results = []
-                if source in ("all", "lawbank"):
-                    results.extend(crawler.search_lawbank_theses(q))
-                if source in ("all", "lawdata"):
-                    results.extend(crawler.search_lawdata_articles(q))
-                self.send_json(200, {"success": True, "data": results, "query": q, "source": source})
+                remote_items = []
+                try:
+                    if source in ("all", "lawbank"):
+                        remote_items.extend(crawler.search_lawbank_theses(q))
+                    if source in ("all", "lawdata"):
+                        remote_items.extend(crawler.search_lawdata_articles(q))
+                except Exception as e:
+                    print(f"Remote proxy search error: {e}")
+
+                for rit in remote_items:
+                    t = rit.get("title", "").strip()
+                    if t and t not in seen_titles:
+                        seen_titles.add(t)
+                        results.append(rit)
+
+                self.send_json(200, {"success": True, "data": results, "query": q, "source": source, "total": len(results)})
                 return
 
             # GET /api/literature/stats (文獻儲存與容量統計)

@@ -99,12 +99,13 @@ class TestLiteratureUnitAndIntegration(unittest.TestCase):
             "pub_year": 2026,
             "cited_articles": [{"act_id": "criminal_code", "article_no": "3"}]
         }
+        count_before = self.storage.get_literature_stats()["total_articles"]
         res_id = self.storage.add_literature(dup_payload)
         # Must return the existing ID test_lit_2026_001 instead of inserting a new record
         self.assertEqual(res_id, "test_lit_2026_001")
         # Check total count did not increase
-        stats = self.storage.get_literature_stats()
-        self.assertEqual(stats["total_articles"], 1)
+        count_after = self.storage.get_literature_stats()["total_articles"]
+        self.assertEqual(count_after, count_before)
         # Check cited article 3 was dual-bound to existing record
         by_art_3 = self.storage.get_literature_for_article("criminal_code", "3")
         self.assertEqual(len(by_art_3), 1)
@@ -214,6 +215,67 @@ class TestLiteratureUnitAndIntegration(unittest.TestCase):
         self.assertIn("current_year", status)
         self.assertIn("total_skipped_duplicates", status)
         self.assertGreater(status["estimation"]["estimated_10y_gb"], 0)
+
+    def test_ccu_search_returns_local_harvested_articles(self):
+        # Insert target literature
+        sample = {
+            "id": "lawbank_2015_test_evolution",
+            "title": "論刑法總則規範在2015年度司法實務之演進",
+            "author": "法學論叢專題",
+            "journal_name": "法源法律專論",
+            "pub_year": 2015,
+            "pub_date": "2015",
+            "file_size_bytes": 1250000,
+            "download_status": "ready"
+        }
+        self.storage.add_literature(sample)
+
+        # GET /api/ccu/search?q=論刑法總則規範
+        import urllib.parse
+        q_enc = urllib.parse.quote("論刑法總則規範")
+        req = urllib.request.Request(f"{self.base_url}/api/ccu/search?q={q_enc}")
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertTrue(data.get("success"))
+            items = data.get("data", [])
+            titles = [it.get("title") for it in items]
+            self.assertIn("論刑法總則規範在2015年度司法實務之演進", titles)
+            target = next(it for it in items if it.get("title") == "論刑法總則規範在2015年度司法實務之演進")
+            self.assertTrue(target.get("is_local"))
+
+    def test_curated_theses_volume_across_years(self):
+        from backend.batch_crawler import BatchHarvester
+        harvester = BatchHarvester.get_instance()
+        for y in [2015, 2020, 2025, 2026]:
+            theses = harvester._get_curated_theses_for_year(y)
+            # Must have substantial volume (at least 80 articles per year)
+            self.assertGreaterEqual(len(theses), 80, f"Year {y} should have at least 80 curated articles")
+            # Must include major journals
+            journals = {t["journal_name"] for t in theses}
+            self.assertIn("月旦法學雜誌", journals)
+            self.assertIn("臺大法學論叢", journals)
+            self.assertIn("政大法學評論", journals)
+            self.assertIn("月旦裁判時報", journals)
+
+    def test_semantic_statute_extraction(self):
+        from backend.batch_crawler import BatchHarvester
+        harvester = BatchHarvester.get_instance()
+        # Test explicit article
+        res1 = harvester._extract_statute_articles("刑法第185條之3酒駕重大爭點")
+        self.assertEqual(res1[0]["article_no"], "185-3")
+
+        # Test semantic keyword
+        res2 = harvester._extract_statute_articles("論正當防衛與防衛過當之司法認定")
+        art_nos2 = [r["article_no"] for r in res2]
+        self.assertIn("23", art_nos2)
+
+        res3 = harvester._extract_statute_articles("詐欺罪與人頭帳戶洗錢防制之主觀犯意")
+        art_nos3 = [r["article_no"] for r in res3]
+        self.assertIn("339", art_nos3)
+
+        res4 = harvester._extract_statute_articles("犯罪所得沒收新制利得估算之衡平")
+        art_nos4 = [r["article_no"] for r in res4]
+        self.assertIn("38-1", art_nos4)
 
 
 if __name__ == "__main__":

@@ -499,9 +499,9 @@ class LegalStorage:
         params: List[Any] = []
 
         if query:
-            where_clauses.append("(l.title LIKE ? OR l.subtitle LIKE ? OR l.abstract LIKE ? OR l.keywords LIKE ?)")
+            where_clauses.append("(l.title LIKE ? OR l.subtitle LIKE ? OR l.abstract LIKE ? OR l.keywords LIKE ? OR l.author LIKE ? OR l.journal_name LIKE ?)")
             q_param = f"%{query}%"
-            params.extend([q_param, q_param, q_param, q_param])
+            params.extend([q_param, q_param, q_param, q_param, q_param, q_param])
 
         if author:
             where_clauses.append("l.author LIKE ?")
