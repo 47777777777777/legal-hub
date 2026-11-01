@@ -118,6 +118,11 @@ class BatchHarvester:
             if reset_checkpoint:
                 self.checkpoint["current_year"] = 2026
                 self.checkpoint["completed_years"] = []
+                self.checkpoint["total_downloaded"] = 0
+                self.checkpoint["total_skipped_duplicates"] = 0
+                self.progress["total_harvested"] = 0
+                self.progress["total_skipped_duplicates"] = 0
+                self.progress["percent"] = 0
                 self._save_checkpoint()
                 self._add_log("🔄 已重設採集斷點，將從 2026 最新年份重新全盤巡檢。")
 

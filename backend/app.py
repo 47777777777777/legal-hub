@@ -103,7 +103,7 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                     body_raw = self.rfile.read(content_length).decode("utf-8")
                     payload = json.loads(body_raw)
                     act_id = payload.get("act_id") or "criminal_code"
-                    reset_cp = bool(payload.get("reset_checkpoint", False))
+                    reset_cp = bool(payload.get("reset_checkpoint", False) or payload.get("reset", False))
                 except Exception:
                     pass
             from backend.batch_crawler import BatchHarvester
