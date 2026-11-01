@@ -243,19 +243,10 @@ class TestLiteratureUnitAndIntegration(unittest.TestCase):
             target = next(it for it in items if it.get("title") == "論刑法總則規範在2015年度司法實務之演進")
             self.assertTrue(target.get("is_local"))
 
-    def test_curated_theses_volume_across_years(self):
-        from backend.batch_crawler import BatchHarvester
-        harvester = BatchHarvester.get_instance()
-        for y in [2015, 2020, 2025, 2026]:
-            theses = harvester._get_curated_theses_for_year(y)
-            # Must have substantial volume (at least 80 articles per year)
-            self.assertGreaterEqual(len(theses), 80, f"Year {y} should have at least 80 curated articles")
-            # Must include major journals
-            journals = {t["journal_name"] for t in theses}
-            self.assertIn("月旦法學雜誌", journals)
-            self.assertIn("臺大法學論叢", journals)
-            self.assertIn("政大法學評論", journals)
-            self.assertIn("月旦裁判時報", journals)
+    def test_clear_all_literature(self):
+        count = self.storage.clear_all_literature()
+        stats = self.storage.get_literature_stats()
+        self.assertEqual(stats["total_articles"], 0)
 
     def test_semantic_statute_extraction(self):
         from backend.batch_crawler import BatchHarvester

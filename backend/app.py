@@ -90,8 +90,26 @@ class LegalApiHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/cache/clear":
+            cleared_count = storage.clear_all_literature()
+            # Also reset harvester checkpoint
+            try:
+                from backend.batch_crawler import BatchHarvester, CHECKPOINT_FILE
+                if os.path.exists(CHECKPOINT_FILE):
+                    os.remove(CHECKPOINT_FILE)
+                harvester = BatchHarvester.get_instance()
+                harvester.checkpoint["current_year"] = 2026
+                harvester.checkpoint["completed_years"] = []
+                harvester.checkpoint["total_downloaded"] = 0
+                harvester.checkpoint["total_skipped_duplicates"] = 0
+                harvester.progress["total_harvested"] = 0
+                harvester.progress["total_skipped_duplicates"] = 0
+                harvester.progress["percent"] = 0
+                harvester.progress["status"] = "idle"
+                harvester.progress["current_action"] = "待命中"
+            except Exception as e:
+                print(f"Error resetting checkpoint on cache clear: {e}")
             storage.cache.invalidate()
-            self.send_json(200, {"success": True, "message": "快取已清理完畢。"})
+            self.send_json(200, {"success": True, "message": f"文獻庫與快取已徹底清理完畢（共清空 {cleared_count} 筆歷史快取）。"})
             return
 
         if path == "/api/ccu/harvest/start":

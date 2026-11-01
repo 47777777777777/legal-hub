@@ -76,6 +76,15 @@ class CCUCrawler:
             print(f"Failed to fetch or solve captcha: {e}")
             return None
 
+    @staticmethod
+    def decode_html(raw_bytes: bytes) -> str:
+        for enc in ("utf-8", "cp950", "big5"):
+            try:
+                return raw_bytes.decode(enc)
+            except (UnicodeDecodeError, LookupError):
+                continue
+        return raw_bytes.decode("utf-8", errors="ignore")
+
     def search_lawbank_theses(self, query: str) -> List[Dict[str, Any]]:
         """
         Searches LawBank for theses, papers, and authoritative opinions.
@@ -88,7 +97,7 @@ class CCUCrawler:
         try:
             req = urllib.request.Request(target_url, headers=self.get_headers())
             with urllib.request.urlopen(req, context=self.ctx, timeout=10) as resp:
-                html = resp.read().decode("utf-8", errors="ignore")
+                html = self.decode_html(resp.read())
             # Extract sample metadata
             results = []
             pattern = re.compile(r'href="([^"]+FINT03\.aspx\?param=[^"]+)"[^>]*>([^<]+)</a>', re.I)
@@ -118,7 +127,7 @@ class CCUCrawler:
         try:
             req = urllib.request.Request(target_url, headers=self.get_headers())
             with urllib.request.urlopen(req, context=self.ctx, timeout=10) as resp:
-                html = resp.read().decode("utf-8", errors="ignore")
+                html = self.decode_html(resp.read())
             results = []
             pattern = re.compile(r'href="([^"]*ttswebx[^"]*)"[^>]*>([^<]+)</a>', re.I)
             for m in pattern.findall(html)[:15]:
@@ -139,7 +148,7 @@ class CCUCrawler:
             alt_url = f"{LAWDATA_URL}anglekm/search.asp?kw={encoded}"
             req_alt = urllib.request.Request(alt_url, headers=self.get_headers())
             with urllib.request.urlopen(req_alt, context=self.ctx, timeout=8) as resp_alt:
-                html_alt = resp_alt.read().decode("utf-8", errors="ignore")
+                html_alt = self.decode_html(resp_alt.read())
             for m in re.findall(r'href="([^"]+)"[^>]*>([^<]+)</a>', html_alt)[:15]:
                 l, t = m
                 clean_t = re.sub(r'<[^>]+>', '', t).strip()

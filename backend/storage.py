@@ -625,6 +625,22 @@ class LegalStorage:
         }
 
 
+    def clear_all_literature(self) -> int:
+        """
+        Clears all literature records and dual bindings from database.
+        """
+        conn = get_connection(self.db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM literature")
+        total = cur.fetchone()[0]
+        cur.execute("DELETE FROM literature_articles")
+        cur.execute("DELETE FROM literature")
+        conn.commit()
+        conn.close()
+        self.cache.invalidate("literature:")
+        return total
+
+
 # Global singleton instance for shared usage
 storage = LegalStorage()
 
