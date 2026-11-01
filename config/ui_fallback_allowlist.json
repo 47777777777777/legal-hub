@@ -1,0 +1,44 @@
+[
+  {
+    "file": "static/js/app.js",
+    "line_hash": "bdea0ba6c269f8da",
+    "value": "尚未通過 AutoRPA 驗證，請確認 sessionid 是否正確。",
+    "reason": "AutoRPA session verification error alert prompt"
+  },
+  {
+    "file": "static/js/app.js",
+    "line_hash": "0eb91d61ae17f2e5",
+    "value": "快取已清理完畢。",
+    "reason": "Cache clear confirmation alert"
+  },
+  {
+    "file": "static/js/app.js",
+    "line_hash": "cd906c4c71526929",
+    "value": "全文",
+    "reason": "Sidebar TOC tree node fallback when act has no chapter/part divisions"
+  },
+  {
+    "file": "static/js/app.js",
+    "line_hash": "102066b965264bea",
+    "value": "文獻全文",
+    "reason": "Iframe accessibility title fallback for modal full text reader"
+  },
+  {
+    "file": "static/js/app.js",
+    "line_hash": "a6b890832bb0f35f",
+    "value": "憑證無效或仍未通過認證",
+    "reason": "AutoRPA authentication exception error message"
+  },
+  {
+    "file": "static/js/app.js",
+    "line_hash": "5992e404bc4ba34d",
+    "value": "連線未驗證",
+    "reason": "Terminal console harvest blocked error message"
+  },
+  {
+    "file": "static/js/app.js",
+    "line_hash": "000cd3432f22111b",
+    "value": "啟動採集失敗",
+    "reason": "Harvest start failed alert prompt"
+  }
+]

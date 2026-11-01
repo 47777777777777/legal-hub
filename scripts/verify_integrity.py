@@ -1,27 +1,38 @@
 """
-Legal Hub Data Integrity & Anti-Tampering Verification Script.
-Exits with non-zero code if any data integrity or guardrail rule is violated:
+scripts/verify_integrity.py
+
+Automated guardrail verification script for Legal Hub.
+Enforces data authenticity, provenance, MOJ consistency, and rejects mock/synthesized content.
 1. Any articles.content in DB disagrees with official MOJ ChLaw.json.
 2. Any article_enrichments row lacks source, source_url, or fetched_at.
 3. official_letters_json contains uniform org fields or template placeholder strings.
 4. Any .py file contains hardcoded statutory article literals exceeding 50 lines (lint).
 5. Orphan enrichments exist without corresponding article in articles table.
+6a. Forbidden synthesized/mock strings in frontend & backend.
+6b. Un-allowlisted Chinese fallbacks ('|| <Chinese>') in static/js/*.js.
+6c. Synthesized template sentences ('現行明文規範'/'位於') in static/js/*.js.
 """
 import os
 import sys
 import json
 import sqlite3
+import hashlib
 import re
+import glob
+
+# Ensure stdout handles UTF-8 characters on Windows consoles
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from backend.db import DB_FILE
-from backend.sync_opendata import clean_article_no, KNOWN_SLUGS
+from backend.sync_opendata import clean_article_no
 
 def check_moj_content_consistency(conn, chlaw_path):
-    print("[Check 1/5] Checking articles.content against official MOJ ChLaw.json...")
+    print("[Check 1/6] Checking articles.content against official MOJ ChLaw.json...")
     if not os.path.exists(chlaw_path):
         print(f"  ERROR: ChLaw.json not found at {chlaw_path}")
         return False
@@ -74,7 +85,7 @@ def check_moj_content_consistency(conn, chlaw_path):
     return True
 
 def check_enrichment_sources(conn):
-    print("[Check 2/5] Checking article_enrichments source provenance...")
+    print("[Check 2/6] Checking article_enrichments source provenance...")
     cur = conn.cursor()
     cur.execute("""
         SELECT count(*) FROM article_enrichments 
@@ -93,7 +104,7 @@ def check_enrichment_sources(conn):
     return True
 
 def check_official_letters(conn):
-    print("[Check 3/5] Checking official_letters_json for template strings & uniformity...")
+    print("[Check 3/6] Checking official_letters_json for template strings & uniformity...")
     cur = conn.cursor()
     cur.execute("SELECT act_id, article_no, official_letters_json FROM article_enrichments WHERE official_letters_json != '[]'")
     rows = cur.fetchall()
@@ -135,7 +146,7 @@ def check_official_letters(conn):
     return True
 
 def check_code_lint_handwritten_articles(base_dir):
-    print("[Check 4/5] Checking Python codebase for hardcoded article literals (> 50 lines)...")
+    print("[Check 4/6] Checking Python codebase for hardcoded article literals (> 50 lines)...")
     violations = []
     
     exclude_dirs = {".git", ".system_generated", "node_modules", "data", "backup", "__pycache__"}
@@ -161,7 +172,6 @@ def check_code_lint_handwritten_articles(base_dir):
             bracket_depth = 0
             
             for idx, line in enumerate(lines, 1):
-                stripped = line.strip()
                 if "[" in line and ("ARTICLES" in line or "articles" in line):
                     in_array = True
                     array_start = idx
@@ -189,7 +199,7 @@ def check_code_lint_handwritten_articles(base_dir):
     return True
 
 def check_orphan_enrichments(conn):
-    print("[Check 5/5] Checking for orphan enrichments...")
+    print("[Check 5/6] Checking for orphan enrichments...")
     cur = conn.cursor()
     cur.execute("""
         SELECT e.act_id, e.article_no 
@@ -208,7 +218,7 @@ def check_orphan_enrichments(conn):
     return True
 
 def check_forbidden_strings(base_dir):
-    print("[Check 6/6] Checking static/ and backend/ for forbidden synthesized/mock strings...")
+    print("[Check 6a/6] Checking static/ and backend/ for forbidden synthesized/mock strings...")
     cfg_path = os.path.join(base_dir, "config", "forbidden_strings.json")
     if not os.path.exists(cfg_path):
         print(f"  FAIL: Config file not found: {cfg_path}")
@@ -248,6 +258,66 @@ def check_forbidden_strings(base_dir):
     print(f"  PASSED: Zero forbidden synthesized strings detected across static/ and backend/ ({len(forbidden)} rules checked).")
     return True
 
+def check_ui_chinese_fallbacks(base_dir):
+    print("[Check 6b/6] Checking static/js/*.js for un-allowlisted Chinese fallbacks ('|| <Chinese>')...")
+    allowlist_path = os.path.join(base_dir, "config", "ui_fallback_allowlist.json")
+    if not os.path.exists(allowlist_path):
+        print(f"  FAIL: Allowlist config not found: {allowlist_path}")
+        return False
+        
+    with open(allowlist_path, "r", encoding="utf-8") as f:
+        allowlist = json.load(f)
+        
+    allowed_hashes = {item["line_hash"] for item in allowlist}
+    allowed_values = {item["value"] for item in allowlist}
+    
+    pattern = re.compile(r'\|\|\s*(["\'`])([^"\'`]*[\u4e00-\u9fa5]+[^"\'`]*)\1')
+    violations = []
+    
+    js_files = glob.glob(os.path.join(base_dir, "static", "js", "*.js"))
+    for js_path in js_files:
+        rel_path = os.path.relpath(js_path, base_dir).replace("\\", "/")
+        with open(js_path, "r", encoding="utf-8", errors="ignore") as f:
+            for lineno, line in enumerate(f, 1):
+                line_str = line.strip()
+                line_hash = hashlib.sha256(line_str.encode("utf-8")).hexdigest()[:16]
+                for m in pattern.finditer(line):
+                    chinese_val = m.group(2)
+                    if line_hash not in allowed_hashes and chinese_val not in allowed_values:
+                        violations.append((rel_path, lineno, chinese_val, line_hash, line_str[:80]))
+                        
+    if violations:
+        print(f"  FAIL: Found {len(violations)} un-allowlisted Chinese fallback(s) in static/js/*.js!")
+        for v in violations:
+            print(f"    {v[0]}:{v[1]} fallback: \"{v[2]}\" (hash: {v[3]}): {v[4]}")
+        print("  Every '|| <Chinese>' in frontend code must be audited and registered in config/ui_fallback_allowlist.json.")
+        return False
+        
+    print(f"  PASSED: All Chinese fallbacks in static/js/*.js are verified in ui_fallback_allowlist.json ({len(allowlist)} allowed).")
+    return True
+
+def check_template_synthesized_sentences(base_dir):
+    print("[Check 6c/6] Checking static/js/*.js template strings for fabricated legal assertions...")
+    violations = []
+    
+    js_files = glob.glob(os.path.join(base_dir, "static", "js", "*.js"))
+    for js_path in js_files:
+        rel_path = os.path.relpath(js_path, base_dir).replace("\\", "/")
+        with open(js_path, "r", encoding="utf-8", errors="ignore") as f:
+            for lineno, line in enumerate(f, 1):
+                # Pattern: template string containing variable reference alongside "現行明文規範" or "位於"
+                if "${" in line and ("現行明文規範" in line or "位於" in line):
+                    violations.append((rel_path, lineno, line.strip()[:80]))
+                    
+    if violations:
+        print(f"  FAIL: Found {len(violations)} synthesized sentence pattern(s) in static/js/*.js!")
+        for v in violations:
+            print(f"    {v[0]}:{v[1]} synthesized sentence: {v[2]}")
+        return False
+        
+    print("  PASSED: No fabricated legal status sentences ('現行明文規範'/'位於') found in static/js/*.js.")
+    return True
+
 def verify_all():
     print(f"=== Legal Hub Integrity Guardrail Verification ===")
     print(f"Database: {DB_FILE}")
@@ -262,13 +332,15 @@ def verify_all():
         check_official_letters(conn),
         check_code_lint_handwritten_articles(BASE_DIR),
         check_orphan_enrichments(conn),
-        check_forbidden_strings(BASE_DIR)
+        check_forbidden_strings(BASE_DIR),
+        check_ui_chinese_fallbacks(BASE_DIR),
+        check_template_synthesized_sentences(BASE_DIR)
     ]
     
     conn.close()
     
     if all(checks):
-        print("\n>>> ALL 6 INTEGRITY CHECKS PASSED SUCCESSFULLY. <<<")
+        print("\n>>> ALL INTEGRITY CHECKS PASSED SUCCESSFULLY. <<<")
         return 0
     else:
         print("\n>>> INTEGRITY CHECK FAILED! <<<")

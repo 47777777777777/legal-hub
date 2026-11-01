@@ -411,7 +411,7 @@ class LegalHubApp {
       actSearchDropdown.innerHTML = items.slice(0, 8).map((act, idx) => `
         <button class="act-dropdown-item ${idx === 0 ? 'active' : ''}" data-act-id="${esc(act.id)}" data-act-name="${esc(act.name)}" data-idx="${idx}">
           <span class="act-dropdown-name">${highlightText(act.name, q)}</span>
-          <span class="act-dropdown-cat">${esc(act.category || "全國法規")}</span>
+          ${act.category ? `<span class="act-dropdown-cat">${esc(act.category)}</span>` : ""}
         </button>
       `).join("");
       actSearchDropdown.classList.remove("hidden");
@@ -872,6 +872,7 @@ class LegalHubApp {
       const res = await fetch("/api/ccu/status");
       const json = await res.json();
       const data = json.data || {};
+      window.currentCCUStatus = data.authenticated ? 'authenticated' : 'unauthenticated';
       if (data.authenticated) {
         if (badge) {
           badge.textContent = "● 連線正常 (有效)";
@@ -1209,7 +1210,8 @@ class LegalHubApp {
 
     const meta = document.getElementById("act-meta-inline");
     if (meta && this.currentAct) {
-      meta.textContent = `(${this.currentAct.category || "法規"} · ${this.currentAct.last_modified || "現行"})`;
+      const parts = [this.currentAct.category, this.currentAct.last_modified].filter(Boolean);
+      meta.textContent = parts.length ? `(${parts.join(" · ")})` : "";
     }
   }
 
@@ -1740,9 +1742,9 @@ class LegalHubApp {
     if (insights.length) {
       const insightHeading = (art.source === "lawplayer") ? "裁判書與重要實務見解 (法律人)" : "裁判書與重要實務見解";
       html += `<section>${sectionHeading("gavel", insightHeading, `${insights.length}`, sourceInfo)}
-        ${insights.map((ins) => `
+        ${insights.filter(ins => ins.ref).map((ins) => `
           <div class="card judgment-card">
-            <div class="card-title accent">${ins.court ? `${esc(ins.court)} · ` : ""}${esc(ins.ref || "重要裁判")}</div>
+            <div class="card-title accent">${ins.court ? `${esc(ins.court)} · ` : ""}${esc(ins.ref)}</div>
             <div class="card-body" style="line-height: 1.6;">${esc(ins.summary || "")}</div>
             ${ins.url ? `<div style="margin-top:0.35rem;"><a href="${esc(ins.url)}" target="_blank" rel="noopener noreferrer" style="font-size:0.8rem; color:#60a5fa; text-decoration:none;">查看裁判原文 ↗</a></div>` : ""}
           </div>
@@ -1751,31 +1753,43 @@ class LegalHubApp {
     }
 
     if (letters.length) {
-      const letterHeading = (art.source === "lawplayer") ? "相關令函與行政函釋 (法律人)" : "相關令函與行政函釋";
+      const letterHeading = (art.source === "lawplayer") ? "相關函釋 (法律人)" : "相關函釋";
       html += `
         <section>${sectionHeading("book", letterHeading, `${letters.length}`, sourceInfo)}
-          ${letters.map((letItem) => `
+          ${letters.filter(letItem => letItem.ref || letItem.org || letItem.summary || letItem.content).map((letItem) => {
+            const titleParts = [letItem.org, letItem.ref, letItem.date].filter(Boolean);
+            const titleText = titleParts.map(p => esc(p)).join(" · ");
+            return `
             <div class="card">
-              <div class="card-title accent">${letItem.org ? `${esc(letItem.org)} · ` : ""}${esc(letItem.ref || "行政函釋")}${letItem.date ? ` · ${esc(letItem.date)}` : ""}</div>
+              ${titleText ? `<div class="card-title accent">${titleText}</div>` : ""}
               <div class="card-body" style="line-height: 1.6; white-space: pre-wrap;">${esc(letItem.summary || letItem.content || "")}</div>
               ${letItem.url ? `<div style="margin-top:0.35rem;"><a href="${esc(letItem.url)}" target="_blank" rel="noopener noreferrer" style="font-size:0.8rem; color:#60a5fa; text-decoration:none;">查看函釋原文 ↗</a></div>` : ""}
-            </div>
-          `).join("")}
+            </div>`;
+          }).join("")}
         </section>`;
     }
 
+    if (!insights.length && !letters.length) {
+      html += `<div style="padding:1.5rem 0.5rem; text-align:center; color:#71717a; font-size:0.9rem;">
+        此條尚無實務見解資料
+      </div>`;
+    }
+
+    const ccuAuth = window.currentCCUStatus === 'authenticated';
     html += `
       <section>${sectionHeading("search", "權威判解檢索 (含 AutoRPA 代理)")}
         <div class="link-grid">
           <a href="https://judgment.judicial.gov.tw/FJUD/default.aspx" target="_blank" rel="noopener noreferrer" class="judgment-link-btn">
             <span>🏛️ 司法院裁判書系統 (${actName} 第${esc(art.article_no)}條)</span>${icon("external", 13)}
           </a>
-          <a href="https://www-lawbank-com-tw.autorpa.lib.ccu.edu.tw:8443/" target="_blank" rel="noopener noreferrer" class="judgment-link-btn">
-            <span>⚖️ 法源法律網精選裁判 (AutoRPA)</span>${icon("external", 13)}
-          </a>
-          <a href="https://www-lawdata-com-tw.autorpa.lib.ccu.edu.tw:8443/anglekmc/ttswebx?@0:0:1:lawkm@@0.1702332962648232" target="_blank" rel="noopener noreferrer" class="judgment-link-btn">
-            <span>📚 月旦知識庫法學期刊 (AutoRPA)</span>${icon("external", 13)}
-          </a>
+          ${ccuAuth ? `
+            <a href="https://www-lawbank-com-tw.autorpa.lib.ccu.edu.tw:8443/" target="_blank" rel="noopener noreferrer" class="judgment-link-btn">
+              <span>⚖️ 法源法律網 (中正代理，需登入)</span>${icon("external", 13)}
+            </a>
+            <a href="https://www-lawdata-com-tw.autorpa.lib.ccu.edu.tw:8443/anglekmc/ttswebx?@0:0:1:lawkm@@0.1702332962648232" target="_blank" rel="noopener noreferrer" class="judgment-link-btn">
+              <span>📚 月旦知識庫 (中正代理，需登入)</span>${icon("external", 13)}
+            </a>
+          ` : ""}
         </div>
       </section>
 
@@ -1846,7 +1860,7 @@ class LegalHubApp {
           <section>${sectionHeading("file", "歷次修法理由與新舊法對照 Diff", `${history.length}`, sourceInfo)}
             ${history.map((item) => `
               <div class="card">
-                <div class="card-title accent">${item.date ? `${esc(item.date)} · ` : ""}${esc(item.change_type || item.type || "修正")}</div>
+                <div class="card-title accent">${item.date ? `${esc(item.date)} · ` : ""}${esc(item.change_type || item.type || "")}</div>
                 <div class="card-body">${esc(item.reason || "")}</div>
                 ${item.old_content ? `
                   <div class="diff-block">
@@ -1867,7 +1881,7 @@ class LegalHubApp {
     }
 
     return `<div style="padding:1.5rem 0.5rem; text-align:center; color:#71717a; font-size:0.9rem;">
-      此條尚無外部解析資料
+      此條尚無立法理由資料
     </div>`;
   }
 
@@ -2201,8 +2215,8 @@ class LegalHubApp {
             ${lit.subtitle ? `<div style="font-size: 1rem; color: #a1a1aa; margin-bottom: 0.75rem;">${esc(lit.subtitle)}</div>` : ''}
             
             <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; background: #121216; padding: 0.85rem 1.1rem; border-radius: 8px; border: 1px solid #27272a; margin-bottom: 1.5rem; font-size: 0.85rem;">
-              <div>👤 <b>作者：</b>${esc(lit.author || "法學學者")}${lit.author_affiliation ? ` (${esc(lit.author_affiliation)})` : ''}</div>
-              <div>📚 <b>期刊：</b>${esc(lit.journal_name || "法學專論")}</div>
+              <div>👤 <b>作者：</b>${esc(lit.author || "")}${lit.author_affiliation ? ` (${esc(lit.author_affiliation)})` : ''}</div>
+              <div>📚 <b>期刊：</b>${esc(lit.journal_name || "")}</div>
               <div>📅 <b>出刊：</b>${esc(lit.pub_date || String(lit.pub_year || ''))}</div>
               ${lit.volume || lit.issue ? `<div>🔖 <b>卷期：</b>${esc(lit.volume || '')} ${esc(lit.issue || '')}</div>` : ''}
               ${lit.pages ? `<div>📄 <b>頁碼：</b>p. ${esc(lit.pages)}</div>` : ''}
