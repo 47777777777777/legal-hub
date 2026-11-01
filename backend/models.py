@@ -48,7 +48,9 @@ class Article:
                  comparison_table: Optional[Dict[str, Any]] = None,
                  legal_definition: str = "",
                  flowchart: Optional[Dict[str, Any]] = None,
-                 official_letters: Optional[List[Dict[str, str]]] = None):
+                 official_letters: Optional[List[Dict[str, str]]] = None,
+                 title_source: str = "", source: str = "", source_url: str = "",
+                 fetched_at: str = "", article_hash: str = ""):
         if not article_no or not str(article_no).strip():
             raise ValidationError("Article number (article_no) cannot be empty.")
         if not content or not content.strip():
@@ -56,11 +58,12 @@ class Article:
 
         self.article_no = str(article_no).strip()
         self.title = (title or "").strip()
+        self.title_source = (title_source or "").strip()
         self.chapter = (chapter or "").strip()
         self.content = content.strip()
         self.legislative_reasons = (legislative_reasons or "").strip()
         self.practical_insights = practical_insights or []
-        self.lawplayer_link = lawplayer_link or f"https://lawplayer.com/act/#article_{self.article_no}"
+        self.lawplayer_link = (lawplayer_link or "").strip()
         self.related_articles = related_articles or []
         self.summary = summary or ""
         self.reading_time = reading_time or "3 分鐘"
@@ -73,6 +76,10 @@ class Article:
         self.legal_definition = legal_definition or ""
         self.flowchart = flowchart or {}
         self.official_letters = official_letters or []
+        self.source = (source or "").strip()
+        self.source_url = (source_url or "").strip()
+        self.fetched_at = (fetched_at or "").strip()
+        self.article_hash = (article_hash or "").strip()
         
         # Attachments validation (check duplicates)
         self.attachments: List[Attachment] = []
@@ -113,6 +120,11 @@ class Article:
             "legal_definition": self.legal_definition,
             "flowchart": self.flowchart,
             "official_letters": self.official_letters,
+            "title_source": self.title_source,
+            "source": self.source,
+            "source_url": self.source_url,
+            "fetched_at": self.fetched_at,
+            "article_hash": self.article_hash,
             "attachments": [att.to_dict() for att in self.attachments]
         }
 

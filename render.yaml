@@ -2,7 +2,7 @@ services:
   - type: web
     name: legal-hub
     env: python
-    buildCommand: "python scripts/build_comprehensive_corpus.py && python backend/populate_statutes.py && python backend/sync_opendata.py"
+    buildCommand: "python backend/sync_opendata.py"
     startCommand: "python backend/app.py"
     plan: free
     autoDeploy: true

@@ -504,9 +504,9 @@ def run_server(port: int = None, host: str = "0.0.0.0"):
     try:
         acts = storage.get_all_acts()
         if len(acts) == 0:
-            print("Database empty. Auto-seeding comprehensive legal corpus...")
+            print("Database empty. Auto-seeding comprehensive legal corpus from official MOJ...")
             import subprocess
-            subprocess.run([sys.executable, os.path.join(BASE_DIR, "scripts", "build_comprehensive_corpus.py")], check=True)
+            subprocess.run([sys.executable, os.path.join(BASE_DIR, "backend", "sync_opendata.py")], check=True)
             storage.cache.invalidate()
     except Exception as e:
         print(f"Corpus check info: {e}")

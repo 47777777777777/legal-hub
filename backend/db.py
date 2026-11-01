@@ -57,11 +57,21 @@ def init_database(db_path: str = DB_FILE):
             title TEXT,
             chapter TEXT,
             content TEXT NOT NULL,
+            title_source TEXT DEFAULT '',
             PRIMARY KEY (act_id, article_no),
             FOREIGN KEY (act_id) REFERENCES acts (id) ON DELETE CASCADE
         )
     """)
     cur.execute("CREATE INDEX IF NOT EXISTS idx_articles_lookup ON articles(act_id, article_no)")
+
+    # Migration for articles table
+    cur.execute("PRAGMA table_info(articles)")
+    existing_art_cols = [c[1] for c in cur.fetchall()]
+    if "title_source" not in existing_art_cols:
+        try:
+            cur.execute("ALTER TABLE articles ADD COLUMN title_source TEXT DEFAULT ''")
+        except Exception:
+            pass
 
     # 3. Article Enrichments table (Preserved during open data sync)
     cur.execute("""
@@ -84,6 +94,10 @@ def init_database(db_path: str = DB_FILE):
             legal_definition TEXT DEFAULT '',
             flowchart_json TEXT DEFAULT '{}',
             official_letters_json TEXT DEFAULT '[]',
+            source TEXT DEFAULT '',
+            source_url TEXT DEFAULT '',
+            fetched_at TEXT DEFAULT '',
+            article_hash TEXT DEFAULT '',
             PRIMARY KEY (act_id, article_no),
             FOREIGN KEY (act_id, article_no) REFERENCES articles(act_id, article_no) ON DELETE CASCADE
         )
@@ -97,7 +111,11 @@ def init_database(db_path: str = DB_FILE):
         ("comparison_table_json", "TEXT DEFAULT '{}'"),
         ("legal_definition", "TEXT DEFAULT ''"),
         ("flowchart_json", "TEXT DEFAULT '{}'"),
-        ("official_letters_json", "TEXT DEFAULT '[]'")
+        ("official_letters_json", "TEXT DEFAULT '[]'"),
+        ("source", "TEXT DEFAULT ''"),
+        ("source_url", "TEXT DEFAULT ''"),
+        ("fetched_at", "TEXT DEFAULT ''"),
+        ("article_hash", "TEXT DEFAULT ''")
     ]
     for col_name, col_type in new_cols:
         if col_name not in existing_cols:

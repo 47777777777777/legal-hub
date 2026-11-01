@@ -30,7 +30,8 @@ class TestModels(unittest.TestCase):
             article_no="185-3",
             title="不能安全駕駛罪",
             content="駕駛動力交通工具而有下列情形之一者...",
-            legislative_reasons="保護公眾往來安全"
+            legislative_reasons="保護公眾往來安全",
+            lawplayer_link="https://lawplayer.com/act/criminal_code/article_185-3"
         )
         self.assertEqual(art.article_no, "185-3")
         self.assertIn("185-3", art.lawplayer_link)

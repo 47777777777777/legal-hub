@@ -256,12 +256,13 @@ class LegalStorage:
         # Fetch articles joined with enrichments
         cur.execute("""
             SELECT 
-                a.act_id, a.article_no, a.title, a.chapter, a.content,
+                a.act_id, a.article_no, a.title, a.chapter, a.content, a.title_source,
                 e.summary, e.reading_time, e.vernacular_qa_json, e.elements_json,
                 e.key_issues_json, e.legislative_reasons, e.amendment_history_json,
                 e.practical_insights_json, e.lawplayer_link, e.related_articles_json,
                 e.attachments_json, e.faqs_json, e.comparison_table_json,
-                e.legal_definition, e.flowchart_json, e.official_letters_json
+                e.legal_definition, e.flowchart_json, e.official_letters_json,
+                e.source, e.source_url, e.fetched_at, e.article_hash
             FROM articles a
             LEFT JOIN article_enrichments e 
                 ON a.act_id = e.act_id AND a.article_no = e.article_no
@@ -276,6 +277,7 @@ class LegalStorage:
             articles.append({
                 "article_no": a["article_no"],
                 "title": a["title"] or "",
+                "title_source": a["title_source"] if "title_source" in a.keys() else "",
                 "chapter": a["chapter"] or "",
                 "content": a["content"],
                 "reading_time": a["reading_time"] or "3 分鐘",
@@ -293,7 +295,11 @@ class LegalStorage:
                 "comparison_table": json.loads(a["comparison_table_json"] or "{}"),
                 "legal_definition": a["legal_definition"] or "",
                 "flowchart": json.loads(a["flowchart_json"] or "{}"),
-                "official_letters": json.loads(a["official_letters_json"] or "[]")
+                "official_letters": json.loads(a["official_letters_json"] or "[]"),
+                "source": a["source"] if "source" in a.keys() and a["source"] else "",
+                "source_url": a["source_url"] if "source_url" in a.keys() and a["source_url"] else "",
+                "fetched_at": a["fetched_at"] if "fetched_at" in a.keys() and a["fetched_at"] else "",
+                "article_hash": a["article_hash"] if "article_hash" in a.keys() and a["article_hash"] else ""
             })
 
         act_data = {

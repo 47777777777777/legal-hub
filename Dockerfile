@@ -21,7 +21,7 @@ COPY . /app
 RUN mkdir -p /app/data /app/static
 
 # Build initial corpus if needed and ensure permissions
-RUN python scripts/build_comprehensive_corpus.py || true
+RUN python backend/sync_opendata.py || true
 
 # Hugging Face Spaces uses non-root user (user 1000)
 RUN useradd -m -u 1000 appuser && \

@@ -42,6 +42,12 @@ class QuickDialer {
       this.fab.addEventListener("click", () => this.toggle());
     }
 
+    // Top navbar dialer toggle button
+    const toggleBtn = document.getElementById("dialer-toggle-btn");
+    if (toggleBtn) {
+      toggleBtn.addEventListener("click", () => this.toggle());
+    }
+
     // Physical keyboard shortcut for numbers (when not typing in search box)
     window.addEventListener("keydown", (e) => {
       const activeEl = document.activeElement;

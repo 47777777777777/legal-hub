@@ -152,24 +152,6 @@ function sectionHeading(iconName, title, note) {
   return `<h3 class="sub-heading">${icon(iconName, 16)}<span>${title}</span>${note ? `<span class="sub-note">${note}</span>` : ""}</h3>`;
 }
 
-// Global CCU helpers for guaranteed click handling
-window.switchCCUTab = function(tabName) {
-  const appBtn = document.getElementById("ccu-tab-app-btn");
-  const netBtn = document.getElementById("ccu-tab-net-btn");
-  const appPanel = document.getElementById("ccu-tab-app-panel");
-  const netPanel = document.getElementById("ccu-tab-net-panel");
-  if (tabName === "net") {
-    if (appBtn) { appBtn.style.background = "transparent"; appBtn.style.color = "#a1a1aa"; }
-    if (netBtn) { netBtn.style.background = "#27272a"; netBtn.style.color = "#fafafa"; }
-    if (appPanel) appPanel.style.display = "none";
-    if (netPanel) netPanel.style.display = "block";
-  } else {
-    if (appBtn) { appBtn.style.background = "#27272a"; appBtn.style.color = "#fafafa"; }
-    if (netBtn) { netBtn.style.background = "transparent"; netBtn.style.color = "#a1a1aa"; }
-    if (appPanel) appPanel.style.display = "block";
-    if (netPanel) netPanel.style.display = "none";
-  }
-};
 
 window.currentCCUSource = "all";
 window.switchCCUSource = function(source) {
@@ -210,6 +192,7 @@ class LegalHubApp {
     this.bindCCUEvents();
     this.refreshCCUStatus();
     this.renderResearchTabs();
+    this.renderPopularActsModal();
 
     const route = this.parseHashRoute();
     if (route && route.actId) {
@@ -670,14 +653,17 @@ class LegalHubApp {
 
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       
-      if (e.key === "/" || e.key === "f") {
-        e.preventDefault();
-        const s = document.getElementById("search-input");
-        if (s) { s.focus(); s.select(); }
-      } else if (e.key === "ArrowLeft" || e.key === "[") {
-        this.navigateAdjacentArticle(-1);
-      } else if (e.key === "ArrowRight" || e.key === "]") {
-        this.navigateAdjacentArticle(1);
+      // Only process shortcuts when NO modifier keys are pressed (prevent intercepting Ctrl+F / Cmd+F)
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.key === "/" || e.key === "f") {
+          e.preventDefault();
+          const s = document.getElementById("search-input");
+          if (s) { s.focus(); s.select(); }
+        } else if (e.key === "ArrowLeft" || e.key === "[") {
+          this.navigateAdjacentArticle(-1);
+        } else if (e.key === "ArrowRight" || e.key === "]") {
+          this.navigateAdjacentArticle(1);
+        }
       }
     });
   }
@@ -943,16 +929,6 @@ class LegalHubApp {
     const collapseConfigBtn = document.getElementById("ccu-collapse-config-btn");
     const configBox = document.getElementById("ccu-auth-config-box");
     const clearCacheBtn = document.getElementById("ccu-clear-cache-btn");
-    const tabAppBtn = document.getElementById("ccu-tab-app-btn");
-    const tabNetBtn = document.getElementById("ccu-tab-net-btn");
-
-    // Segmented Tabs
-    if (tabAppBtn) {
-      tabAppBtn.addEventListener("click", () => window.switchCCUTab("app"));
-    }
-    if (tabNetBtn) {
-      tabNetBtn.addEventListener("click", () => window.switchCCUTab("net"));
-    }
 
     // Toggle Re-configure Box
     if (toggleConfigBtn && configBox) {
