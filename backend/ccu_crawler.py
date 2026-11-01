@@ -85,6 +85,29 @@ class CCUCrawler:
                 continue
         return raw_bytes.decode("utf-8", errors="ignore")
 
+    @staticmethod
+    def is_login_or_error_page(html: str) -> bool:
+        if not html or len(html) < 50:
+            return True
+        keywords = [
+            "電子資源查詢系統-登入",
+            "idm.lib.ccu.edu.tw",
+            "使用者登入",
+            "請輸入帳號密碼",
+            "cculibsys@ccu.edu.tw",
+            "修改個人資料"
+        ]
+        return any(kw in html for kw in keywords)
+
+    @staticmethod
+    def is_valid_article_title(title: str) -> bool:
+        if not title or len(title) < 3:
+            return False
+        blacklist = {"english", "修改個人資料", "登入", "登出", "聯絡我們", "首頁", "回上一頁", "網站導覽", "電子資源"}
+        if title.lower() in blacklist or "@" in title or ".edu" in title:
+            return False
+        return True
+
     def search_lawbank_theses(self, query: str) -> List[Dict[str, Any]]:
         """
         Searches LawBank for theses, papers, and authoritative opinions.
@@ -98,19 +121,22 @@ class CCUCrawler:
             req = urllib.request.Request(target_url, headers=self.get_headers())
             with urllib.request.urlopen(req, context=self.ctx, timeout=10) as resp:
                 html = self.decode_html(resp.read())
+            if self.is_login_or_error_page(html):
+                return []
             # Extract sample metadata
             results = []
             pattern = re.compile(r'href="([^"]+FINT03\.aspx\?param=[^"]+)"[^>]*>([^<]+)</a>', re.I)
             for m in pattern.findall(html)[:15]:
                 link, title = m
                 clean_title = re.sub(r'<[^>]+>', '', title).strip()
-                results.append({
-                    "source": "法源法律網 (LawBank)",
-                    "title": clean_title,
-                    "url": urllib.parse.urljoin(LAWBANK_URL, link),
-                    "query": query,
-                    "source_db": "lawbank"
-                })
+                if self.is_valid_article_title(clean_title):
+                    results.append({
+                        "source": "法源法律網 (LawBank)",
+                        "title": clean_title,
+                        "url": urllib.parse.urljoin(LAWBANK_URL, link),
+                        "query": query,
+                        "source_db": "lawbank"
+                    })
             return results
         except Exception as e:
             print(f"Lawbank search error: {e}")
@@ -128,12 +154,14 @@ class CCUCrawler:
             req = urllib.request.Request(target_url, headers=self.get_headers())
             with urllib.request.urlopen(req, context=self.ctx, timeout=10) as resp:
                 html = self.decode_html(resp.read())
+            if self.is_login_or_error_page(html):
+                return []
             results = []
             pattern = re.compile(r'href="([^"]*ttswebx[^"]*)"[^>]*>([^<]+)</a>', re.I)
             for m in pattern.findall(html)[:15]:
                 link, title = m
                 clean_title = re.sub(r'<[^>]+>', '', title).strip()
-                if clean_title and (len(clean_title) > 3 or "法" in clean_title):
+                if self.is_valid_article_title(clean_title) and (len(clean_title) > 3 or "法" in clean_title):
                     results.append({
                         "source": "月旦知識庫 (LawData)",
                         "title": clean_title,
@@ -149,10 +177,12 @@ class CCUCrawler:
             req_alt = urllib.request.Request(alt_url, headers=self.get_headers())
             with urllib.request.urlopen(req_alt, context=self.ctx, timeout=8) as resp_alt:
                 html_alt = self.decode_html(resp_alt.read())
+            if self.is_login_or_error_page(html_alt):
+                return []
             for m in re.findall(r'href="([^"]+)"[^>]*>([^<]+)</a>', html_alt)[:15]:
                 l, t = m
                 clean_t = re.sub(r'<[^>]+>', '', t).strip()
-                if clean_t and ("detail" in l.lower() or "article" in l.lower() or "paper" in l.lower() or len(clean_t) > 4):
+                if self.is_valid_article_title(clean_t) and ("detail" in l.lower() or "article" in l.lower() or "paper" in l.lower() or len(clean_t) > 4):
                     results.append({
                         "source": "月旦知識庫 (LawData)",
                         "title": clean_t,
