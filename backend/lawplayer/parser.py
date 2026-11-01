@@ -112,11 +112,12 @@ def parse_article_page(raw_html: str, source_url: str = "") -> Dict[str, Any]:
                 href = f"https://lawplayer.com{href}"
             full_txt = a_el.get_text(" ", strip=True)
             
+            # Only extract court if explicitly present in link or meta text, otherwise leave empty
             court = ""
-            if "最高法院" in full_txt or "渝上" in full_txt or "台上" in full_txt:
-                court = "最高法院"
-            elif "高等法院" in full_txt:
-                court = "高等法院"
+            for possible_court in ["最高法院", "高等法院", "地方法院", "行政法院", "智慧財產法院", "憲法法庭"]:
+                if possible_court in full_txt:
+                    court = possible_court
+                    break
                 
             judgments.append({
                 "court": court,

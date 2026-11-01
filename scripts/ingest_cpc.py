@@ -58,13 +58,8 @@ for art_no, (fname, s_url) in sample_files.items():
     if row and row[0]:
         content_hash = hashlib.sha256(row[0].encode('utf-8')).hexdigest()
     
-    # Store deep_reading in practical_insights_json if present
+    # Only store judgments/precedents in practical_insights_json
     practical_insights = []
-    if parsed["deep_reading"]:
-        practical_insights.append({
-            "type": "深度解讀",
-            "content": parsed["deep_reading"]
-        })
     if parsed["judgments"]:
         for j in parsed["judgments"]:
             practical_insights.append({
@@ -78,12 +73,14 @@ for art_no, (fname, s_url) in sample_files.items():
     cur.execute("""
         INSERT INTO article_enrichments (
             act_id, article_no, summary, vernacular_qa_json,
+            legal_definition,
             practical_insights_json, amendment_history_json,
             official_letters_json, source, source_url, fetched_at, article_hash
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(act_id, article_no) DO UPDATE SET
             summary = excluded.summary,
             vernacular_qa_json = excluded.vernacular_qa_json,
+            legal_definition = excluded.legal_definition,
             practical_insights_json = excluded.practical_insights_json,
             amendment_history_json = excluded.amendment_history_json,
             official_letters_json = excluded.official_letters_json,
@@ -96,6 +93,7 @@ for art_no, (fname, s_url) in sample_files.items():
         art_no,
         parsed["summary"],
         json.dumps(parsed["vernacular_qa"], ensure_ascii=False),
+        parsed["deep_reading"],
         json.dumps(practical_insights, ensure_ascii=False),
         json.dumps(parsed["revisions"], ensure_ascii=False),
         json.dumps(parsed["interpretations"], ensure_ascii=False),

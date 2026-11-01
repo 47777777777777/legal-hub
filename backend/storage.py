@@ -280,7 +280,7 @@ class LegalStorage:
                 "title_source": a["title_source"] if "title_source" in a.keys() else "",
                 "chapter": a["chapter"] or "",
                 "content": a["content"],
-                "reading_time": a["reading_time"] or "3 分鐘",
+                "reading_time": a["reading_time"] or "",
                 "summary": a["summary"] or "",
                 "legislative_reasons": a["legislative_reasons"] or "",
                 "vernacular_qa": json.loads(a["vernacular_qa_json"] or "[]"),

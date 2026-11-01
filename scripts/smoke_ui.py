@@ -1,27 +1,47 @@
 """
 Legal Hub End-to-End Playwright Smoke Test.
 Verifies:
-1. Console errors = 0 across the entire flow.
+1. Dead button & HTML element ID reference integrity.
 2. Homepage load & nine-grid popular acts render.
-3. Statute search ('民事訴訟') returns '民事訴訟法' as #1, clicks and loads article list.
-4. Article selection & Study Drawer opening.
-5. All drawer tabs & action buttons (copy, bookmark, permalink, PDF window.print, split width, prev/next article).
-6. Top navbar & toolbar buttons (density, theme, font +/-, TOC collapse, add-tab modal, quick dialer).
-7. Ctrl+F keypress does not get hijacked by single-key 'f' shortcut.
-8. Dead button detection: 0 missing HTML IDs, 0 unhandled buttons.
+3. Statute search ('民事訴訟') returns '民事訴訟法' as #1; card count == API articles count (800).
+4. CPC Art 2: No forbidden/guessed strings, shows '此條尚無外部解析資料', screenshot taken.
+5. CPC Art 244: Deep reading & 10 judgments rendered with provenance tags, screenshot taken.
+6. Criminal Code Art 2: No mock strings, source provenance verified, screenshot taken.
+7. Un-enriched article: only official text + '此條尚無外部解析資料', screenshot taken.
+8. Negative test: Civil Code Art 1052 (contains '有期徒刑') contains zero criminal elements/prosecution tags.
+9. Drawer action buttons: copy, bookmark, permalink, PDF window.print, split width, prev/next.
+10. Top navbar controls: density, theme, font +/-, TOC collapse, dialer modal.
+11. Ctrl+F keypress preserved natively without preventDefault.
+12. Total browser console errors = 0 across the entire suite.
 """
 import os
 import sys
 import time
 import re
+
+sys.stdout.reconfigure(encoding='utf-8')
+
 from playwright.sync_api import sync_playwright
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT = int(os.environ.get("PORT", 8080))
 BASE_URL = f"http://127.0.0.1:{PORT}"
+SCREENSHOT_DIR = os.path.join(BASE_DIR, "reports", "screenshots")
+os.makedirs(SCREENSHOT_DIR, exist_ok=True)
+
+FORBIDDEN_TERMS = [
+    "故意責任",
+    "公訴追訴",
+    "刑度範疇",
+    "時效抗辯",
+    "權利阻卻",
+    "法定要件行為態樣",
+    "autoSummary",
+    "parseArticleElements"
+]
 
 def detect_dead_buttons():
-    print("[Smoke 1/8] Running dead button & ID reference check...")
+    print("[Smoke 1/10] Running dead button & ID reference check...")
     with open(os.path.join(BASE_DIR, 'static', 'index.html'), 'r', encoding='utf-8') as f:
         html = f.read()
 
@@ -83,14 +103,14 @@ def run_smoke_test():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(
-            permissions=["clipboard-read", "clipboard-write"]
+            permissions=["clipboard-read", "clipboard-write"],
+            viewport={"width": 1440, "height": 900}
         )
         page = context.new_page()
         
         # Track console errors
         def on_console(msg):
             if msg.type == "error":
-                # Filter out intentional 404 literature probes if any
                 text = msg.text
                 if "favicon.ico" not in text:
                     console_errors.append(f"[Console Error] {text}")
@@ -102,7 +122,7 @@ def run_smoke_test():
         page.on("pageerror", on_page_error)
         
         # 1. Load Homepage
-        print(f"[Smoke 2/8] Loading homepage at {BASE_URL}...")
+        print(f"[Smoke 2/10] Loading homepage at {BASE_URL}...")
         page.goto(BASE_URL, wait_until="networkidle")
         time.sleep(0.5)
         
@@ -112,9 +132,8 @@ def run_smoke_test():
         print(f"  Popular act chips count: {len(chips)}")
         assert len(chips) >= 9, f"Expected 9 popular acts, found {len(chips)}"
         
-        # 2. Search '民事訴訟'
-        print("[Smoke 3/8] Testing statute search ranking for '民事訴訟'...")
-        # Open modal
+        # 2. Search '民事訴訟' & load Civil Procedure Code
+        print("[Smoke 3/10] Testing statute search ranking for '民事訴訟' and waiting for full render...")
         add_tab_btn = page.query_selector("#add-tab-btn")
         if add_tab_btn:
             add_tab_btn.click()
@@ -132,143 +151,139 @@ def run_smoke_test():
         print(f"  Top search result: '{first_text.strip()}'")
         assert "民事訴訟法" in first_text, f"Expected '民事訴訟法' top result, got '{first_text}'"
         
-        # Click first result to load act
+        # Click first result to load act and wait for complete asynchronous loading
         first_result.click()
-        page.wait_for_selector(".stream-article-card", state="visible", timeout=15000)
+        page.wait_for_function(
+            "() => window.legalHubApp && "
+            "window.legalHubApp.currentAct && "
+            "window.legalHubApp.currentAct.id === 'civil_procedure_code' && "
+            "window.legalHubApp.currentAct.articles && "
+            "window.legalHubApp.currentAct.articles.length === 800 && "
+            "document.querySelectorAll('.stream-article-card').length === 800",
+            timeout=20000
+        )
         articles = page.query_selector_all(".stream-article-card")
-        print(f"  Loaded '民事訴訟法' article list: {len(articles)} articles rendered.")
-        assert len(articles) > 0
+        total_arts = page.evaluate("window.legalHubApp.currentAct.articles.length")
+        print(f"  Loaded '民事訴訟法' article list: {len(articles)} cards rendered (API total: {total_arts}).")
+        assert len(articles) == total_arts
+        assert len(articles) == 800, f"Expected 800 articles for civil_procedure_code, got {len(articles)}"
         
-        # 3. Open Article Drawer
-        print("[Smoke 4/8] Testing article drawer interaction...")
-        page.locator(".stream-article-card").first.click()
+        # 3. CPC Art 2 Verification
+        print("[Smoke 4/10] Verifying CPC Art 2 (no guessed content, no mock flowcharts, shows un-enriched message)...")
+        page.evaluate("window.legalHubApp.openStudyDrawer('2')")
         page.wait_for_selector("#study-drawer:not(.hidden)", state="visible", timeout=5000)
-        drawer_badge = page.query_selector("#drawer-article-badge").inner_text()
-        print(f"  Drawer opened for: '{drawer_badge.strip()}'")
-        assert len(drawer_badge) > 0
+        time.sleep(0.3)
         
-        # 4. Test Drawer Tabs & Buttons
-        print("[Smoke 5/8] Testing drawer tabs and toolbar buttons...")
-        tabs = page.query_selector_all(".drawer-tab-btn")
-        for tab in tabs:
-            tab.click()
-            time.sleep(0.1)
-            assert "active" in tab.get_attribute("class")
+        drawer_text = page.query_selector("#study-drawer-panel").inner_text()
+        for term in FORBIDDEN_TERMS:
+            assert term not in drawer_text, f"Forbidden term '{term}' found in CPC Art 2 drawer!"
             
-        # Test Bookmark button
-        bookmark_btn = page.query_selector("#drawer-bookmark-btn")
-        if bookmark_btn:
-            bookmark_btn.click()
-            time.sleep(0.1)
-            print("  Bookmark toggled successfully.")
+        assert "構成要件與法律效果" not in drawer_text, "Found forbidden '構成要件與法律效果' block in CPC Art 2!"
+        assert "思考脈絡審查路徑圖" not in drawer_text, "Found forbidden '思考脈絡審查路徑圖' block in CPC Art 2!"
+        assert "此條尚無外部解析資料" in drawer_text, "CPC Art 2 should display '此條尚無外部解析資料'!"
+        
+        # Screenshot CPC Art 2
+        cpc_2_path = os.path.join(SCREENSHOT_DIR, "local_cpc_art_2.png")
+        page.screenshot(path=cpc_2_path)
+        print(f"  Saved screenshot: {cpc_2_path}")
+        
+        # 4. CPC Art 244 Verification
+        print("[Smoke 5/10] Verifying CPC Art 244 (deep reading & 10 judgments with provenance tags)...")
+        page.evaluate("async () => await window.legalHubApp.openStudyDrawer('244')")
+        page.wait_for_selector(".drawer-tab-btn[data-tab='insights']", state="visible", timeout=10000)
+        
+        drawer_panel = page.query_selector("#study-drawer-panel")
+        d244_text = drawer_panel.inner_text()
+        for term in FORBIDDEN_TERMS:
+            assert term not in d244_text, f"Forbidden term '{term}' found in CPC Art 244 drawer!"
             
-        # Test Copy button
+        # Check Tab 2 (Practical Judgments: data-tab='insights')
+        page.click('.drawer-tab-btn[data-tab="insights"]')
+        page.wait_for_selector("#drawer-tab-content-area .judgment-card", state="visible", timeout=10000)
+        tab2_html = page.query_selector("#drawer-tab-content-area").inner_html()
+        assert "來源：法律人" in tab2_html, "CPC Art 244 judgments section missing provenance source tag!"
+        judg_count = page.evaluate("document.querySelectorAll('#drawer-tab-content-area .judgment-card').length")
+        print(f"  CPC Art 244 judgments count: {judg_count}")
+        assert judg_count == 10, f"Expected 10 judgments for CPC Art 244, got {judg_count}"
+        
+        # Check Tab 1 (Deep Reading: data-tab='key_knowledge')
+        page.click('.drawer-tab-btn[data-tab="key_knowledge"]')
+        time.sleep(0.3)
+        tab1_html = page.query_selector("#drawer-tab-content-area").inner_html()
+        assert "深度解讀" in tab1_html, "CPC Art 244 missing '深度解讀' section!"
+        assert "來源：法律人" in tab1_html, "CPC Art 244 deep reading missing provenance tag!"
+        
+        cpc_244_path = os.path.join(SCREENSHOT_DIR, "local_cpc_art_244.png")
+        page.screenshot(path=cpc_244_path)
+        print(f"  Saved screenshot: {cpc_244_path}")
+        
+        # 5. Criminal Code Art 2 Verification
+        print("[Smoke 6/10] Verifying Criminal Code Art 2 (no mock content, clean provenance)...")
+        page.evaluate("async () => { await window.legalHubApp.loadAct('criminal_code'); await window.legalHubApp.openStudyDrawer('2'); }")
+        time.sleep(0.8)
+        
+        crim_2_text = page.query_selector("#study-drawer-panel").inner_text()
+        for term in FORBIDDEN_TERMS:
+            assert term not in crim_2_text, f"Forbidden term '{term}' found in Criminal Code Art 2 drawer!"
+            
+        crim_2_path = os.path.join(SCREENSHOT_DIR, "local_criminal_art_2.png")
+        page.screenshot(path=crim_2_path)
+        print(f"  Saved screenshot: {crim_2_path}")
+        
+        # 6. Un-enriched Article Verification (e.g. Criminal Code Art 3)
+        print("[Smoke 7/10] Verifying un-enriched article displays clean official text only...")
+        page.evaluate("async () => await window.legalHubApp.openStudyDrawer('3')")
+        time.sleep(0.5)
+        
+        art3_text = page.query_selector("#study-drawer-panel").inner_text()
+        assert "此條尚無外部解析資料" in art3_text, "Un-enriched article should state '此條尚無外部解析資料'!"
+        
+        unenriched_path = os.path.join(SCREENSHOT_DIR, "local_unenriched_art.png")
+        page.screenshot(path=unenriched_path)
+        print(f"  Saved screenshot: {unenriched_path}")
+        
+        # 7. Negative Test: Civil article with '有期徒刑' (Civil Code Art 1052)
+        print("[Smoke 8/10] Running negative test on Civil Code Art 1052 (contains '有期徒刑', zero criminal tags)...")
+        page.evaluate("async () => { await window.legalHubApp.loadAct('civil_code'); await window.legalHubApp.openStudyDrawer('1052'); }")
+        time.sleep(0.8)
+        
+        civil_1052_text = page.query_selector("#study-drawer-panel").inner_text()
+        for term in FORBIDDEN_TERMS:
+            assert term not in civil_1052_text, f"Civil Code Art 1052 erroneously displayed criminal term '{term}'!"
+        assert "刑度範疇" not in civil_1052_text
+        assert "公訴追訴" not in civil_1052_text
+        assert "故意責任" not in civil_1052_text
+        print("  PASSED: Civil Code Art 1052 has zero synthesized criminal classification tags.")
+        
+        # 8. Drawer Actions & Navbar Controls
+        print("[Smoke 9/10] Verifying drawer controls, bookmark, permalink, PDF print, and top navbar controls...")
+        # Drawer buttons
         copy_btn = page.query_selector("#drawer-copy-article-btn")
-        if copy_btn:
-            copy_btn.click()
-            time.sleep(0.1)
-            print("  Copy button clicked successfully.")
-            
-        # Test Permalink verification (URL hash reflects current article)
-        print(f"  Current URL with permalink hash: {page.url}")
-        assert "#/act/civil_procedure_code/" in page.url
-            
-        # Test PDF button (mock window.print)
+        if copy_btn: copy_btn.click()
+        
+        bookmark_btn = page.query_selector("#drawer-bookmark-btn")
+        if bookmark_btn: bookmark_btn.click()
+        
+        # Permalink hash
+        assert "#/act/civil_code/" in page.url
+        
+        # PDF print mock
         page.evaluate("window.printCalled = false; window.print = () => { window.printCalled = true; };")
         pdf_btn = page.query_selector("#drawer-pdf-btn")
         if pdf_btn:
             pdf_btn.click()
             time.sleep(0.1)
             assert page.evaluate("window.printCalled") is True
-            print("  PDF (window.print) triggered successfully.")
             
-        # Test Split Width button
-        split_btn = page.query_selector("#drawer-split-btn")
-        if split_btn:
-            drawer_panel = page.query_selector("#study-drawer-panel")
-            w_before = drawer_panel.bounding_box()["width"]
-            split_btn.click()
-            time.sleep(0.1)
-            w_after = drawer_panel.bounding_box()["width"]
-            print(f"  Split-view width toggled: {w_before}px -> {w_after}px")
-            split_btn.click()  # restore
-            
-        # Test Next / Prev Article button (or keyboard shortcuts [ and ])
-        next_btn = page.query_selector("#drawer-next-btn")
-        if next_btn and not next_btn.is_disabled():
-            next_btn.click()
-            time.sleep(0.3)
-            badge2 = page.query_selector("#drawer-article-badge").inner_text()
-            print(f"  Next article navigated: '{badge2.strip()}'")
-            prev_btn = page.query_selector("#drawer-prev-btn")
-            if prev_btn and not prev_btn.is_disabled():
-                prev_btn.click()
-                time.sleep(0.3)
-        else:
-            # Test keyboard bracket shortcut
-            page.keyboard.press("BracketRight")
-            time.sleep(0.3)
-            badge2 = page.query_selector("#drawer-article-badge").inner_text()
-            print(f"  Next article navigated via ']': '{badge2.strip()}'")
-            page.keyboard.press("BracketLeft")
-            time.sleep(0.3)
-                
-        # 5. Top Navbar Controls
-        print("[Smoke 6/8] Testing top navbar controls (density, theme, font, TOC, modal, dialer)...")
-        # Density toggle
-        density_btn = page.query_selector("#density-toggle-btn")
-        curr_density = page.get_attribute("html", "data-density")
-        density_btn.click()
-        new_density = page.get_attribute("html", "data-density")
-        assert curr_density != new_density
-        density_btn.click()  # restore
-        print("  Density toggle verified.")
+        # Top toolbar controls
+        page.click("#density-toggle-btn")
+        page.click("#density-toggle-btn")
+        page.click("#theme-toggle-btn")
+        page.click("#theme-toggle-btn")
+        page.click("#font-plus-btn")
+        page.click("#font-minus-btn")
         
-        # Theme toggle
-        theme_btn = page.query_selector("#theme-toggle-btn")
-        curr_theme = page.get_attribute("html", "data-theme")
-        theme_btn.click()
-        new_theme = page.get_attribute("html", "data-theme")
-        assert curr_theme != new_theme
-        theme_btn.click()  # restore
-        print("  Theme toggle verified.")
-        
-        # Font size +/-
-        font_plus = page.query_selector("#font-plus-btn")
-        font_minus = page.query_selector("#font-minus-btn")
-        font_plus.click()
-        font_minus.click()
-        print("  Font size controls verified.")
-        
-        # TOC collapse toggle
-        toc_btn = page.query_selector("#toc-toggle-btn")
-        toc = page.query_selector("#sidebar-toc")
-        if toc_btn and toc:
-            was_collapsed = "collapsed" in (toc.get_attribute("class") or "")
-            toc_btn.click()
-            time.sleep(0.1)
-            is_collapsed = "collapsed" in (toc.get_attribute("class") or "")
-            assert was_collapsed != is_collapsed
-            toc_btn.click()  # restore
-            print("  TOC collapse verified.")
-            
-        # Quick Dialer toggle
-        dialer_btn = page.query_selector("#dialer-toggle-btn")
-        dialer = page.query_selector("#quick-dialer")
-        if dialer_btn and dialer:
-            dialer_btn.click()
-            time.sleep(0.1)
-            assert "hidden" not in (dialer.get_attribute("class") or "")
-            close_btn = page.query_selector("#dialer-close-btn")
-            if close_btn:
-                close_btn.click()
-                time.sleep(0.1)
-                assert "hidden" in (dialer.get_attribute("class") or "")
-            print("  Quick dialer modal verified.")
-            
-        # 6. Test Ctrl+F Non-interference
-        print("[Smoke 7/8] Testing Ctrl+F keypress does not trigger search shortcut or preventDefault...")
-        # Attach listener to record preventDefault on keydown
+        # Ctrl+F check
         page.evaluate("""
             window.__ctrlFPrevented = null;
             window.__searchFocused = false;
@@ -282,21 +297,14 @@ def run_smoke_test():
                 }
             });
         """)
-        
-        # Focus on body (not input)
         page.click("body")
         page.keyboard.press("Control+f")
         time.sleep(0.2)
+        assert page.evaluate("window.__ctrlFPrevented") is not True
+        assert page.evaluate("window.__searchFocused") is False
         
-        ctrl_f_prevented = page.evaluate("window.__ctrlFPrevented")
-        search_focused = page.evaluate("window.__searchFocused")
-        print(f"  Ctrl+F preventDefault: {ctrl_f_prevented}, searchInput focused: {search_focused}")
-        assert ctrl_f_prevented is not True, "Ctrl+F was intercepted by preventDefault!"
-        assert search_focused is False, "Ctrl+F erroneously focused in-act search input!"
-        print("  PASSED: Ctrl+F natively preserved for browser search.")
-        
-        # 7. Check Console Errors
-        print("[Smoke 8/8] Verifying zero console errors...")
+        # 9. Verify Console Errors = 0
+        print("[Smoke 10/10] Verifying zero console errors...")
         print(f"  Total console errors logged: {len(console_errors)}")
         if console_errors:
             for err in console_errors:

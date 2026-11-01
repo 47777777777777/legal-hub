@@ -39,7 +39,7 @@ class Article:
                  practical_insights: Optional[List[Dict[str, str]]] = None,
                  attachments: Optional[List[Dict[str, Any]]] = None,
                  lawplayer_link: str = "", related_articles: Optional[List[str]] = None,
-                 summary: str = "", reading_time: str = "3 分鐘",
+                 summary: str = "", reading_time: str = "",
                  vernacular_qa: Optional[List[Dict[str, str]]] = None,
                  elements: Optional[List[str]] = None,
                  key_issues: Optional[List[str]] = None,
@@ -66,7 +66,7 @@ class Article:
         self.lawplayer_link = (lawplayer_link or "").strip()
         self.related_articles = related_articles or []
         self.summary = summary or ""
-        self.reading_time = reading_time or "3 分鐘"
+        self.reading_time = reading_time or ""
         self.vernacular_qa = vernacular_qa or []
         self.elements = elements or []
         self.key_issues = key_issues or []

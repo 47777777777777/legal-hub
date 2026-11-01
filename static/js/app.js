@@ -148,8 +148,11 @@ function hydrateIcons(root) {
   });
 }
 
-function sectionHeading(iconName, title, note) {
-  return `<h3 class="sub-heading">${icon(iconName, 16)}<span>${title}</span>${note ? `<span class="sub-note">${note}</span>` : ""}</h3>`;
+function sectionHeading(iconName, title, note, sourceInfo) {
+  return `<h3 class="sub-heading" style="display:flex; justify-content:space-between; align-items:center;">
+    <span style="display:flex; align-items:center; gap:6px;">${icon(iconName, 16)}<span>${title}</span>${note ? `<span class="sub-note">${note}</span>` : ""}</span>
+    ${sourceInfo ? `<span style="font-size:0.75rem; color:#a1a1aa; font-weight:normal;">來源：${esc(sourceInfo)}</span>` : ""}
+  </h3>`;
 }
 
 
@@ -568,11 +571,6 @@ class LegalHubApp {
       }
     });
 
-    // Flowchart Modal Close
-    document.getElementById("flowchart-modal-close").addEventListener("click", () => {
-      document.getElementById("flowchart-modal").classList.add("hidden");
-    });
-
     // CCU AutoRPA Modal Controls
     const ccuBtn = document.getElementById("ccu-proxy-btn");
     const ccuModal = document.getElementById("ccu-modal");
@@ -629,7 +627,6 @@ class LegalHubApp {
       if (e.key === "Escape") {
         this.closeStudyDrawer();
         modal.classList.add("hidden");
-        document.getElementById("flowchart-modal").classList.add("hidden");
         document.getElementById("article-hover-popover").classList.add("hidden");
         const cm = document.getElementById("ccu-modal");
         if (cm) cm.classList.add("hidden");
@@ -1188,6 +1185,7 @@ class LegalHubApp {
       const resp = await fetch(`/api/acts/${actId}`);
       const json = await resp.json();
       if (!json.success) return;
+      this.currentActId = actId;
       this.currentAct = json.data;
       this.searchQuery = "";
       const si = document.getElementById("search-input");
@@ -1557,19 +1555,6 @@ class LegalHubApp {
       });
     });
 
-    // Flowchart Fullscreen Trigger
-    root.querySelectorAll(".flowchart-fullscreen-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const modal = document.getElementById("flowchart-modal");
-        const body = document.getElementById("flowchart-modal-body");
-        const chartEl = root.querySelector(".flowchart-svg-diagram") || root.querySelector(".flowchart-svg-card");
-        if (modal && body && chartEl) {
-          body.innerHTML = chartEl.outerHTML;
-          modal.classList.remove("hidden");
-        }
-      });
-    });
-
     // Bookmarks Jump / Delete
     root.querySelectorAll(".bookmark-jump-btn").forEach((btn) => {
       btn.addEventListener("click", () => this.loadAndJumpArticle(btn.dataset.artNo));
@@ -1682,20 +1667,27 @@ class LegalHubApp {
 
   // ---------------- Tab 1: 關鍵知識 ----------------
   renderKeyKnowledgeHtml(art) {
-    const parsed = this.parseArticleElements(art);
     let html = "";
+    const sourceInfo = (art.source === "lawplayer" && art.source_url) 
+      ? `法律人 (${(art.fetched_at || "").substring(0, 10)})` 
+      : (art.source ? `${art.source} (${(art.fetched_at || "").substring(0, 10)})` : "");
 
-    if (art.summary) {
+    if (art.summary && art.source) {
+      const summaryTitle = art.source === "lawplayer" ? "重點摘要 (法律人)" : "重點摘要";
       html += `
         <div class="callout-box">
-          <div class="callout-title">${icon("lightbulb", 15)}<span>重點摘要 (法律人核心提煉)</span></div>
-          <div>${esc(art.summary)}</div>
+          <div class="callout-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="display:flex; align-items:center; gap:6px;">${icon("lightbulb", 15)}<span>${summaryTitle}</span></span>
+            ${sourceInfo ? `<span style="font-size:0.75rem; color:#a1a1aa; font-weight:normal;">來源：${esc(sourceInfo)}</span>` : ""}
+          </div>
+          <div style="margin-top:0.4rem; line-height:1.6;">${esc(art.summary)}</div>
         </div>`;
     }
 
-    const qas = art.vernacular_qa && art.vernacular_qa.length ? art.vernacular_qa : [];
+    const qas = (art.source && art.vernacular_qa && art.vernacular_qa.length) ? art.vernacular_qa : [];
     if (qas.length) {
-      html += `<section>${sectionHeading("book", "白話與實務解讀 (法律人真實問答)", `${qas.length}`)}
+      const qaTitle = art.source === "lawplayer" ? "白話與實務解讀 (法律人)" : "白話與實務解讀";
+      html += `<section>${sectionHeading("book", qaTitle, `${qas.length}`, sourceInfo)}
         ${qas.map((item) => `
           <div class="card">
             <div class="card-title">${esc(item.question || item.q || "")}</div>
@@ -1705,276 +1697,68 @@ class LegalHubApp {
       </section>`;
     }
 
-    if (art.legal_definition) {
-      html += `<section>${sectionHeading("file", "法律人專業深度解讀")}
+    if (art.legal_definition && art.source) {
+      const deepTitle = art.source === "lawplayer" ? "深度解讀 (法律人)" : "深度解讀";
+      html += `<section>${sectionHeading("file", deepTitle, null, sourceInfo)}
         <div class="card">
           <div class="card-body" style="white-space: pre-wrap; line-height: 1.7; font-size: 0.95rem; color: #d0d0d8;">${esc(art.legal_definition)}</div>
         </div>
       </section>`;
     }
 
-    html += `<section>${sectionHeading("landmark", "構成要件與法律效果")}
-      <div class="card kv-card">
-        <div class="kv"><div class="kv-label">規範客體 / 行為態樣</div><div class="kv-val">${parsed.behaviorType}</div></div>
-        <div class="kv"><div class="kv-label">主觀責任要求</div><div class="kv-val">${parsed.intentType}</div></div>
-        <div class="kv"><div class="kv-label">法定效果 / 刑度範疇</div><div class="kv-val kv-accent">${parsed.penaltyType}</div></div>
-        <div class="kv"><div class="kv-label">訴訟追訴特性</div><div class="kv-val">${parsed.prosecutionType}</div></div>
-      </div>
-    </section>`;
-
-    // Flowchart Vector SVG Image with Fullscreen button
-    html += `<section>${sectionHeading("branch", "思考脈絡審查路徑圖 (向量流程圖)")}
-      <div class="flowchart-svg-card">
-        <div class="flowchart-svg-toolbar">
-          <button class="flowchart-btn flowchart-fullscreen-btn" title="全螢幕向量放大檢視">${icon("maximize", 12)} 放大檢視</button>
+    if (art.source === "lawplayer" && art.source_url) {
+      html += `<section>${sectionHeading("branch", "法條流程圖", null, sourceInfo)}
+        <div class="card" style="padding: 0.85rem; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:0.88rem; color:#d4d4d8;">本條於法律人平台備有流程圖與進階對照分析</span>
+          <a href="${esc(art.source_url)}" target="_blank" rel="noopener noreferrer" class="filter-chip active" style="text-decoration:none; display:inline-flex; align-items:center; gap:4px; padding:0.35rem 0.75rem;">
+            在法律人查看 ↗
+          </a>
         </div>
-        ${this.generateFlowchartSvg(art)}
-      </div>
-    </section>`;
-
-    const faqs = art.faqs && art.faqs.length ? art.faqs : [];
-    if (faqs.length) {
-      html += `<section>${sectionHeading("help", "大家也在問", `${faqs.length}`)}
-        ${faqs.map((faq) => `
-          <div class="faq-item-box">
-            <div class="faq-q-trigger"><span>${esc(faq.q)}</span><span class="faq-chevron">${icon("plus", 14)}</span></div>
-            <div class="faq-a-content">${esc(faq.a || faq.answer || "")}</div>
-          </div>
-        `).join("")}
       </section>`;
+    }
+
+    if (!html) {
+      html = `<div style="padding:1.5rem 0.5rem; text-align:center; color:#71717a; font-size:0.9rem;">
+        此條尚無外部解析資料
+      </div>`;
     }
 
     return html;
   }
 
-  // ---------------- Flowchart Vector SVG Generator (Pure Vector Diagram / Image) ----------------
-  generateFlowchartSvg(art) {
-    const actName = this.currentAct ? this.currentAct.name : "";
-    const isCriminal = actName.includes("刑法") || actName.includes("懲治") || actName.includes("毒品");
-    const artNo = String(art.article_no || "").trim();
-
-    if (artNo === "1" && isCriminal) {
-      // 刑法第 1 條 罪刑法定原則專屬審查向量流程圖 (長方形與橢圓節點，無菱形)
-      return `
-        <svg class="flowchart-svg-diagram" viewBox="0 0 520 440" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <marker id="flow-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-              <path d="M 0 1 L 8 5 L 0 9 z" fill="#8e8e93" />
-            </marker>
-          </defs>
-
-          <!-- Start Node -->
-          <rect x="180" y="16" width="160" height="38" rx="6" fill="#181820" stroke="#3e3e4a" stroke-width="1.5" />
-          <text x="260" y="40" fill="#fafafa" font-size="13" font-weight="700" text-anchor="middle">生活事實行為發生</text>
-
-          <line x1="260" y1="54" x2="260" y2="86" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-
-          <!-- Decision 1: Oval / Rounded Rect (長方形/橢圓) -->
-          <rect x="135" y="88" width="250" height="44" rx="22" fill="#14141c" stroke="#d4d4d8" stroke-width="1.5" />
-          <text x="260" y="115" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">行為時是否有成文法律明文規定？</text>
-
-          <!-- Branch 否 -> Curve to 不構成犯罪 -->
-          <path d="M 135 110 L 80 110 L 80 340" fill="none" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-          <rect x="92" y="98" width="24" height="18" rx="4" fill="#2d1217" stroke="#f43f5e" stroke-width="1"/>
-          <text x="104" y="111" fill="#fb7185" font-size="11" font-weight="800" text-anchor="middle">否</text>
-
-          <!-- Branch 是 -> Down -->
-          <line x1="260" y1="132" x2="260" y2="174" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-          <rect x="268" y="142" width="24" height="18" rx="4" fill="#12281e" stroke="#10b981" stroke-width="1"/>
-          <text x="280" y="155" fill="#34d399" font-size="11" font-weight="800" text-anchor="middle">是</text>
-
-          <!-- Decision 2: Oval / Rounded Rect (長方形/橢圓) -->
-          <rect x="135" y="176" width="250" height="44" rx="22" fill="#14141c" stroke="#d4d4d8" stroke-width="1.5" />
-          <text x="260" y="203" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">是否為不利於行為人之類推適用？</text>
-
-          <!-- Branch 是 -> Left to 違憲聲請 / 禁止 -->
-          <path d="M 135 198 L 80 198" fill="none" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-          <rect x="96" y="188" width="24" height="18" rx="4" fill="#2d1217" stroke="#f43f5e" stroke-width="1"/>
-          <text x="108" y="201" fill="#fb7185" font-size="11" font-weight="800" text-anchor="middle">是</text>
-
-          <rect x="15" y="215" width="130" height="38" rx="6" fill="#1e1318" stroke="#f43f5e" stroke-width="1.5" />
-          <text x="80" y="239" fill="#fca5a5" font-size="12" font-weight="700" text-anchor="middle">聲請違憲審查 / 禁止</text>
-
-          <!-- Branch 否 -> Down -->
-          <line x1="260" y1="220" x2="260" y2="262" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-          <rect x="268" y="230" width="24" height="18" rx="4" fill="#12281e" stroke="#10b981" stroke-width="1"/>
-          <text x="280" y="243" fill="#34d399" font-size="11" font-weight="800" text-anchor="middle">否</text>
-
-          <!-- Decision 3: Oval / Rounded Rect (長方形/橢圓) -->
-          <rect x="135" y="264" width="250" height="44" rx="22" fill="#14141c" stroke="#d4d4d8" stroke-width="1.5" />
-          <text x="260" y="291" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">是否為事後立法 (溯及既往)？</text>
-
-          <!-- Branch 是 -> Curve to 不構成犯罪 -->
-          <path d="M 135 286 L 80 286" fill="none" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-          <rect x="96" y="276" width="24" height="18" rx="4" fill="#2d1217" stroke="#f43f5e" stroke-width="1"/>
-          <text x="108" y="289" fill="#fb7185" font-size="11" font-weight="800" text-anchor="middle">是</text>
-
-          <!-- Branch 否 -> Down to 依法處罰 -->
-          <line x1="260" y1="308" x2="260" y2="348" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-          <rect x="268" y="318" width="24" height="18" rx="4" fill="#12281e" stroke="#10b981" stroke-width="1"/>
-          <text x="280" y="331" fill="#34d399" font-size="11" font-weight="800" text-anchor="middle">否</text>
-
-          <!-- Terminal 1: 不構成犯罪 -->
-          <rect x="15" y="352" width="130" height="44" rx="6" fill="#241117" stroke="#f43f5e" stroke-width="1.5" />
-          <text x="80" y="379" fill="#fda4af" font-size="13" font-weight="800" text-anchor="middle">不構成犯罪</text>
-
-          <!-- Terminal 2: 依法處罰 -->
-          <rect x="195" y="352" width="130" height="44" rx="6" fill="#11241a" stroke="#10b981" stroke-width="1.5" />
-          <text x="260" y="379" fill="#86efac" font-size="13" font-weight="800" text-anchor="middle">依法處罰</text>
-        </svg>
-      `;
-    }
-
-    if (isCriminal) {
-      // 刑事法律三階層通用向量審查流程圖 (長方形與橢圓節點，無菱形)
-      return `
-        <svg class="flowchart-svg-diagram" viewBox="0 0 520 440" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <marker id="flow-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-              <path d="M 0 1 L 8 5 L 0 9 z" fill="#8e8e93" />
-            </marker>
-          </defs>
-
-          <!-- Start Node -->
-          <rect x="170" y="16" width="180" height="36" rx="6" fill="#181820" stroke="#3e3e4a" stroke-width="1.5" />
-          <text x="260" y="39" fill="#fafafa" font-size="13" font-weight="700" text-anchor="middle">生活事實行為發生</text>
-
-          <line x1="260" y1="52" x2="260" y2="82" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-
-          <!-- Decision 1: 構成要件該當 (長方形與橢圓) -->
-          <rect x="120" y="84" width="280" height="44" rx="22" fill="#14141c" stroke="#d4d4d8" stroke-width="1.5" />
-          <text x="260" y="111" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">一、行為是否該當本條第 ${artNo} 條法定要件？</text>
-
-          <!-- Branch 否 -> Left to 不罰 -->
-          <path d="M 120 106 L 70 106 L 70 340" fill="none" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-          <rect x="80" y="95" width="24" height="18" rx="4" fill="#2d1217" stroke="#f43f5e" stroke-width="1"/>
-          <text x="92" y="108" fill="#fb7185" font-size="11" font-weight="800" text-anchor="middle">否</text>
-
-          <!-- Branch 是 -> Down -->
-          <line x1="260" y1="128" x2="260" y2="168" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-          <rect x="268" y="138" width="24" height="18" rx="4" fill="#12281e" stroke="#10b981" stroke-width="1"/>
-          <text x="280" y="151" fill="#34d399" font-size="11" font-weight="800" text-anchor="middle">是</text>
-
-          <!-- Decision 2: 違法性 (長方形與橢圓) -->
-          <rect x="120" y="170" width="280" height="44" rx="22" fill="#14141c" stroke="#d4d4d8" stroke-width="1.5" />
-          <text x="260" y="197" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">二、是否存在阻卻違法事由 (§21~24)？</text>
-
-          <!-- Branch 有 -> Left to 阻卻不罰 -->
-          <path d="M 120 192 L 70 192" fill="none" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-          <rect x="80" y="181" width="24" height="18" rx="4" fill="#2d1217" stroke="#f43f5e" stroke-width="1"/>
-          <text x="92" y="194" fill="#fb7185" font-size="11" font-weight="800" text-anchor="middle">有</text>
-
-          <!-- Branch 無 -> Down -->
-          <line x1="260" y1="214" x2="260" y2="254" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-          <rect x="268" y="224" width="24" height="18" rx="4" fill="#12281e" stroke="#10b981" stroke-width="1"/>
-          <text x="280" y="237" fill="#34d399" font-size="11" font-weight="800" text-anchor="middle">無</text>
-
-          <!-- Decision 3: 罪責 (長方形與橢圓) -->
-          <rect x="120" y="256" width="280" height="44" rx="22" fill="#14141c" stroke="#d4d4d8" stroke-width="1.5" />
-          <text x="260" y="283" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">三、行為人是否具責任能力 (§18, 19)？</text>
-
-          <!-- Branch 無 -> Left to 不罰/保安處分 -->
-          <path d="M 120 278 L 70 278" fill="none" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-          <rect x="80" y="267" width="24" height="18" rx="4" fill="#2d1217" stroke="#f43f5e" stroke-width="1"/>
-          <text x="92" y="280" fill="#fb7185" font-size="11" font-weight="800" text-anchor="middle">無</text>
-
-          <!-- Branch 具備 -> Down to 本罪成立處罰 -->
-          <line x1="260" y1="300" x2="260" y2="346" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-          <rect x="268" y="312" width="24" height="18" rx="4" fill="#12281e" stroke="#10b981" stroke-width="1"/>
-          <text x="280" y="325" fill="#34d399" font-size="11" font-weight="800" text-anchor="middle">有</text>
-
-          <!-- Terminal 1: 不罰 / 阻卻犯罪 -->
-          <rect x="10" y="352" width="130" height="44" rx="6" fill="#241117" stroke="#f43f5e" stroke-width="1.5" />
-          <text x="75" y="379" fill="#fda4af" font-size="12.5" font-weight="800" text-anchor="middle">不構成犯罪 (不罰)</text>
-
-          <!-- Terminal 2: 依法科刑處罰 -->
-          <rect x="195" y="352" width="130" height="44" rx="6" fill="#11241a" stroke="#10b981" stroke-width="1.5" />
-          <text x="260" y="379" fill="#86efac" font-size="12.5" font-weight="800" text-anchor="middle">依法成罪並處罰</text>
-        </svg>
-      `;
-    }
-
-    // 一般法規與民事要件審查向量流程圖 (長方形與橢圓節點，無菱形)
-    return `
-      <svg class="flowchart-svg-diagram" viewBox="0 0 520 400" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <marker id="flow-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M 0 1 L 8 5 L 0 9 z" fill="#8e8e93" />
-          </marker>
-        </defs>
-
-        <!-- Start Node -->
-        <rect x="170" y="16" width="180" height="36" rx="6" fill="#181820" stroke="#3e3e4a" stroke-width="1.5" />
-        <text x="260" y="39" fill="#fafafa" font-size="13" font-weight="700" text-anchor="middle">法律事實關係發生</text>
-
-        <line x1="260" y1="52" x2="260" y2="86" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-
-        <!-- Decision 1: 要件成就 (長方形與橢圓) -->
-        <rect x="120" y="88" width="280" height="44" rx="22" fill="#14141c" stroke="#d4d4d8" stroke-width="1.5" />
-        <text x="260" y="115" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">一、事實是否符合本條法定構成要件？</text>
-
-        <!-- Branch 否 -> Left to 無效果 -->
-        <path d="M 120 110 L 70 110 L 70 300" fill="none" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-        <rect x="80" y="99" width="24" height="18" rx="4" fill="#2d1217" stroke="#f43f5e" stroke-width="1"/>
-        <text x="92" y="112" fill="#fb7185" font-size="11" font-weight="800" text-anchor="middle">否</text>
-
-        <!-- Branch 是 -> Down -->
-        <line x1="260" y1="132" x2="260" y2="176" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-        <rect x="268" y="144" width="24" height="18" rx="4" fill="#12281e" stroke="#10b981" stroke-width="1"/>
-        <text x="280" y="157" fill="#34d399" font-size="11" font-weight="800" text-anchor="middle">是</text>
-
-        <!-- Decision 2: 阻卻事由 (長方形與橢圓) -->
-        <rect x="120" y="178" width="280" height="44" rx="22" fill="#14141c" stroke="#d4d4d8" stroke-width="1.5" />
-        <text x="260" y="205" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">二、是否存在時效抗辯或排除事由？</text>
-
-        <!-- Branch 有 -> Left -->
-        <path d="M 120 200 L 70 200" fill="none" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-        <rect x="80" y="189" width="24" height="18" rx="4" fill="#2d1217" stroke="#f43f5e" stroke-width="1"/>
-        <text x="92" y="202" fill="#fb7185" font-size="11" font-weight="800" text-anchor="middle">有</text>
-
-        <!-- Branch 無 -> Down to 成立履行 -->
-        <line x1="260" y1="222" x2="260" y2="306" stroke="#71717a" stroke-width="1.5" marker-end="url(#flow-arrow)" />
-        <rect x="268" y="254" width="24" height="18" rx="4" fill="#12281e" stroke="#10b981" stroke-width="1"/>
-        <text x="280" y="267" fill="#34d399" font-size="11" font-weight="800" text-anchor="middle">無</text>
-
-        <!-- Terminal 1: 權利阻卻 / 無法律效果 -->
-        <rect x="10" y="312" width="130" height="44" rx="6" fill="#241117" stroke="#f43f5e" stroke-width="1.5" />
-        <text x="75" y="339" fill="#fda4af" font-size="12.5" font-weight="800" text-anchor="middle">權利阻卻 / 不生效力</text>
-
-        <!-- Terminal 2: 法律效果成立並履行 -->
-        <rect x="195" y="312" width="130" height="44" rx="6" fill="#11241a" stroke="#10b981" stroke-width="1.5" />
-        <text x="260" y="339" fill="#86efac" font-size="12.5" font-weight="800" text-anchor="middle">權利健全依法履行</text>
-      </svg>
-    `;
-  }
-
   // ---------------- Tab 2: 實務見解 (Dedicated Tab) ----------------
   renderInsightsHtml(art) {
-    const insights = art.practical_insights || [];
-    const letters = art.official_letters || [];
+    const insights = (art.source && art.practical_insights) ? art.practical_insights : [];
+    const letters = (art.source && art.official_letters) ? art.official_letters : [];
     const actName = esc(this.currentAct.name);
+    const sourceInfo = (art.source === "lawplayer" && art.source_url) 
+      ? `法律人 (${(art.fetched_at || "").substring(0, 10)})` 
+      : (art.source ? `${art.source} (${(art.fetched_at || "").substring(0, 10)})` : "");
 
-    let html = `
-      <section>${sectionHeading("gavel", "大法庭裁定、憲法法庭判決與最高法院裁判 (法律人/司法院)", `${insights.length}`)}
-        ${insights.length ? insights.map((ins) => `
-          <div class="card">
-            <div class="card-title accent">${esc(ins.court || "最高法院")} · ${esc(ins.ref || "重要裁判")}</div>
+    let html = "";
+
+    if (insights.length) {
+      const insightHeading = (art.source === "lawplayer") ? "裁判書與重要實務見解 (法律人)" : "裁判書與重要實務見解";
+      html += `<section>${sectionHeading("gavel", insightHeading, `${insights.length}`, sourceInfo)}
+        ${insights.map((ins) => `
+          <div class="card judgment-card">
+            <div class="card-title accent">${ins.court ? `${esc(ins.court)} · ` : ""}${esc(ins.ref || "重要裁判")}</div>
             <div class="card-body" style="line-height: 1.6;">${esc(ins.summary || "")}</div>
+            ${ins.url ? `<div style="margin-top:0.35rem;"><a href="${esc(ins.url)}" target="_blank" rel="noopener noreferrer" style="font-size:0.8rem; color:#60a5fa; text-decoration:none;">查看裁判原文 ↗</a></div>` : ""}
           </div>
-        `).join("") : `
-          <div class="card">
-            <div class="card-body">本條尚未收錄重點精選摘要，您可透過下方資料庫即時查詢引用本條之所有裁判全文：</div>
-          </div>
-        `}
+        `).join("")}
       </section>`;
+    }
 
     if (letters.length) {
+      const letterHeading = (art.source === "lawplayer") ? "相關令函與行政函釋 (法律人)" : "相關令函與行政函釋";
       html += `
-        <section>${sectionHeading("book", "法務部令函與行政函釋 (法律人)", `${letters.length}`)}
+        <section>${sectionHeading("book", letterHeading, `${letters.length}`, sourceInfo)}
           ${letters.map((letItem) => `
             <div class="card">
-              <div class="card-title accent">${esc(letItem.ref || "法務部令函")} · ${esc(letItem.date || "")}</div>
+              <div class="card-title accent">${letItem.org ? `${esc(letItem.org)} · ` : ""}${esc(letItem.ref || "行政函釋")}${letItem.date ? ` · ${esc(letItem.date)}` : ""}</div>
               <div class="card-body" style="line-height: 1.6; white-space: pre-wrap;">${esc(letItem.summary || letItem.content || "")}</div>
+              ${letItem.url ? `<div style="margin-top:0.35rem;"><a href="${esc(letItem.url)}" target="_blank" rel="noopener noreferrer" style="font-size:0.8rem; color:#60a5fa; text-decoration:none;">查看函釋原文 ↗</a></div>` : ""}
             </div>
           `).join("")}
         </section>`;
@@ -2024,42 +1808,67 @@ class LegalHubApp {
 
   // ---------------- Tab 3: 內容連結 ----------------
   renderContentLinksHtml(art) {
-    const rels = art.related_articles || [];
-    const atts = art.attachments || [];
-    return `
-      <section>${sectionHeading("link", "跨法規關聯條文", `${rels.length}`)}
-        ${rels.length ? `<div class="chip-row">${rels.map((r) => `<span class="ref-chip">${r}</span>`).join("")}</div>` : `<div class="empty-note">尚無關聯標註</div>`}
-      </section>
-      ${atts.length ? `<section>${sectionHeading("file", "相關標準與附檔", `${atts.length}`)}
-        <div class="link-grid">${atts.map((a) => `<a href="${a.url}" target="_blank" rel="noopener noreferrer" class="judgment-link-btn"><span>${a.title}</span>${icon("external", 13)}</a>`).join("")}</div>
-      </section>` : ""}`;
+    const rels = (art.source && art.related_articles) ? art.related_articles : [];
+    const atts = (art.source && art.attachments) ? art.attachments : [];
+    const sourceInfo = (art.source === "lawplayer" && art.source_url) 
+      ? `法律人 (${(art.fetched_at || "").substring(0, 10)})` 
+      : (art.source ? `${art.source} (${(art.fetched_at || "").substring(0, 10)})` : "");
+
+    let html = "";
+    if (rels.length) {
+      html += `<section>${sectionHeading("link", "跨法規關聯條文", `${rels.length}`, sourceInfo)}
+        <div class="chip-row">${rels.map((r) => `<span class="ref-chip">${esc(r)}</span>`).join("")}</div>
+      </section>`;
+    }
+    if (atts.length) {
+      html += `<section>${sectionHeading("file", "相關標準與附檔", `${atts.length}`, sourceInfo)}
+        <div class="link-grid">${atts.map((a) => `<a href="${esc(a.url)}" target="_blank" rel="noopener noreferrer" class="judgment-link-btn"><span>${esc(a.title)}</span>${icon("external", 13)}</a>`).join("")}</div>
+      </section>`;
+    }
+    if (!html) {
+      html = `<div style="padding:1.5rem 0.5rem; text-align:center; color:#71717a; font-size:0.9rem;">
+        此條尚無外部解析資料
+      </div>`;
+    }
+    return html;
   }
 
   // ---------------- Tab 4: 立法理由與沿革 ----------------
   renderLegislativeHtml(art) {
-    const history = art.amendment_history || [];
-    if (!history.length) {
-      return `
-        <section>${sectionHeading("file", "制定與修正理由")}
-          <div class="card">
-            <div class="card-body">${art.legislative_reasons || `本條為 ${esc(this.currentAct.name)} 之現行明文規範，位於「${esc(art.chapter || "本法")}」。`}</div>
-          </div>
-        </section>`;
+    const history = (art.source && art.amendment_history) ? art.amendment_history : [];
+    const sourceInfo = (art.source === "lawplayer" && art.source_url) 
+      ? `法律人 (${(art.fetched_at || "").substring(0, 10)})` 
+      : (art.source ? `${art.source} (${(art.fetched_at || "").substring(0, 10)})` : "");
+
+    if (art.source && (history.length || art.legislative_reasons)) {
+      if (history.length) {
+        return `
+          <section>${sectionHeading("file", "歷次修法理由與新舊法對照 Diff", `${history.length}`, sourceInfo)}
+            ${history.map((item) => `
+              <div class="card">
+                <div class="card-title accent">${item.date ? `${esc(item.date)} · ` : ""}${esc(item.change_type || item.type || "修正")}</div>
+                <div class="card-body">${esc(item.reason || "")}</div>
+                ${item.old_content ? `
+                  <div class="diff-block">
+                    <div class="diff-row del"><span class="diff-tag">修正前</span>${esc(item.old_content)}</div>
+                    <div class="diff-row add"><span class="diff-tag">修正後</span>${esc(item.new_content || art.content)}</div>
+                  </div>` : ""}
+              </div>
+            `).join("")}
+          </section>`;
+      } else {
+        return `
+          <section>${sectionHeading("file", "制定與修正理由", null, sourceInfo)}
+            <div class="card">
+              <div class="card-body">${esc(art.legislative_reasons)}</div>
+            </div>
+          </section>`;
+      }
     }
-    return `
-      <section>${sectionHeading("file", "歷次修法理由與新舊法對照 Diff", `${history.length}`)}
-        ${history.map((item) => `
-          <div class="card">
-            <div class="card-title accent">${item.date} · ${item.change_type || "修正"}</div>
-            <div class="card-body">${item.reason}</div>
-            ${item.old_content ? `
-              <div class="diff-block">
-                <div class="diff-row del"><span class="diff-tag">修正前</span>${item.old_content}</div>
-                <div class="diff-row add"><span class="diff-tag">修正後</span>${item.new_content || art.content}</div>
-              </div>` : ""}
-          </div>
-        `).join("")}
-      </section>`;
+
+    return `<div style="padding:1.5rem 0.5rem; text-align:center; color:#71717a; font-size:0.9rem;">
+      此條尚無外部解析資料
+    </div>`;
   }
 
   // ---------------- Tab 5: 我的收藏 ----------------
@@ -2074,7 +1883,7 @@ class LegalHubApp {
     return `
       <section>${sectionHeading("star", "我的收藏法條庫", `${this.bookmarks.length}`)}
         ${this.bookmarks.map((b) => `
-          <div class="card">
+          <div class="card judgment-card">
             <div class="card-title accent">${esc(b.actName)} 第 ${esc(b.articleNo)} 條 ${b.title ? `(${esc(b.title)})` : ""}</div>
             <div class="card-body">${esc(b.snippet || "")}</div>
             <div class="card-actions">
@@ -2229,21 +2038,6 @@ class LegalHubApp {
     return true;
   }
 
-  parseArticleElements(art) {
-    const content = art.content || "";
-    const actName = this.currentAct.name;
-    let autoSummary = `規範 ${actName} ${art.chapter ? `(${art.chapter})` : ""} 之條文規範。`;
-    let behaviorType = "法定要件行為態樣";
-    if (content.includes("駕駛")) behaviorType = "交通工具駕駛行為";
-    let intentType = content.includes("過失") ? "故意或過失均罰" : "故意責任";
-    let penaltyType = "法定效果";
-    if (content.includes("有期徒刑") || content.includes("拘役")) {
-      const m = content.match(/處([^，。]+)/);
-      penaltyType = m ? m[1].trim() : "自由刑/罰金";
-    }
-    let prosecutionType = content.includes("告訴乃論") ? "告訴乃論之罪" : "公訴追訴";
-    return { autoSummary, behaviorType, intentType, penaltyType, prosecutionType };
-  }
 
   bindClearable(inputEl, clearEl, onChange) {
     if (!inputEl) return;
