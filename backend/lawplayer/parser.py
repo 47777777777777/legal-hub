@@ -4,12 +4,23 @@ backend/lawplayer/parser.py
 Pure parsing functions for LawPlayer HTML pages.
 Takes raw HTML content (or responses) and returns a clean dictionary.
 Never fills mock or synthetic data. Unparsed fields remain empty or empty lists.
+Strictly purges paywall strings ("在牆內", "在上方解鎖", "解鎖", "會員專屬").
 """
 
 import re
 from typing import Dict, Any, List, Optional
 from bs4 import BeautifulSoup
 
+FORBIDDEN_PAYWALL_PATTERNS = ["在牆內", "在上方解鎖", "解鎖", "會員專屬", "加入會員"]
+
+def clean_text_strictly(text: str) -> str:
+    """Removes any text containing paywall marketing or hints."""
+    if not text:
+        return ""
+    for pat in FORBIDDEN_PAYWALL_PATTERNS:
+        if pat in text:
+            return ""
+    return text.strip()
 
 def parse_article_page(raw_html: str, source_url: str = "") -> Dict[str, Any]:
     """
@@ -24,6 +35,7 @@ def parse_article_page(raw_html: str, source_url: str = "") -> Dict[str, Any]:
             - interpretations: List[Dict[str, str]] # [{'org': ..., 'ref': ..., 'date': ..., 'url': ...}]
             - judgments: List[Dict[str, str]]      # [{'court': ..., 'ref': ..., 'url': ...}]
             - revisions: List[Dict[str, Any]]      # [{'date': ..., 'type': ..., 'reason': ...}]
+            - paywalled_counts: Dict[str, int]     # e.g. {'legislative_reasons': 4}
             - source_url: str
     """
     soup = BeautifulSoup(raw_html, "html.parser")
@@ -32,24 +44,23 @@ def parse_article_page(raw_html: str, source_url: str = "") -> Dict[str, Any]:
     title = ""
     sum_span = soup.find("span", class_="artw-title-sum")
     if sum_span:
-        title = sum_span.get_text(strip=True).strip("（）()")
+        title = clean_text_strictly(sum_span.get_text(strip=True).strip("（）()"))
     else:
         # Fallback to <title> tag extraction: e.g. "民法第 2 條（適用習慣之限制）- 2026..."
         title_tag = soup.find("title")
         if title_tag:
             m = re.search(r"[（(](.*?)[）)]", title_tag.get_text(strip=True))
             if m:
-                title = m.group(1).strip()
+                title = clean_text_strictly(m.group(1).strip())
 
     # 2. Key Summary (重點摘要)
     summary = ""
     lead = soup.find("p", class_="artw-lead")
     if lead:
-        # Clone or strip child tags like 'artw-lead-tag'
         lead_clone = BeautifulSoup(str(lead), "html.parser")
         for tag in lead_clone.find_all("span", class_="artw-lead-tag"):
             tag.decompose()
-        summary = lead_clone.get_text(strip=True)
+        summary = clean_text_strictly(lead_clone.get_text(strip=True))
 
     # 3. Vernacular Q&A (白話解說問答)
     vernacular_qa: List[Dict[str, str]] = []
@@ -57,13 +68,13 @@ def parse_article_page(raw_html: str, source_url: str = "") -> Dict[str, Any]:
     for qa in qa_blocks:
         q_p = qa.find("p", class_="artw-qa-q")
         a_ps = qa.find_all("p", class_="artw-qa-a")
-        q_text = q_p.get_text(strip=True) if q_p else ""
+        q_text = clean_text_strictly(q_p.get_text(strip=True) if q_p else "")
         if q_text.startswith("Q · "):
             q_text = q_text[4:].strip()
         elif q_text.startswith("Q ·"):
             q_text = q_text[3:].strip()
             
-        a_text = "\n".join([a.get_text(strip=True) for a in a_ps if a.get_text(strip=True)])
+        a_text = "\n".join([clean_text_strictly(a.get_text(strip=True)) for a in a_ps if a.get_text(strip=True)])
         if q_text or a_text:
             vernacular_qa.append({"q": q_text, "a": a_text})
 
@@ -71,7 +82,8 @@ def parse_article_page(raw_html: str, source_url: str = "") -> Dict[str, Any]:
     deep_reading = ""
     deep_sec = soup.find("section", id="w-deep")
     if deep_sec:
-        paragraphs = [p.get_text(strip=True) for p in deep_sec.find_all("p") if p.get_text(strip=True)]
+        paragraphs = [clean_text_strictly(p.get_text(strip=True)) for p in deep_sec.find_all("p") if p.get_text(strip=True)]
+        paragraphs = [p for p in paragraphs if p]
         deep_reading = "\n\n".join(paragraphs)
 
     # 5. Interpretations (相關函釋)
@@ -81,7 +93,7 @@ def parse_article_page(raw_html: str, source_url: str = "") -> Dict[str, Any]:
         for li in interp_sec.find_all("li", class_="artw-interp-row"):
             a_el = li.find("a", class_="artw-interp-title")
             meta_el = li.find("span", class_="artw-interp-meta")
-            ref = a_el.get_text(strip=True) if a_el else ""
+            ref = clean_text_strictly(a_el.get_text(strip=True) if a_el else "")
             url = a_el.get("href", "") if a_el else ""
             if url and url.startswith("/"):
                 url = f"https://lawplayer.com{url}"
@@ -91,9 +103,9 @@ def parse_article_page(raw_html: str, source_url: str = "") -> Dict[str, Any]:
             if meta_el:
                 meta_spans = meta_el.find_all("span")
                 if len(meta_spans) >= 1:
-                    org = meta_spans[0].get_text(strip=True)
+                    org = clean_text_strictly(meta_spans[0].get_text(strip=True))
                 if len(meta_spans) >= 2:
-                    date = meta_spans[1].get_text(strip=True)
+                    date = clean_text_strictly(meta_spans[1].get_text(strip=True))
             
             interpretations.append({
                 "org": org,
@@ -110,9 +122,10 @@ def parse_article_page(raw_html: str, source_url: str = "") -> Dict[str, Any]:
             href = a_el.get("href", "")
             if href.startswith("/"):
                 href = f"https://lawplayer.com{href}"
-            full_txt = a_el.get_text(" ", strip=True)
-            
-            # Only extract court if explicitly present in link or meta text, otherwise leave empty
+            full_txt = clean_text_strictly(a_el.get_text(" ", strip=True))
+            if not full_txt:
+                continue
+                
             court = ""
             for possible_court in ["最高法院", "高等法院", "地方法院", "行政法院", "智慧財產法院", "憲法法庭"]:
                 if possible_court in full_txt:
@@ -125,31 +138,41 @@ def parse_article_page(raw_html: str, source_url: str = "") -> Dict[str, Any]:
                 "url": href
             })
 
-    # 7. Revisions / Legislative history (立法沿革)
+    # 7. Paywalled counts (e.g. "本條有 N 段立法理由")
+    paywalled_counts: Dict[str, int] = {}
+    reason_blocks = soup.find_all(class_=re.compile(r"reason", re.I))
+    for r in reason_blocks:
+        r_txt = r.get_text(" ", strip=True)
+        m_count = re.search(r"本條有\s*(\d+)\s*段立法理由", r_txt)
+        if m_count:
+            paywalled_counts["legislative_reasons"] = int(m_count.group(1))
+
+    # 8. Revisions / Legislative history (立法沿革 - authentic only)
     revisions: List[Dict[str, Any]] = []
     evo_sec = soup.find("section", id="w-evolution")
     if evo_sec:
-        # Check for structured revision entries
         rows = evo_sec.find_all("div", class_=re.compile(r"artw-evo|evolution-row"))
         for r in rows:
-            revisions.append({
-                "date": "",
-                "type": "",
-                "reason": r.get_text(strip=True)
-            })
+            txt = clean_text_strictly(r.get_text(strip=True))
+            if txt:
+                revisions.append({
+                    "date": "",
+                    "type": "",
+                    "reason": txt
+                })
 
-    # 8. Fact summaries for revisions if evo_sec has no direct rows
     if not revisions:
         facts = soup.find("section", class_="lartf-facts")
         if facts:
             fact_evo = facts.find("li", id="fact-evolution")
             if fact_evo:
-                txt = fact_evo.get_text(strip=True)
-                revisions.append({
-                    "date": "",
-                    "type": "沿革概況",
-                    "reason": txt
-                })
+                txt = clean_text_strictly(fact_evo.get_text(strip=True))
+                if txt:
+                    revisions.append({
+                        "date": "",
+                        "type": "沿革概況",
+                        "reason": txt
+                    })
 
     return {
         "title": title,
@@ -159,6 +182,7 @@ def parse_article_page(raw_html: str, source_url: str = "") -> Dict[str, Any]:
         "interpretations": interpretations,
         "judgments": judgments,
         "revisions": revisions,
+        "paywalled_counts": paywalled_counts,
         "source_url": source_url
     }
 
@@ -183,11 +207,10 @@ def parse_act_page(raw_html: str, source_url: str = "") -> Dict[str, Dict[str, s
     for a in links:
         href = a.get("href", "")
         txt = a.get_text(" ", strip=True)
-        # Match "第 1 條" or "第 31-1 條" or "第 31之1 條"
         m = re.search(r"第\s*(\d+(?:[-－之]\d+)?)\s*條(?:\s*(.*))?", txt)
         if m:
             raw_no = m.group(1).replace("－", "-").replace("之", "-")
-            sub_title = m.group(2).strip() if m.group(2) else ""
+            sub_title = clean_text_strictly(m.group(2).strip() if m.group(2) else "")
             if raw_no not in articles:
                 articles[raw_no] = {
                     "id": href.split("/")[-1],
@@ -195,4 +218,3 @@ def parse_act_page(raw_html: str, source_url: str = "") -> Dict[str, Dict[str, s
                     "title": sub_title
                 }
     return articles
-

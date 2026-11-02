@@ -50,7 +50,8 @@ class Article:
                  flowchart: Optional[Dict[str, Any]] = None,
                  official_letters: Optional[List[Dict[str, str]]] = None,
                  title_source: str = "", source: str = "", source_url: str = "",
-                 fetched_at: str = "", article_hash: str = ""):
+                 fetched_at: str = "", article_hash: str = "",
+                 paywalled_counts: Optional[Dict[str, Any]] = None):
         if not article_no or not str(article_no).strip():
             raise ValidationError("Article number (article_no) cannot be empty.")
         if not content or not content.strip():
@@ -80,6 +81,7 @@ class Article:
         self.source_url = (source_url or "").strip()
         self.fetched_at = (fetched_at or "").strip()
         self.article_hash = (article_hash or "").strip()
+        self.paywalled_counts = paywalled_counts or {}
         
         # Attachments validation (check duplicates)
         self.attachments: List[Attachment] = []
@@ -125,6 +127,7 @@ class Article:
             "source_url": self.source_url,
             "fetched_at": self.fetched_at,
             "article_hash": self.article_hash,
+            "paywalled_counts": self.paywalled_counts,
             "attachments": [att.to_dict() for att in self.attachments]
         }
 

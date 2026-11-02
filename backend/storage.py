@@ -262,7 +262,8 @@ class LegalStorage:
                 e.practical_insights_json, e.lawplayer_link, e.related_articles_json,
                 e.attachments_json, e.faqs_json, e.comparison_table_json,
                 e.legal_definition, e.flowchart_json, e.official_letters_json,
-                e.source, e.source_url, e.fetched_at, e.article_hash
+                e.source, e.source_url, e.fetched_at, e.article_hash,
+                e.paywalled_counts_json
             FROM articles a
             LEFT JOIN article_enrichments e 
                 ON a.act_id = e.act_id AND a.article_no = e.article_no
@@ -299,7 +300,8 @@ class LegalStorage:
                 "source": a["source"] if "source" in a.keys() and a["source"] else "",
                 "source_url": a["source_url"] if "source_url" in a.keys() and a["source_url"] else "",
                 "fetched_at": a["fetched_at"] if "fetched_at" in a.keys() and a["fetched_at"] else "",
-                "article_hash": a["article_hash"] if "article_hash" in a.keys() and a["article_hash"] else ""
+                "article_hash": a["article_hash"] if "article_hash" in a.keys() and a["article_hash"] else "",
+                "paywalled_counts": json.loads(a["paywalled_counts_json"] or "{}") if "paywalled_counts_json" in a.keys() and a["paywalled_counts_json"] else {}
             })
 
         act_data = {

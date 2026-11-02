@@ -318,6 +318,36 @@ def check_template_synthesized_sentences(base_dir):
     print("  PASSED: No fabricated legal status sentences ('現行明文規範'/'位於') found in static/js/*.js.")
     return True
 
+def check_paywall_strings_in_enrichments(conn: sqlite3.Connection) -> bool:
+    print("[Check 7/7] Checking article_enrichments for forbidden paywall strings...")
+    cur = conn.cursor()
+    cur.execute("PRAGMA table_info(article_enrichments)")
+    columns = [col[1] for col in cur.fetchall()]
+    
+    paywall_patterns = ["在牆內", "在上方解鎖", "解鎖", "會員專屬"]
+    
+    cur.execute("SELECT * FROM article_enrichments")
+    rows = cur.fetchall()
+    
+    violations = []
+    for row in rows:
+        act_id = row["act_id"]
+        art_no = row["article_no"]
+        for col in columns:
+            val = str(row[col] or "")
+            for pat in paywall_patterns:
+                if pat in val:
+                    violations.append((act_id, art_no, col, pat, val[:60]))
+                    
+    if violations:
+        print(f"  FAIL: Found {len(violations)} forbidden paywall string violation(s) in article_enrichments!")
+        for v in violations[:10]:
+            print(f"    act_id={v[0]} art={v[1]} col={v[2]} pat='{v[3]}': {v[4]}")
+        return False
+        
+    print(f"  PASSED: Zero paywall strings found across all {len(rows)} article_enrichments rows.")
+    return True
+
 def verify_all():
     print(f"=== Legal Hub Integrity Guardrail Verification ===")
     print(f"Database: {DB_FILE}")
@@ -334,7 +364,8 @@ def verify_all():
         check_orphan_enrichments(conn),
         check_forbidden_strings(BASE_DIR),
         check_ui_chinese_fallbacks(BASE_DIR),
-        check_template_synthesized_sentences(BASE_DIR)
+        check_template_synthesized_sentences(BASE_DIR),
+        check_paywall_strings_in_enrichments(conn)
     ]
     
     conn.close()

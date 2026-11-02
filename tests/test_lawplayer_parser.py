@@ -115,3 +115,35 @@ def test_parse_act_page_cpc(cpc_act_html):
     assert articles["277"]["title"] == "舉證責任分配之原則"
     assert "31-1" in articles
     assert "77-1" in articles
+
+
+def test_no_paywall_strings_in_parsed_results(civil_art_2_html, cpc_art_244_html):
+    """
+    Prompt 3 requirement:
+    - Assert parsed results across civil art 2 and cpc art 244 have ZERO paywall strings
+      ('在牆內', '在上方解鎖', '解鎖', '會員專屬', '加入會員') in any string field or list element.
+    - Assert cpc art 244 parses paywalled_counts: {'legislative_reasons': 4} without marketing text.
+    """
+    from backend.lawplayer.parser import FORBIDDEN_PAYWALL_PATTERNS
+
+    for html_fixture, name in [(civil_art_2_html, "civil_art_2"), (cpc_art_244_html, "cpc_art_244")]:
+        res = parse_article_page(html_fixture)
+        
+        # Traverse every string in the result dict
+        def check_val(val, path=""):
+            if isinstance(val, str):
+                for pat in FORBIDDEN_PAYWALL_PATTERNS:
+                    assert pat not in val, f"Forbidden paywall pattern '{pat}' found in {name} at {path}: '{val}'"
+            elif isinstance(val, dict):
+                for k, v in val.items():
+                    check_val(v, f"{path}.{k}")
+            elif isinstance(val, list):
+                for idx, item in enumerate(val):
+                    check_val(item, f"{path}[{idx}]")
+
+        check_val(res)
+
+    # Check paywalled count extraction on CPC 244
+    res_244 = parse_article_page(cpc_art_244_html)
+    assert res_244.get("paywalled_counts") == {"legislative_reasons": 4}
+

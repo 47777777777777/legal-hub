@@ -1848,16 +1848,31 @@ class LegalHubApp {
   }
 
   // ---------------- Tab 4: 立法理由與沿革 ----------------
+  // ---------------- Tab 4: 立法理由與沿革 ----------------
+  // ---------------- Tab 4: 立法理由與沿革 ----------------
   renderLegislativeHtml(art) {
     const history = (art.source && art.amendment_history) ? art.amendment_history : [];
     const sourceInfo = (art.source === "lawplayer" && art.source_url) 
       ? `法律人 (${(art.fetched_at || "").substring(0, 10)})` 
       : (art.source ? `${art.source} (${(art.fetched_at || "").substring(0, 10)})` : "");
+    const paywalledReasons = (art.paywalled_counts && art.paywalled_counts.legislative_reasons) ? art.paywalled_counts.legislative_reasons : 0;
 
-    if (art.source && (history.length || art.legislative_reasons)) {
+    let paywalledNoticeHtml = "";
+    if (paywalledReasons > 0) {
+      paywalledNoticeHtml = `
+        <div class="card" style="margin-bottom:1rem; border-left:3px solid #f59e0b; background:rgba(245,158,11,0.05);">
+          <div class="card-body" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <span>法律人頁面標示本條有 ${paywalledReasons} 段立法理由（會員內容），無法在此顯示</span>
+            ${art.source_url ? `<a href="${esc(art.source_url)}" target="_blank" rel="noopener" class="source-link" style="color:#60a5fa; text-decoration:none;">在法律人查看 ↗</a>` : ""}
+          </div>
+        </div>`;
+    }
+
+    if (art.source && (history.length || art.legislative_reasons || paywalledReasons > 0)) {
       if (history.length) {
         return `
           <section>${sectionHeading("file", "歷次修法理由與新舊法對照 Diff", `${history.length}`, sourceInfo)}
+            ${paywalledNoticeHtml}
             ${history.map((item) => `
               <div class="card">
                 <div class="card-title accent">${item.date ? `${esc(item.date)} · ` : ""}${esc(item.change_type || item.type || "")}</div>
@@ -1870,12 +1885,18 @@ class LegalHubApp {
               </div>
             `).join("")}
           </section>`;
-      } else {
+      } else if (art.legislative_reasons) {
         return `
           <section>${sectionHeading("file", "制定與修正理由", null, sourceInfo)}
+            ${paywalledNoticeHtml}
             <div class="card">
               <div class="card-body">${esc(art.legislative_reasons)}</div>
             </div>
+          </section>`;
+      } else {
+        return `
+          <section>${sectionHeading("file", "制定與修正理由", null, sourceInfo)}
+            ${paywalledNoticeHtml}
           </section>`;
       }
     }

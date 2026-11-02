@@ -98,6 +98,7 @@ def init_database(db_path: str = DB_FILE):
             source_url TEXT DEFAULT '',
             fetched_at TEXT DEFAULT '',
             article_hash TEXT DEFAULT '',
+            paywalled_counts_json TEXT DEFAULT '{}',
             PRIMARY KEY (act_id, article_no),
             FOREIGN KEY (act_id, article_no) REFERENCES articles(act_id, article_no) ON DELETE CASCADE
         )
@@ -115,7 +116,8 @@ def init_database(db_path: str = DB_FILE):
         ("source", "TEXT DEFAULT ''"),
         ("source_url", "TEXT DEFAULT ''"),
         ("fetched_at", "TEXT DEFAULT ''"),
-        ("article_hash", "TEXT DEFAULT ''")
+        ("article_hash", "TEXT DEFAULT ''"),
+        ("paywalled_counts_json", "TEXT DEFAULT '{}'")
     ]
     for col_name, col_type in new_cols:
         if col_name not in existing_cols:
