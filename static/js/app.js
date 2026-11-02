@@ -1744,7 +1744,7 @@ class LegalHubApp {
       html += `<section>${sectionHeading("gavel", insightHeading, `${insights.length}`, sourceInfo)}
         ${insights.filter(ins => ins.ref).map((ins) => `
           <div class="card judgment-card">
-            <div class="card-title accent">${ins.court ? `${esc(ins.court)} · ` : ""}${esc(ins.ref)}</div>
+            <div class="card-title accent">${ins.court ? `${esc(ins.court)} · ` : ""}${esc(ins.ref || "")}</div>
             <div class="card-body" style="line-height: 1.6;">${esc(ins.summary || "")}</div>
             ${ins.url ? `<div style="margin-top:0.35rem;"><a href="${esc(ins.url)}" target="_blank" rel="noopener noreferrer" style="font-size:0.8rem; color:#60a5fa; text-decoration:none;">查看裁判原文 ↗</a></div>` : ""}
           </div>
