@@ -58,6 +58,7 @@ def init_database(db_path: str = DB_FILE):
             chapter TEXT,
             content TEXT NOT NULL,
             title_source TEXT DEFAULT '',
+            label_raw TEXT DEFAULT '',
             PRIMARY KEY (act_id, article_no),
             FOREIGN KEY (act_id) REFERENCES acts (id) ON DELETE CASCADE
         )
@@ -70,6 +71,11 @@ def init_database(db_path: str = DB_FILE):
     if "title_source" not in existing_art_cols:
         try:
             cur.execute("ALTER TABLE articles ADD COLUMN title_source TEXT DEFAULT ''")
+        except Exception:
+            pass
+    if "label_raw" not in existing_art_cols:
+        try:
+            cur.execute("ALTER TABLE articles ADD COLUMN label_raw TEXT DEFAULT ''")
         except Exception:
             pass
 

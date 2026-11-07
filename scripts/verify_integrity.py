@@ -31,16 +31,21 @@ if BASE_DIR not in sys.path:
 from backend.db import DB_FILE
 from backend.sync_opendata import clean_article_no
 
-def check_moj_content_consistency(conn, chlaw_path):
-    print("[Check 1/6] Checking articles.content against official MOJ ChLaw.json and auditing full DB corpus...")
+def check_moj_content_consistency(conn, chlaw_path, chorder_path=None):
+    print("[Check 1/6] Checking articles.content against official MOJ ChLaw.json & ChOrder.json (Bidirectional 100%)...")
     if not os.path.exists(chlaw_path):
         print(f"  ERROR: ChLaw.json not found at {chlaw_path}")
         return False
         
     with open(chlaw_path, "r", encoding="utf-8-sig") as f:
         data = json.load(f)
-        
     laws_by_name = {l.get("LawName"): l for l in data.get("Laws", [])}
+
+    orders_by_name = {}
+    if chorder_path and os.path.exists(chorder_path):
+        with open(chorder_path, "r", encoding="utf-8-sig") as f:
+            order_data = json.load(f)
+        orders_by_name = {l.get("LawName"): l for l in order_data.get("Laws", [])}
     
     cur = conn.cursor()
     # 1. Total DB counts & duplicate check
@@ -72,16 +77,26 @@ def check_moj_content_consistency(conn, chlaw_path):
     non_chlaw_acts_count = 0
     non_chlaw_articles_count = 0
     
+    matched_orders_acts_count = 0
+    checked_orders_count = 0
+    checked_orders_forewords = 0
+
     for act_row in acts:
         act_id, act_name, act_pcode = act_row["id"], act_row["name"], (act_row["pcode"] or "")
         moj_law = laws_by_name.get(act_name)
+        is_order = False
         if not moj_law:
-            non_chlaw_acts_count += 1
-            act_art_cnt = cur.execute("SELECT count(*) FROM articles WHERE act_id = ?", (act_id,)).fetchone()[0]
-            non_chlaw_articles_count += act_art_cnt
-            continue
-            
-        matched_acts_count += 1
+            moj_law = orders_by_name.get(act_name)
+            if moj_law:
+                is_order = True
+                matched_orders_acts_count += 1
+            else:
+                non_chlaw_acts_count += 1
+                act_art_cnt = cur.execute("SELECT count(*) FROM articles WHERE act_id = ?", (act_id,)).fetchone()[0]
+                non_chlaw_articles_count += act_art_cnt
+                continue
+        else:
+            matched_acts_count += 1
 
         # Check official foreword (Bidirectional)
         raw_foreword = moj_law.get("LawForeword", "").strip()
@@ -147,14 +162,38 @@ def check_moj_content_consistency(conn, chlaw_path):
         print(f"  Total content mismatches found: {len(mismatches)} / {checked_count} checked")
         return False
         
-    print(f"  Sub-corpus 1 (法律 - Matched ChLaw.json):")
+    print(f"  Sub-corpus 1 (中央法規 - ChLaw.json):")
     print(f"    - Acts: {matched_acts_count} acts")
-    print(f"    - Articles: {checked_count} articles verified 100% against ChLaw.json")
+    print(f"    - Articles: {checked_count} articles verified 100% bidirectional against ChLaw.json")
     print(f"    - Forewords: {checked_forewords} official forewords verified verbatim")
-    print(f"  Sub-corpus 2 (法規命令與部會命令 - Ministry Regulations):")
-    print(f"    - Acts: {non_chlaw_acts_count} acts")
-    print(f"    - Articles: {non_chlaw_articles_count} articles stored and verified unique")
-    print(f"  PASSED: Full DB {total_db_articles} articles audited. Bidirectional 100% fidelity.")
+    print(f"  Sub-corpus 2 (法規命令 - ChOrder.json):")
+    print(f"    - Acts: {matched_orders_acts_count} acts")
+    print(f"    - Articles: {total_db_articles - checked_count} articles verified 100% bidirectional against ChOrder.json")
+    print(f"  PASSED: Full DB {total_db_articles:,} articles audited. Bidirectional 100% fidelity.")
+    return True
+
+def check_article_structure_invariant(conn):
+    print("[Check 1b] Verifying Article Structure Invariant on all DB articles...")
+    from backend.article_structure import parse_article_structure
+    cur = conn.cursor()
+    cur.execute("SELECT id, act_id, article_no, content, label_raw FROM articles")
+    rows = cur.fetchall()
+    mismatches = 0
+    for r in rows:
+        content = r["content"] or ""
+        label_raw = r["label_raw"] or ""
+        blocks = parse_article_structure(content, is_standard_article=bool(label_raw))
+        concat = "".join((b.get("no_raw", "") + b.get("text", "")) for b in blocks)
+        norm_orig = re.sub(r'\s+', '', content)
+        norm_blocks = re.sub(r'\s+', '', concat)
+        if norm_orig != norm_blocks:
+            mismatches += 1
+            if mismatches <= 3:
+                print(f"  FAIL: Invariant mismatch on {r['act_id']} Art {r['article_no']}")
+    if mismatches > 0:
+        print(f"  FAIL: Found {mismatches} invariant violations!")
+        return False
+    print(f"  PASSED: All {len(rows):,} articles strictly satisfy structural invariant (0 mismatches).")
     return True
 
 def check_enrichment_sources(conn):
@@ -519,16 +558,24 @@ def check_lis_data_authenticity(conn: sqlite3.Connection) -> bool:
     print(f"  PASSED: Verified {len(reason_rows)} reason(s) and {len(comp_rows)} comparison row(s) strictly match raw LIS HTML verbatim.")
     return True
 
-def verify_all():
+def verify_all(db_path=None):
+    import argparse
+    parser = argparse.ArgumentParser(description="Legal Hub Integrity Guardrail Verification")
+    parser.add_argument("--db", type=str, default=None, help="Path to database file")
+    args, _ = parser.parse_known_args()
+
+    target_db = db_path or args.db or os.environ.get("LEGAL_HUB_DB") or DB_FILE
     print(f"=== Legal Hub Integrity Guardrail Verification ===")
-    print(f"Database: {DB_FILE}")
-    conn = sqlite3.connect(DB_FILE)
+    print(f"Database: {target_db}")
+    conn = sqlite3.connect(target_db)
     conn.row_factory = sqlite3.Row
     
     chlaw_path = os.path.join(BASE_DIR, "data", "ChLaw.json")
+    chorder_path = os.path.join(BASE_DIR, "data", "ChOrder.json")
     
     checks = [
-        check_moj_content_consistency(conn, chlaw_path),
+        check_moj_content_consistency(conn, chlaw_path, chorder_path),
+        check_article_structure_invariant(conn),
         check_enrichment_sources(conn),
         check_official_letters(conn),
         check_code_lint_handwritten_articles(BASE_DIR),

@@ -196,13 +196,14 @@ class MojSource(Source):
         # Build DB lookup by pcode (primary authority) AND name
         db_acts_by_pcode = {}
         db_acts_by_name = {}
-        for r in cur.execute("SELECT id, name, pcode, status, category, effective_date, effective_note, abandon_note FROM acts").fetchall():
-            act_id, name, pcode, status, cat, eff_date, eff_note, ab_note = r
+        for r in cur.execute("SELECT id, name, pcode, status, category, effective_date, effective_note, abandon_note, foreword FROM acts").fetchall():
+            act_id, name, pcode, status, cat, eff_date, eff_note, ab_note, fw = r
             data = {
                 "id": act_id, "name": (name or "").strip(), "pcode": (pcode or "").upper().strip(),
                 "status": status or "active", "category": cat or "",
                 "effective_date": eff_date or "", "effective_note": eff_note or "",
-                "abandon_note": ab_note or ""
+                "abandon_note": ab_note or "",
+                "foreword": (fw or "").strip()
             }
             if pcode:
                 db_acts_by_pcode[(pcode or "").upper().strip()] = data
@@ -279,6 +280,7 @@ class MojSource(Source):
                         "effective_date": effective_date,
                         "effective_note": effective_note,
                         "abandon_note": abandon_note,
+                        "foreword": (law.get("LawForeword") or "").strip(),
                         "articles_count": len(law.get("LawArticles", []))
                     }
                 })
@@ -301,6 +303,22 @@ class MojSource(Source):
                             "old_name": act_info["name"],
                             "new_name": law_name,
                             "pcode": law_pcode,
+                            "modified_date": modified_date
+                        }
+                    })
+                    counts["modify_act"] += 1
+
+                law_foreword = (law.get("LawForeword") or "").strip()
+                db_foreword = act_info.get("foreword", "")
+                if law_foreword != db_foreword:
+                    changes.append({
+                        "change_type": "modify_act_foreword",
+                        "act_id": act_id,
+                        "article_no": None,
+                        "detail": {
+                            "pcode": law_pcode,
+                            "old_foreword": db_foreword,
+                            "new_foreword": law_foreword,
                             "modified_date": modified_date
                         }
                     })
@@ -398,9 +416,10 @@ class MojSource(Source):
             if ctype == "add_act":
                 d = ch["detail"]
                 pcode = d.get("pcode", "")
+                fw = d.get("foreword", "")
                 cur.execute("""
-                    INSERT INTO acts (id, pcode, name, category, last_modified, status, effective_date, effective_note, abandon_note, effective_raw, effective_note_raw)
-                    VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)
+                    INSERT INTO acts (id, pcode, name, category, last_modified, status, effective_date, effective_note, abandon_note, effective_raw, effective_note_raw, foreword)
+                    VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                         pcode = excluded.pcode,
                         name = excluded.name,
@@ -411,8 +430,14 @@ class MojSource(Source):
                         effective_note = excluded.effective_note,
                         abandon_note = excluded.abandon_note,
                         effective_raw = excluded.effective_raw,
-                        effective_note_raw = excluded.effective_note_raw
-                """, (act_id, pcode, d["name"], d.get("category", ""), d.get("last_modified", ""), d.get("effective_date", ""), d.get("effective_note", ""), d.get("abandon_note", ""), d.get("effective_date", ""), d.get("effective_note", "")))
+                        effective_note_raw = excluded.effective_note_raw,
+                        foreword = excluded.foreword
+                """, (act_id, pcode, d["name"], d.get("category", ""), d.get("last_modified", ""), d.get("effective_date", ""), d.get("effective_note", ""), d.get("abandon_note", ""), d.get("effective_date", ""), d.get("effective_note", ""), fw))
+                if fw:
+                    cur.execute("""
+                        INSERT OR REPLACE INTO act_forewords (act_id, pcode, content, content_hash)
+                        VALUES (?, ?, ?, ?)
+                    """, (act_id, pcode, fw, hashlib.sha256(fw.encode('utf-8')).hexdigest()))
 
             elif ctype == "modify_act":
                 d = ch["detail"]
@@ -427,6 +452,19 @@ class MojSource(Source):
                     UPDATE acts SET name = ?, last_modified = ?
                     WHERE id = ?
                 """, (new_name, d.get("modified_date", ""), act_id))
+
+            elif ctype == "modify_act_foreword":
+                d = ch["detail"]
+                new_fw = d.get("new_foreword", "")
+                pcode = d.get("pcode", "")
+                cur.execute("UPDATE acts SET foreword = ?, last_modified = ? WHERE id = ?", (new_fw, d.get("modified_date", ""), act_id))
+                if new_fw:
+                    cur.execute("""
+                        INSERT OR REPLACE INTO act_forewords (act_id, pcode, content, content_hash)
+                        VALUES (?, ?, ?, ?)
+                    """, (act_id, pcode, new_fw, hashlib.sha256(new_fw.encode('utf-8')).hexdigest()))
+                else:
+                    cur.execute("DELETE FROM act_forewords WHERE act_id = ? OR pcode = ?", (act_id, pcode))
 
             elif ctype == "pending_human":
                 d = ch["detail"]

@@ -68,11 +68,12 @@ def test_abolished_act_ui():
         clean_para = re.sub(r"\s+", "", drawer_para_text)
         assert clean_expected in clean_para, f"Expected full article content {clean_expected[:50]}... in drawer"
 
-        # 7. Check Constitution (A0000001): truly displays '【前言】'
+        # 7. Check Constitution (A0000001): unbadged plain text (Prompt 4F)
         page.goto("http://127.0.0.1:8080/#/act/constitution/article/1", wait_until="networkidle")
+        page.wait_for_function("() => window.legalHubApp && window.legalHubApp.currentActId === 'constitution'", timeout=10000)
         page.wait_for_selector("#act-foreword-card", timeout=10000)
         const_foreword_text = page.locator("#act-foreword-card").text_content()
-        assert "【前言】" in const_foreword_text, "Constitution preamble must be badged with '【前言】'"
+        assert "【前言】" not in const_foreword_text, "Prompt 4F: All forewords must be unbadged plain text"
         assert "受全體國民之付託" in const_foreword_text, "Constitution preamble text missing from card"
 
         browser.close()

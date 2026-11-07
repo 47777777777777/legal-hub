@@ -170,12 +170,14 @@ def sync_full_statutes(db_path: str = DB_FILE, limit_laws: int = None):
                     "content": content
                 })
 
+        foreword = (law.get("LawForeword") or "").strip()
+
         # Insert Act
         cur.execute("""
             INSERT OR REPLACE INTO acts (
                 id, pcode, name, name_en, last_modified, category,
-                history_json, chapters_json, attachments_json, is_enriched
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                history_json, chapters_json, attachments_json, is_enriched, foreword
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             act_id,
             pcode,
@@ -186,9 +188,16 @@ def sync_full_statutes(db_path: str = DB_FILE, limit_laws: int = None):
             json.dumps(histories, ensure_ascii=False),
             json.dumps(parsed_chapters, ensure_ascii=False),
             json.dumps(seed_attachments, ensure_ascii=False),
-            1 if act_id in KNOWN_SLUGS else 0
+            1 if act_id in KNOWN_SLUGS else 0,
+            foreword
         ))
         total_inserted_acts += 1
+
+        if foreword:
+            cur.execute("""
+                INSERT OR REPLACE INTO act_forewords (act_id, pcode, content, content_hash)
+                VALUES (?, ?, ?, ?)
+            """, (act_id, pcode, foreword, hashlib.sha256(foreword.encode('utf-8')).hexdigest()))
 
         # Insert attachments to attachments table
         for att in seed_attachments:

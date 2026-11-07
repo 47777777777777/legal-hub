@@ -2,6 +2,7 @@
 Data models and schema validation for Legal Hub.
 """
 from typing import List, Dict, Optional, Any
+from backend.article_structure import parse_article_structure
 
 
 class ValidationError(Exception):
@@ -55,13 +56,15 @@ class Article:
                  lis_reasons: Optional[List[Dict[str, Any]]] = None,
                  lis_comparison: Optional[List[Dict[str, Any]]] = None,
                  status: str = "active",
-                 stale: int = 0):
+                 stale: int = 0,
+                 label_raw: str = ""):
         if not article_no or not str(article_no).strip():
             raise ValidationError("Article number (article_no) cannot be empty.")
         if not content or not content.strip():
             raise ValidationError(f"Article content cannot be empty for article {article_no}.")
 
         self.article_no = str(article_no).strip()
+        self.label_raw = (label_raw or "").strip()
         self.status = status or "active"
         self.stale = int(stale or 0)
         self.title = (title or "").strip()
@@ -112,6 +115,8 @@ class Article:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "article_no": self.article_no,
+            "label_raw": self.label_raw,
+            "blocks": parse_article_structure(self.content, is_standard_article=bool(self.label_raw)),
             "title": self.title,
             "chapter": self.chapter,
             "content": self.content,

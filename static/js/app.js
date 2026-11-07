@@ -45,55 +45,6 @@ function parseChnNumber(str) {
   return val + temp;
 }
 
-const RE_KUAN = /^([一二三四五六七八九十百]+、)\s*/;
-const RE_MU = /^([（(][一二三四五六七八九十百]+[）)])\s*/;
-const RE_SUBMU = /^([0-9０-９]+[.．、])\s*/;
-
-function parseArticleStructure(content) {
-  if (!content) return { paras: [] };
-  const rawLines = String(content).split(/\r?\n/).filter((l) => l.trim().length > 0);
-  if (!rawLines.length) return { paras: [] };
-
-  // Step 1: Unwrap hard line breaks that are continuation lines within a paragraph/sub-item
-  const mergedLines = [];
-  rawLines.forEach((l) => {
-    const trimmed = l.trim();
-    const isSub = RE_KUAN.test(trimmed) || RE_MU.test(trimmed) || RE_SUBMU.test(trimmed);
-    const isIndented = /^\s{2,}/.test(l);
-
-    if (mergedLines.length === 0) {
-      mergedLines.push(trimmed);
-      return;
-    }
-
-    const prev = mergedLines[mergedLines.length - 1];
-    const prevEndsSentence = /[。：；！？]$/.test(prev);
-
-    if ((isIndented && !isSub) || (!prevEndsSentence && !isSub)) {
-      mergedLines[mergedLines.length - 1] += trimmed;
-    } else {
-      mergedLines.push(trimmed);
-    }
-  });
-
-  // Step 2: Assemble paragraphs and sub-items (款、目、細目)
-  const paras = [];
-  mergedLines.forEach((line) => {
-    let m, level = 0;
-    if ((m = line.match(RE_KUAN))) level = 1;
-    else if ((m = line.match(RE_MU))) level = 2;
-    else if ((m = line.match(RE_SUBMU))) level = 3;
-
-    if (level === 0) {
-      paras.push({ text: line, subs: [] });
-    } else {
-      if (!paras.length) paras.push({ text: "", subs: [] });
-      paras[paras.length - 1].subs.push({ level, marker: m[1], text: line.slice(m[0].length) });
-    }
-  });
-  return { paras };
-}
-
 // Convert citations like "第二百二十一條" or "第 185-3 條" into interactive hover/tap links
 function linkifyArticleRefs(text, q) {
   let safe = hl(text, q);
@@ -129,50 +80,66 @@ function hl(text, q) {
   return out + esc(text.slice(last));
 }
 
-function renderArticleBody(content, q) {
-  const { paras } = parseArticleStructure(content);
-  if (!paras.length) return `<div class="article-body"></div>`;
-  const multi = paras.filter((p) => p.text).length > 1;
-  let n = 0;
-  const blocks = paras
-    .map((p) => {
-      const no = p.text ? ++n : 0;
-      const subs = p.subs
-        .map(
-          (s) =>
-            `<div class="sub sub-${s.level}"><span class="sub-marker">${esc(s.marker)}</span><span class="sub-text">${linkifyArticleRefs(s.text, q)}</span></div>`
-        )
-        .join("");
-      return `<div class="para-block ${multi ? "" : "single"}">
-        ${multi ? `<span class="para-no" title="${no ? `第 ${no} 項 (點擊複製此項)` : ""}" data-para-idx="${no}">${no ? toRoman(no) : ""}</span>` : ""}
-        <div class="para-body">${p.text ? `<div class="para-text">${linkifyArticleRefs(p.text, q)}</div>` : ""}${subs}</div>
-      </div>`;
-    })
-    .join("");
-  return `<div class="article-body">${blocks}</div>`;
+// Render article structured blocks provided directly by backend
+function renderArticleBody(art, q) {
+  const blocks = art && art.blocks ? art.blocks : [];
+  if (!blocks.length) {
+    const rawContent = (typeof art === "string") ? art : (art && art.content ? art.content : "");
+    return `<div class="article-body"><div class="block-text">${linkifyArticleRefs(rawContent, q)}</div></div>`;
+  }
+
+  const html = blocks.map((b) => {
+    const roman = b.roman_no ? `<span class="para-no" data-para-idx="${b.para_idx || 0}" title="第 ${b.para_idx} 項 (點擊複製此項)">${esc(b.roman_no)}</span>` : "";
+    const marker = b.no_raw ? `<span class="block-marker">${esc(b.no_raw)}</span>` : "";
+    const textHtml = linkifyArticleRefs(b.text || "", q);
+    const hasRomanClass = b.roman_no ? "has-roman" : "";
+    return `<div class="structure-block block-${esc(b.kind)} ${hasRomanClass}" data-kind="${esc(b.kind)}" data-para-idx="${b.para_idx || 0}">
+      ${roman}
+      <div class="block-body para-body">${marker}<span class="block-text para-text">${textHtml}</span></div>
+    </div>`;
+  }).join("");
+
+  return `<div class="article-body">${html}</div>`;
 }
 
-function articleCopyText(content, mode = "roman") {
-  const { paras } = parseArticleStructure(content);
-  const multi = paras.filter((p) => p.text).length > 1;
-  let n = 0;
-  return paras
-    .map((p) => {
-      let head = p.text;
-      if (multi && p.text) {
-        n++;
-        if (mode === "roman") {
-          head = `${toRoman(n)}　${p.text}`;
-        } else if (mode === "label") {
-          head = `第 ${n} 項　${p.text}`;
-        } else {
-          head = p.text;
-        }
+function formatArticleCopy(art, mode = "roman", actName = "") {
+  if (!art) return "";
+  const labelRaw = art.label_raw || "";
+  const header = `${actName} ${labelRaw} ${art.title || ""}`.replace(/\s+/g, " ").trim();
+
+  if (mode === "plain" || !art.blocks || !art.blocks.length) {
+    return header ? `${header}\n${art.content}` : art.content;
+  }
+
+  const lines = header ? [header] : [];
+  const paraBlocks = art.blocks.filter((b) => b.kind === "para");
+  const isMultiPara = paraBlocks.length >= 2;
+
+  for (const b of art.blocks) {
+    const kind = b.kind;
+    const roman = b.roman_no || "";
+    const noRaw = b.no_raw || "";
+    const text = b.text || "";
+
+    if (kind === "para") {
+      if (mode === "roman") {
+        const prefix = roman ? `${roman}　` : "";
+        lines.push(`${prefix}${text}`);
+      } else if (mode === "label") {
+        const prefix = (labelRaw && isMultiPara && b.para_idx) ? `第 ${b.para_idx} 項　` : "";
+        lines.push(`${prefix}${text}`);
+      } else {
+        lines.push(text);
       }
-      const subs = p.subs.map((s) => `${"　".repeat(s.level)}${s.marker}${s.text}`);
-      return [head ? head.trimEnd() : "", ...subs].filter((l) => l).join("\n");
-    })
-    .join("\n");
+    } else if (kind === "item") {
+      lines.push(`　　${noRaw}${text}`);
+    } else if (kind === "sub") {
+      lines.push(`　　　　${noRaw}${text}`);
+    } else if (kind === "sub_sub") {
+      lines.push(`　　　　　　${noRaw}${text}`);
+    }
+  }
+  return lines.join("\n");
 }
 
 function hydrateIcons(root) {
@@ -1376,18 +1343,11 @@ class LegalHubApp {
     if (countBadge) countBadge.textContent = `${articles.length} 條`;
 
     let html = "";
-    const isNonArticleAct = this.currentAct && (this.currentAct.pcode === "A0000005" || this.currentAct.pcode === "A0000003");
-
-    // Render official foreword if present
+    // Render official foreword if present (unbadged plain text block before articles)
     if (this.currentAct && this.currentAct.foreword && !q) {
-      const isConstitution = this.currentAct.pcode === "A0000001";
-      const badgeHtml = isConstitution 
-        ? `<div class="article-card-header" style="margin-bottom: 0.5rem;"><div class="article-card-no"><span style="font-weight: 600; color: #818cf8;">【前言】</span></div></div>` 
-        : "";
       html += `
-        <div class="act-foreword-card stream-article-card" id="act-foreword-card" style="border-left: 3px solid ${isConstitution ? '#6366f1' : '#71717a'}; background: ${isConstitution ? 'rgba(99, 102, 241, 0.05)' : 'rgba(255, 255, 255, 0.02)'}; margin-bottom: 1.25rem;">
-          ${badgeHtml}
-          <div class="article-card-content" style="white-space: pre-wrap; line-height: 1.75; color: #e4e4e7;">${esc(this.currentAct.foreword)}</div>
+        <div class="act-foreword-card stream-article-card" id="act-foreword-card" style="border-left: 3px solid #6366f1; background: rgba(99, 102, 241, 0.05); margin-bottom: 1.25rem;">
+          <div class="article-card-content" style="white-space: pre-wrap; line-height: 1.8; color: #e4e4e7;">${esc(this.currentAct.foreword)}</div>
         </div>`;
     }
 
@@ -1401,7 +1361,7 @@ class LegalHubApp {
           </div>`;
       }
       const marked = this.isBookmarked(this.currentActId, art.article_no);
-      const artLabelHtml = isNonArticleAct ? "" : `<span>第 ${hl(art.article_no, q)} 條</span>`;
+      const artLabelHtml = art.label_raw ? `<span>${hl(art.label_raw, q)}</span>` : "";
       html += `
         <article class="stream-article-card ${this.selectedArticleNo === art.article_no ? 'active' : ''}" id="article-card-${esc(art.article_no)}" data-article-no="${esc(art.article_no)}" data-chapter="${esc(art.chapter || '')}">
           <div class="article-card-header">
@@ -1415,7 +1375,7 @@ class LegalHubApp {
               <button class="article-study-btn" data-article-no="${esc(art.article_no)}">研析</button>
             </div>
           </div>
-          <div class="article-card-content">${renderArticleBody(art.content, q)}</div>
+          <div class="article-card-content">${renderArticleBody(art, q)}</div>
         </article>`;
     });
 
@@ -1428,14 +1388,12 @@ class LegalHubApp {
         if (e.target.closest(".para-no")) {
           e.stopPropagation();
           const pEl = e.target.closest(".para-no");
-          const pBlock = pEl.closest(".para-block");
-          const paraText = pBlock ? (pBlock.querySelector(".para-text")?.innerText || "") : "";
+          const pBlock = pEl.closest(".structure-block");
+          const paraText = pBlock ? (pBlock.querySelector(".block-text")?.innerText || "") : "";
           const roman = pEl.innerText.trim();
-          const artNo = card.dataset.articleNo;
-          const artLabel = (this.currentAct && (this.currentAct.pcode === 'A0000005' || this.currentAct.pcode === 'A0000003'))
-            ? this.currentAct.name
-            : `${this.currentAct ? this.currentAct.name : ""} 第 ${artNo} 條`.trim();
-          const singleText = `${artLabel} ${roman}　${paraText}`;
+          const artObj = (this.currentAct?.articles || []).find(a => a.article_no === card.dataset.articleNo);
+          const label = artObj?.label_raw ? ` ${artObj.label_raw}` : "";
+          const singleText = `${this.currentAct ? this.currentAct.name : ""}${label} ${roman}　${paraText}`.trim();
           this.copyToClipboard(singleText, pEl);
           return;
         }
@@ -1562,14 +1520,15 @@ class LegalHubApp {
     // Consistent Drawer Structure: Fixed Top Article Quote Box, followed by Sticky Tabs & Analysis
     scrollBody.innerHTML = `
       <section class="drawer-hero-section">
-        <h1 class="drawer-hero-title">${esc(this.currentAct.name)}${this.currentAct && (this.currentAct.pcode === 'A0000005' || this.currentAct.pcode === 'A0000003') ? '' : ` 第 ${esc(art.article_no)} 條`}</h1>
+        <h1 class="drawer-hero-title">${esc(this.currentAct.name)}${art.label_raw ? ` ${esc(art.label_raw)}` : ''}</h1>
         ${art.title ? `<div class="drawer-hero-subtitle">${esc(art.title)}</div>` : ""}
         <div class="drawer-hero-article-box">
           <div class="article-box-copy-group" style="display:flex; gap:6px; align-items:center; position:absolute; top:0.75rem; right:0.75rem;">
-            <button class="article-box-copy-action" id="drawer-copy-roman-btn" title="複製條文（含羅馬數字項號 Ⅰ、Ⅱ）">${icon("copy", 13)}<span>複製 (含羅馬項號)</span></button>
-            <button class="article-box-copy-action" id="drawer-copy-article-btn" title="複製條文（官方純文字）">${icon("file", 13)}<span>複製 (純文字)</span></button>
+            <button class="article-box-copy-action" id="drawer-copy-roman-btn" title="複製條文（項冠羅馬數字 Ⅰ、Ⅱ）">${icon("copy", 13)}<span>複製 (羅馬項號)</span></button>
+            <button class="article-box-copy-action" id="drawer-copy-label-btn" title="複製條文（項冠「第 1 項」標籤）">${icon("copy", 13)}<span>複製 (項標籤)</span></button>
+            <button class="article-box-copy-action" id="drawer-copy-plain-btn" title="複製條文（官方純文字）">${icon("file", 13)}<span>複製 (純文字)</span></button>
           </div>
-          ${renderArticleBody(art.content, "")}
+          ${renderArticleBody(art, "")}
         </div>
       </section>
 
@@ -1588,31 +1547,33 @@ class LegalHubApp {
       <footer class="drawer-bottom-nav">
         <button class="drawer-nav-btn" id="drawer-prev-btn">${icon("arrowLeft", 14)}<span>上一條</span></button>
         <button class="drawer-nav-btn ghost" id="drawer-permalink-btn" title="在新分頁開啟此條">
-          <span>第 ${esc(art.article_no)} 條</span>${icon("external", 13)}
+          <span>${esc(art.label_raw || art.article_no)}</span>${icon("external", 13)}
         </button>
         <button class="drawer-nav-btn" id="drawer-next-btn"><span>下一條</span>${icon("arrowRight", 14)}</button>
       </footer>`;
 
     scrollBody.scrollTop = 0;
 
-    const getArtHeader = () => {
-      return (this.currentAct && (this.currentAct.pcode === 'A0000005' || this.currentAct.pcode === 'A0000003'))
-        ? this.currentAct.name
-        : `${this.currentAct.name} 第 ${art.article_no} 條 ${art.title || ""}`.trim();
-    };
-
     const copyRomanBtn = scrollBody.querySelector("#drawer-copy-roman-btn");
     if (copyRomanBtn) {
       copyRomanBtn.addEventListener("click", (e) => {
-        const full = `${getArtHeader()}\n${articleCopyText(art.content, "roman")}`;
+        const full = formatArticleCopy(art, "roman", this.currentAct.name);
         this.copyToClipboard(full, e.currentTarget);
       });
     }
 
-    const copyPlainBtn = scrollBody.querySelector("#drawer-copy-article-btn");
+    const copyLabelBtn = scrollBody.querySelector("#drawer-copy-label-btn");
+    if (copyLabelBtn) {
+      copyLabelBtn.addEventListener("click", (e) => {
+        const full = formatArticleCopy(art, "label", this.currentAct.name);
+        this.copyToClipboard(full, e.currentTarget);
+      });
+    }
+
+    const copyPlainBtn = scrollBody.querySelector("#drawer-copy-plain-btn");
     if (copyPlainBtn) {
       copyPlainBtn.addEventListener("click", (e) => {
-        const full = `${getArtHeader()}\n${articleCopyText(art.content, "plain")}`;
+        const full = formatArticleCopy(art, "plain", this.currentAct.name);
         this.copyToClipboard(full, e.currentTarget);
       });
     }
@@ -1621,16 +1582,20 @@ class LegalHubApp {
     scrollBody.querySelectorAll(".para-no").forEach((el) => {
       el.addEventListener("click", (e) => {
         e.stopPropagation();
-        const pBlock = el.closest(".para-block");
-        const paraText = pBlock ? (pBlock.querySelector(".para-text")?.innerText || "") : "";
+        const pBlock = el.closest(".structure-block");
+        const paraText = pBlock ? (pBlock.querySelector(".block-text")?.innerText || "") : "";
         const roman = el.innerText.trim();
-        const singleText = `${getArtHeader()} ${roman}　${paraText}`;
+        const label = art.label_raw ? ` ${art.label_raw}` : "";
+        const singleText = `${this.currentAct ? this.currentAct.name : ""}${label} ${roman}　${paraText}`.trim();
         this.copyToClipboard(singleText, el);
       });
     });
-    scrollBody.querySelector("#drawer-permalink-btn").addEventListener("click", () => {
-      window.open(`${window.location.origin}${window.location.pathname}#/act/${this.currentActId}/article/${art.article_no}`, "_blank");
-    });
+    const permalinkBtn = scrollBody.querySelector("#drawer-permalink-btn");
+    if (permalinkBtn) {
+      permalinkBtn.addEventListener("click", () => {
+        window.open(`${window.location.origin}${window.location.pathname}#/act/${this.currentActId}/article/${art.article_no}`, "_blank");
+      });
+    }
 
     this.bindDrawerTabs(scrollBody, art);
     this.bindDrawerNavButtons(scrollBody, art);

@@ -87,6 +87,7 @@ def onboard_single_act(
     effective_note = (law_dict.get("LawEffectiveNote") or "").strip()
     modified_date = (law_dict.get("LawModifiedDate") or "").strip()
     category = law_dict.get("LawCategory", "")
+    foreword = (law_dict.get("LawForeword") or "").strip()
     history_raw = law_dict.get("LawHistories", "")
     history_json = json.dumps([h.strip() for h in history_raw.split("\r\n") if h.strip()] if history_raw else [], ensure_ascii=False)
     
@@ -108,9 +109,9 @@ def onboard_single_act(
                 id, pcode, name, name_en, category, last_modified, status,
                 effective_date, effective_note, abandon_note,
                 effective_raw, effective_note_raw, history_json,
-                first_seen_at, source_url, raw_path, content_hash
+                first_seen_at, source_url, raw_path, content_hash, foreword
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 pcode = excluded.pcode,
                 name = excluded.name,
@@ -126,13 +127,20 @@ def onboard_single_act(
                 first_seen_at = coalesce(acts.first_seen_at, excluded.first_seen_at),
                 source_url = excluded.source_url,
                 raw_path = excluded.raw_path,
-                content_hash = excluded.content_hash
+                content_hash = excluded.content_hash,
+                foreword = excluded.foreword
         """, (
             act_id, law_pcode, law_name, law_dict.get("EngLawName", ""), category,
             modified_date, act_status, effective_date, effective_note, abandon_note,
             effective_date, effective_note, history_json,
-            first_seen_at, source_url, raw_path, content_hash
+            first_seen_at, source_url, raw_path, content_hash, foreword
         ))
+
+        if foreword:
+            cur.execute("""
+                INSERT OR REPLACE INTO act_forewords (act_id, pcode, content, content_hash)
+                VALUES (?, ?, ?, ?)
+            """, (act_id, law_pcode, foreword, hashlib.sha256(foreword.encode('utf-8')).hexdigest()))
 
         # 2. Insert Articles
         inserted_articles = []

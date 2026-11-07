@@ -258,7 +258,7 @@ class LegalStorage:
         # Fetch articles joined with enrichments
         cur.execute("""
             SELECT 
-                a.act_id, a.article_no, a.title, a.chapter, a.content, a.title_source,
+                a.act_id, a.article_no, a.title, a.chapter, a.content, a.title_source, a.label_raw,
                 e.summary, e.reading_time, e.vernacular_qa_json, e.elements_json,
                 e.key_issues_json, e.legislative_reasons, e.amendment_history_json,
                 e.practical_insights_json, e.lawplayer_link, e.related_articles_json,
@@ -339,6 +339,7 @@ class LegalStorage:
         for a in art_rows:
             articles.append({
                 "article_no": a["article_no"],
+                "label_raw": a["label_raw"] if "label_raw" in a.keys() and a["label_raw"] else "",
                 "title": a["title"] or "",
                 "title_source": a["title_source"] if "title_source" in a.keys() else "",
                 "chapter": a["chapter"] or "",
