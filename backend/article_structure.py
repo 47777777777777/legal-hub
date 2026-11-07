@@ -23,6 +23,34 @@ ROMAN_NUMERALS = [
     "Ⅺ", "Ⅻ", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX"
 ]
 
+def unwrap_text(text: str) -> str:
+    """
+    顯示層接續行合併 (Display-layer Unwrap)：
+    以空白或標點開頭的行、或前行未結句者併入前一行，不插入任何字元，不改動文字本體。
+    """
+    if not text:
+        return ""
+    raw_lines = text.splitlines()
+    clean_lines = [l for l in raw_lines if l.strip()]
+    if not clean_lines:
+        return ""
+    merged = []
+    for line in clean_lines:
+        trimmed = line.strip()
+        is_sub = bool(RE_KUAN.match(trimmed) or RE_MU.match(trimmed) or RE_SUBMU.match(trimmed))
+        starts_with_punct = bool(RE_PUNCT.match(trimmed))
+        has_spaces = bool(RE_SPACES.match(line))
+        if not merged:
+            merged.append(trimmed)
+            continue
+        prev = merged[-1]
+        prev_ends = bool(re.search(r'[。：；！？:;]$', prev))
+        if (has_spaces and not is_sub) or starts_with_punct or (not prev_ends and not is_sub):
+            merged[-1] += trimmed
+        else:
+            merged.append(trimmed)
+    return "\n".join(merged)
+
 def parse_article_structure(content: str, is_standard_article: bool = True) -> List[Dict[str, Any]]:
     """
     將原始 ArticleContent 解析為語意結構區塊陣列。

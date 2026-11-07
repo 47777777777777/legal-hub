@@ -1347,7 +1347,7 @@ class LegalHubApp {
     if (this.currentAct && this.currentAct.foreword && !q) {
       html += `
         <div class="act-foreword-card stream-article-card" id="act-foreword-card" style="border-left: 3px solid #6366f1; background: rgba(99, 102, 241, 0.05); margin-bottom: 1.25rem;">
-          <div class="article-card-content" style="white-space: pre-wrap; line-height: 1.8; color: #e4e4e7;">${esc(this.currentAct.foreword)}</div>
+          <div class="article-card-content" style="white-space: pre-line; line-height: 1.8; color: #e4e4e7;">${esc(this.currentAct.foreword)}</div>
         </div>`;
     }
 

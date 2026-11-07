@@ -32,3 +32,4 @@ jobs:
             echo ">>> Checking service status..."
             sudo systemctl is-active legal-hub.service
             echo ">>> Deployment successful!"
+

@@ -9,6 +9,7 @@ import sqlite3
 from typing import Dict, List, Optional, Any
 from backend.models import Act, Article, Attachment, Literature, ValidationError
 from backend.db import get_connection, DB_FILE, init_database
+from backend.article_structure import unwrap_text
 
 
 class StorageError(Exception):
@@ -387,7 +388,7 @@ class LegalStorage:
             "effective_date": row["effective_date"] if "effective_date" in row.keys() and row["effective_date"] else "",
             "effective_note": row["effective_note"] if "effective_note" in row.keys() and row["effective_note"] else "",
             "abandon_note": row["abandon_note"] if "abandon_note" in row.keys() and row["abandon_note"] else "",
-            "foreword": row["foreword"] if "foreword" in row.keys() and row["foreword"] else "",
+            "foreword": unwrap_text(row["foreword"]) if "foreword" in row.keys() and row["foreword"] else "",
             "sync_time": row["last_modified"] or "",
             "articles": articles
         }
