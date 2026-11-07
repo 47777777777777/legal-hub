@@ -159,6 +159,7 @@ def sync_full_statutes(db_path: str = DB_FILE, limit_laws: int = None):
                 if not art_no or not content:
                     continue
 
+                label_raw = raw_no.strip() if "第" in raw_no else ""
                 parts = [p for p in [current_part, current_chapter, current_section] if p]
                 chapter_str = " / ".join(parts) if parts else "本法"
                 title = seed_titles.get(art_no, "")
@@ -167,17 +168,19 @@ def sync_full_statutes(db_path: str = DB_FILE, limit_laws: int = None):
                     "article_no": art_no,
                     "title": title,
                     "chapter": chapter_str,
-                    "content": content
+                    "content": content,
+                    "label_raw": label_raw
                 })
 
         foreword = (law.get("LawForeword") or "").strip()
+        is_standard = 1 if any("第" in a.get("ArticleNo", "") for a in raw_items if a.get("ArticleType") == "A") else 0
 
         # Insert Act
         cur.execute("""
             INSERT OR REPLACE INTO acts (
                 id, pcode, name, name_en, last_modified, category,
-                history_json, chapters_json, attachments_json, is_enriched, foreword
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                history_json, chapters_json, attachments_json, is_enriched, foreword, is_standard
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             act_id,
             pcode,
@@ -189,7 +192,8 @@ def sync_full_statutes(db_path: str = DB_FILE, limit_laws: int = None):
             json.dumps(parsed_chapters, ensure_ascii=False),
             json.dumps(seed_attachments, ensure_ascii=False),
             1 if act_id in KNOWN_SLUGS else 0,
-            foreword
+            foreword,
+            is_standard
         ))
         total_inserted_acts += 1
 
@@ -217,9 +221,9 @@ def sync_full_statutes(db_path: str = DB_FILE, limit_laws: int = None):
         # Insert Articles (Do not overwrite existing enrichments!)
         for art in parsed_articles:
             cur.execute("""
-                INSERT OR REPLACE INTO articles (act_id, article_no, title, chapter, content)
-                VALUES (?, ?, ?, ?, ?)
-            """, (act_id, art["article_no"], art["title"], art["chapter"], art["content"]))
+                INSERT OR REPLACE INTO articles (act_id, article_no, title, chapter, content, label_raw)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (act_id, art["article_no"], art["title"], art["chapter"], art["content"], art.get("label_raw", "")))
 
             # Insert into FTS
             try:

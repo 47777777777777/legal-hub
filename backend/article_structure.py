@@ -5,28 +5,58 @@ backend/article_structure.py
 - 款 (item): 隸屬於項之列舉條目 (一、, 二、, 十一、)。
 - 目 (sub): 隸屬於款之次細目 (（一）, （二）)。
 - 細目 (sub_sub): 隸屬於目之子細目 (1., １、, (1))。
-- 續行 (continuation): 原始折行由空白或標點符號起首、或前行未結句者，於顯示層接合，不變更原儲存文字。
-- 不變量 (Invariant): 去掉所有空白換行後，結構文字串接 100% 等於來源 ArticleContent。
+- 表格 (table): 含框線字元之區塊，逐行原樣保留，不合併、不冠項號，支援等寬與逐行原樣複製。
+- 續行 (continuation): 依據明確接續證據（行首縮排、行首標點、前行末尾逗號/分號）接合，不變更原儲存文字。
+- 不變量 (Invariant):
+  1. 去掉所有空白換行後，結構文字串接 100% 等於來源 ArticleContent。
+  2. 含框線字元的表格行，輸出行數 100% 等於來源行數。
 """
 
 import re
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 RE_SPACES = re.compile(r'^[ \t　]+')
-RE_PUNCT = re.compile(r'^[，。、；：！？」』）\),\.．]')
+RE_PUNCT = re.compile(r'^[，。、；：！？」』）\),\.．%％]')
+RE_CONTINUATION_PREV = re.compile(r'[，、；,-]$')
 RE_KUAN = re.compile(r'^([一二三四五六七八九十百]+、)\s*')
 RE_MU = re.compile(r'^([（(][一二三四五六七八九十百]+[）)])\s*')
 RE_SUBMU = re.compile(r'^([0-9０-９]+[.．、]|\([0-9０-９]+\)|（[0-9０-９]+）)\s*')
 
-ROMAN_NUMERALS = [
-    "", "Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ", "Ⅵ", "Ⅶ", "Ⅷ", "Ⅸ", "Ⅹ",
-    "Ⅺ", "Ⅻ", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX"
+BOX_DRAWING_CHARS = set("─│┌┐└┘├┤┬┴┼═║╒╓╔╕╖╗╘╙╚╛╜╝╞╟╠╡╢╣╤╥╦╧╨╩╪╫╬╱╲╳")
+
+UNICODE_ROMANS = [
+    "", "Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ", "Ⅵ", "Ⅶ", "Ⅷ", "Ⅸ", "Ⅹ", "Ⅺ", "Ⅻ"
 ]
+
+def to_roman(n: int) -> str:
+    """產生羅馬數字項號（支援無限數值，1~12 使用 Unicode 專用字元 Ⅰ~Ⅻ，13 以上動態生成）"""
+    if n <= 0:
+        return ""
+    if n < len(UNICODE_ROMANS):
+        return UNICODE_ROMANS[n]
+    
+    val_map = [
+        (1000, "M"), (900, "CM"), (500, "D"), (400, "CD"),
+        (100, "C"), (90, "XC"), (50, "L"), (40, "XL"),
+        (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")
+    ]
+    res = []
+    rem = n
+    for val, sym in val_map:
+        while rem >= val:
+            res.append(sym)
+            rem -= val
+    return "".join(res)
+
+def is_table_line(line: str) -> bool:
+    """判斷該行是否包含製表框線字元"""
+    return any(c in BOX_DRAWING_CHARS for c in line)
 
 def unwrap_text(text: str) -> str:
     """
     顯示層接續行合併 (Display-layer Unwrap)：
-    以空白或標點開頭的行、或前行未結句者併入前一行，不插入任何字元，不改動文字本體。
+    僅依據來源本身的明確續行證據（行首縮排、行首標點、前行末尾逗號/分號）合併。
+    表格行（含框線字元）絕對不合併，保持逐行原樣。
     """
     if not text:
         return ""
@@ -34,21 +64,41 @@ def unwrap_text(text: str) -> str:
     clean_lines = [l for l in raw_lines if l.strip()]
     if not clean_lines:
         return ""
+        
     merged = []
     for line in clean_lines:
         trimmed = line.strip()
         is_sub = bool(RE_KUAN.match(trimmed) or RE_MU.match(trimmed) or RE_SUBMU.match(trimmed))
         starts_with_punct = bool(RE_PUNCT.match(trimmed))
         has_spaces = bool(RE_SPACES.match(line))
+        is_curr_table = is_table_line(line)
+        
         if not merged:
-            merged.append(trimmed)
+            merged.append(line if is_curr_table else trimmed)
             continue
+            
         prev = merged[-1]
-        prev_ends = bool(re.search(r'[。：；！？:;]$', prev))
-        if (has_spaces and not is_sub) or starts_with_punct or (not prev_ends and not is_sub):
+        is_prev_table = is_table_line(prev)
+        prev_is_continuation = bool(RE_CONTINUATION_PREV.search(prev.rstrip()))
+        
+        # 嚴格續行判斷：
+        # 當前行與前行皆非表格行，且當前行不是款/目/細目起首，且符合續行條件
+        can_merge = (
+            not is_curr_table and
+            not is_prev_table and
+            not is_sub and
+            (
+                (has_spaces and not is_sub) or
+                starts_with_punct or
+                prev_is_continuation
+            )
+        )
+        
+        if can_merge:
             merged[-1] += trimmed
         else:
-            merged.append(trimmed)
+            merged.append(line if is_curr_table else trimmed)
+            
     return "\n".join(merged)
 
 def parse_article_structure(content: str, is_standard_article: bool = True) -> List[Dict[str, Any]]:
@@ -56,7 +106,7 @@ def parse_article_structure(content: str, is_standard_article: bool = True) -> L
     將原始 ArticleContent 解析為語意結構區塊陣列。
     每個區塊結構:
       {
-        "kind": "para" | "item" | "sub" | "sub_sub",
+        "kind": "para" | "item" | "sub" | "sub_sub" | "table",
         "no_raw": str,      # 款號/目號原文 (如 "一、", "（一）", "1.")
         "roman_no": str,    # 羅馬數字項號 (如 "Ⅰ", "Ⅱ")，單項條文為 ""
         "text": str,        # 內文文字 (已去除 marker)
@@ -78,24 +128,47 @@ def parse_article_structure(content: str, is_standard_article: bool = True) -> L
         is_sub = bool(RE_KUAN.match(trimmed) or RE_MU.match(trimmed) or RE_SUBMU.match(trimmed))
         starts_with_punct = bool(RE_PUNCT.match(trimmed))
         has_spaces = bool(RE_SPACES.match(line))
+        is_curr_table = is_table_line(line)
 
         if not merged:
-            merged.append(trimmed)
+            merged.append(line if is_curr_table else trimmed)
             continue
 
         prev = merged[-1]
-        prev_ends = bool(re.search(r'[。：；！？:;]$', prev))
+        is_prev_table = is_table_line(prev)
+        prev_is_continuation = bool(RE_CONTINUATION_PREV.search(prev.rstrip()))
 
-        if (has_spaces and not is_sub) or starts_with_punct or (not prev_ends and not is_sub):
-            # 接續行：直接接合至前行末尾
+        can_merge = (
+            not is_curr_table and
+            not is_prev_table and
+            not is_sub and
+            (
+                (has_spaces and not is_sub) or
+                starts_with_punct or
+                prev_is_continuation
+            )
+        )
+
+        if can_merge:
             merged[-1] += trimmed
         else:
-            merged.append(trimmed)
+            merged.append(line if is_curr_table else trimmed)
 
-    # Step 2: 結構區塊辨識 (項、款、目、細目)
+    # Step 2: 結構區塊辨識 (項、款、目、細目、表格)
     blocks = []
     para_count = 0
     for line in merged:
+        if is_table_line(line):
+            # 表格行原樣保留
+            blocks.append({
+                "kind": "table",
+                "no_raw": "",
+                "roman_no": "",
+                "text": line,
+                "para_idx": 0
+            })
+            continue
+
         m_kuan = RE_KUAN.match(line)
         m_mu = RE_MU.match(line)
         m_submu = RE_SUBMU.match(line)
@@ -106,6 +179,7 @@ def parse_article_structure(content: str, is_standard_article: bool = True) -> L
             blocks.append({
                 "kind": "item",
                 "no_raw": marker,
+                "roman_no": "",
                 "text": text,
                 "para_idx": para_count
             })
@@ -115,6 +189,7 @@ def parse_article_structure(content: str, is_standard_article: bool = True) -> L
             blocks.append({
                 "kind": "sub",
                 "no_raw": marker,
+                "roman_no": "",
                 "text": text,
                 "para_idx": para_count
             })
@@ -124,6 +199,7 @@ def parse_article_structure(content: str, is_standard_article: bool = True) -> L
             blocks.append({
                 "kind": "sub_sub",
                 "no_raw": marker,
+                "roman_no": "",
                 "text": text,
                 "para_idx": para_count
             })
@@ -133,23 +209,23 @@ def parse_article_structure(content: str, is_standard_article: bool = True) -> L
             blocks.append({
                 "kind": "para",
                 "no_raw": "",
+                "roman_no": "",
                 "text": line,
                 "para_idx": para_count
             })
 
-    # Step 3: 羅馬數字指派 (嚴格遵循：僅當為標準「條」法規且 ≥ 2 個項時才編羅馬數字；款號開頭無前項者或非標準法規不冠)
+    # Step 3: 羅馬數字項號指派 (嚴格遵循：僅當為標準「條」法規且 ≥ 2 個項時才編羅馬數字；單項不編)
     for b in blocks:
         if b["kind"] == "para":
             idx = b.get("para_idx", 0)
-            if is_standard_article and para_count >= 2 and 0 < idx < len(ROMAN_NUMERALS):
-                b["roman_no"] = ROMAN_NUMERALS[idx]
+            if is_standard_article and para_count >= 2 and idx > 0:
+                b["roman_no"] = to_roman(idx)
             else:
                 b["roman_no"] = ""
         else:
             b["roman_no"] = ""
 
     return blocks
-
 
 def render_article_copy_text(content: str, mode: str = "plain", label_raw: str = "", act_name: str = "") -> str:
     """
@@ -194,9 +270,10 @@ def render_article_copy_text(content: str, mode: str = "plain", label_raw: str =
             lines.append(f"　　　　{no_raw}{text}")
         elif kind == "sub_sub":
             lines.append(f"　　　　　　{no_raw}{text}")
+        elif kind == "table":
+            lines.append(text)
 
     return "\n".join(lines)
-
 
 def render_single_block_copy(block: Dict[str, Any], label_raw: str = "", act_name: str = "") -> str:
     """
@@ -213,6 +290,8 @@ def render_single_block_copy(block: Dict[str, Any], label_raw: str = "", act_nam
     if kind == "para":
         prefix = f"{roman}　" if roman else ""
         body = f"{prefix}{text}"
+    elif kind == "table":
+        body = text
     else:
         body = f"{no_raw}{text}"
 

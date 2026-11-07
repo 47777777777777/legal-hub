@@ -42,6 +42,7 @@ def init_database(db_path: str = DB_FILE):
             chapters_json TEXT DEFAULT '[]',
             attachments_json TEXT DEFAULT '[]',
             is_enriched INTEGER DEFAULT 0,
+            is_standard INTEGER DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -448,7 +449,25 @@ def init_database(db_path: str = DB_FILE):
             except sqlite3.OperationalError:
                 pass
 
-    # Columns for acts (status, effective_date, effective_note, abandon_note, effective_raw, effective_note_raw, first_seen_at, source_url, raw_path, content_hash)
+    # 17. Text references (citations) table (Prompt 4E & 4G)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS text_refs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            act_id TEXT NOT NULL,
+            article_no TEXT NOT NULL,
+            ref_act_id TEXT,
+            ref_article_no TEXT,
+            ref_text TEXT NOT NULL,
+            ref_type TEXT NOT NULL,
+            start_pos INTEGER NOT NULL,
+            end_pos INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_text_refs_source ON text_refs(act_id, article_no)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_text_refs_target ON text_refs(ref_act_id, ref_article_no)")
+
+    # Columns for acts (status, effective_date, effective_note, abandon_note, effective_raw, effective_note_raw, first_seen_at, source_url, raw_path, content_hash, is_standard)
     cur.execute("PRAGMA table_info(acts)")
     act_cols = [c[1] for c in cur.fetchall()]
     for col, ctype in [
@@ -461,7 +480,8 @@ def init_database(db_path: str = DB_FILE):
         ("first_seen_at", "TEXT"),
         ("source_url", "TEXT"),
         ("raw_path", "TEXT"),
-        ("content_hash", "TEXT")
+        ("content_hash", "TEXT"),
+        ("is_standard", "INTEGER DEFAULT 1")
     ]:
         if col not in act_cols:
             try:
@@ -475,6 +495,18 @@ def init_database(db_path: str = DB_FILE):
         SET status = 'abolished' 
         WHERE (category LIKE '%廢止法規%' OR (abandon_note IS NOT NULL AND abandon_note != ''))
           AND (status IS NULL OR status = 'active')
+    """)
+
+    # Baseline migration: Set is_standard for acts based on presence of label_raw in articles
+    cur.execute("""
+        UPDATE acts
+        SET is_standard = 0
+        WHERE id IN (
+            SELECT act_id
+            FROM articles
+            GROUP BY act_id
+            HAVING max(CASE WHEN label_raw IS NOT NULL AND trim(label_raw) != '' THEN 1 ELSE 0 END) = 0
+        )
     """)
 
     conn.commit()

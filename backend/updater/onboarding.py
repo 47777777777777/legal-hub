@@ -103,15 +103,16 @@ def onboard_single_act(
     cur.execute(f"SAVEPOINT {savepoint_name}")
 
     try:
+        is_standard = 1 if any("第" in a.get("ArticleNo", "") for a in law_dict.get("LawArticles", []) if a.get("ArticleType") == "A") else 0
         # 1. Insert Act
         cur.execute("""
             INSERT INTO acts (
                 id, pcode, name, name_en, category, last_modified, status,
                 effective_date, effective_note, abandon_note,
                 effective_raw, effective_note_raw, history_json,
-                first_seen_at, source_url, raw_path, content_hash, foreword
+                first_seen_at, source_url, raw_path, content_hash, foreword, is_standard
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 pcode = excluded.pcode,
                 name = excluded.name,
@@ -128,12 +129,13 @@ def onboard_single_act(
                 source_url = excluded.source_url,
                 raw_path = excluded.raw_path,
                 content_hash = excluded.content_hash,
-                foreword = excluded.foreword
+                foreword = excluded.foreword,
+                is_standard = excluded.is_standard
         """, (
             act_id, law_pcode, law_name, law_dict.get("EngLawName", ""), category,
             modified_date, act_status, effective_date, effective_note, abandon_note,
             effective_date, effective_note, history_json,
-            first_seen_at, source_url, raw_path, content_hash, foreword
+            first_seen_at, source_url, raw_path, content_hash, foreword, is_standard
         ))
 
         if foreword:
@@ -154,17 +156,19 @@ def onboard_single_act(
             
             raw_c = a_obj.get("ArticleContent", "")
             norm_c = norm_text(raw_c)
+            label_raw = raw_art_no.strip() if "第" in raw_art_no else ""
             # Retain deleted status if content says （刪除）
             art_status = "deleted" if ("（刪除）" in norm_c or "(刪除)" in norm_c) else "active"
 
             cur.execute("""
-                INSERT INTO articles (act_id, article_no, content, status, stale)
-                VALUES (?, ?, ?, ?, 0)
+                INSERT INTO articles (act_id, article_no, content, status, stale, label_raw)
+                VALUES (?, ?, ?, ?, 0, ?)
                 ON CONFLICT(act_id, article_no) DO UPDATE SET
                     content = excluded.content,
                     status = excluded.status,
-                    stale = 0
-            """, (act_id, art_no, norm_c, art_status))
+                    stale = 0,
+                    label_raw = excluded.label_raw
+            """, (act_id, art_no, norm_c, art_status, label_raw))
             inserted_articles.append((art_no, norm_c))
 
         # 3. Check 1 immediate verbatim fidelity verification

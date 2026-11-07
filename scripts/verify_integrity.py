@@ -558,6 +558,35 @@ def check_lis_data_authenticity(conn: sqlite3.Connection) -> bool:
     print(f"  PASSED: Verified {len(reason_rows)} reason(s) and {len(comp_rows)} comparison row(s) strictly match raw LIS HTML verbatim.")
     return True
 
+def check_text_refs_integrity(conn):
+    print("[Check 11] Verifying text_refs table and citation resolver integrity...")
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='text_refs'")
+    if not cur.fetchone():
+        print("  FAIL: text_refs table does not exist in database!")
+        return False
+    
+    # Test citation module directly
+    from backend.citations import resolve_citations
+    sample_text = "犯本法第十條或民法第一百八十四條之罪者"
+    refs = resolve_citations(sample_text, host_act_id="criminal_code")
+    if len(refs) < 2:
+        print(f"  FAIL: Citation resolver failed on sample text: got {refs}")
+        return False
+    
+    ref_host = next((r for r in refs if r.get("ref_act_id") == "criminal_code"), None)
+    ref_civil = next((r for r in refs if r.get("ref_act_id") == "civil_code"), None)
+    if not ref_host or not ref_civil:
+        print(f"  FAIL: Citation resolver did not resolve expected host and explicit targets: got {refs}")
+        return False
+    
+    if ref_civil.get("ref_type") != "explicit" or ref_civil.get("ref_article_no") != "184":
+        print(f"  FAIL: Citation resolver resolved civil code incorrectly: {ref_civil}")
+        return False
+
+    print("  PASSED: text_refs schema verified and citation engine cross-act reference verified.")
+    return True
+
 def verify_all(db_path=None):
     import argparse
     parser = argparse.ArgumentParser(description="Legal Hub Integrity Guardrail Verification")
@@ -584,7 +613,8 @@ def verify_all(db_path=None):
         check_ui_chinese_fallbacks(BASE_DIR),
         check_template_synthesized_sentences(BASE_DIR),
         check_paywall_strings_in_enrichments(conn),
-        check_lis_data_authenticity(conn)
+        check_lis_data_authenticity(conn),
+        check_text_refs_integrity(conn)
     ]
     
     conn.close()

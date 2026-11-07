@@ -45,9 +45,14 @@ function parseChnNumber(str) {
   return val + temp;
 }
 
+window.ENABLE_CITATION_HOVER = false; // Prompt 4G: 立即停用現有懸停，直到後端 citations.py 完成
+
 // Convert citations like "第二百二十一條" or "第 185-3 條" or ranges like "第一百二十一條至第一百二十三條" into interactive hover/tap links
 function linkifyArticleRefs(text, q) {
   let safe = hl(text, q);
+  if (!window.ENABLE_CITATION_HOVER) {
+    return safe; // 停用超連結輸出，文字完整照常顯示
+  }
 
   // 1. Range citations: e.g. "第一百二十一條至第一百二十三條" or "第二百零一條至第二百零二條" (支援零、〇)
   const rangeRegex = /(?:第\s*)?([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[零〇一二三四五六七八九十百千]+(?:\s*之\s*[零〇一二三四五六七八九十百]+)?)\s*條\s*至\s*(?:第\s*)?([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[零〇一二三四五六七八九十百千]+(?:\s*之\s*[零〇一二三四五六七八九十百]+)?)\s*條/g;
@@ -1363,8 +1368,8 @@ class LegalHubApp {
       if (countBadge) countBadge.textContent = "0 條";
       return;
     }
-    const isStandardAct = articles.some((a) => Boolean(a.label_raw && a.label_raw.trim()));
-    if (countBadge) countBadge.textContent = isStandardAct ? `${articles.length} 條` : "1 條";
+    const isStandardAct = (this.currentAct && this.currentAct.is_standard !== 0) && articles.some((a) => Boolean(a.label_raw && a.label_raw.trim()));
+    if (countBadge) countBadge.textContent = isStandardAct ? `${articles.length} 條` : "全文";
 
     let html = "";
     // Render official foreword if present (unbadged plain text block before articles)
@@ -1403,7 +1408,7 @@ class LegalHubApp {
     } else {
       let lastChapter = "";
       articles.forEach((art) => {
-        if (art.chapter && art.chapter !== lastChapter && !q) {
+        if (art.chapter && art.chapter !== '本法' && art.chapter !== lastChapter && !q) {
           lastChapter = art.chapter;
           html += `
             <div class="stream-chapter-divider" style="padding: 1rem 0.5rem 0.5rem 0.5rem; font-weight: 700; font-size: 0.95rem; color: #a1a1aa; border-bottom: 1px solid rgba(255,255,255,0.08); margin: 1.5rem 0 1rem 0;">
@@ -1415,7 +1420,7 @@ class LegalHubApp {
         html += `
           <article class="stream-article-card ${this.selectedArticleNo === art.article_no ? 'active' : ''}" id="article-card-${esc(art.article_no)}" data-article-no="${esc(art.article_no)}" data-chapter="${esc(art.chapter || '')}">
             <div class="article-card-header">
-              <div class="article-card-no">
+              ${(art.label_raw || art.title) ? '<div class="article-card-no">' : '<div class="article-card-no-blank" style="display:flex;align-items:center;">'}
                 ${artLabelHtml}
                 ${art.title ? `<span class="article-card-title">${hl(art.title, q)}</span>` : ""}
                 <span class="card-bookmark-mark ${marked ? "" : "hidden"}" title="已收藏">${icon("bookmark-filled", 13)}</span>

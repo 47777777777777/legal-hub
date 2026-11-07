@@ -236,6 +236,33 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                     self.send_json(200, {"success": True, "data": panel})
                     return
 
+            # GET /api/articles/{act_id}/{article_no}/preview (Prompt 4G §1.4 懸停預覽)
+            if path.startswith("/api/articles/") and path.endswith("/preview"):
+                parts = path.strip("/").split("/")
+                if len(parts) == 5 and parts[0] == "api" and parts[1] == "articles" and parts[4] == "preview":
+                    act_id = parts[2]
+                    art_no = parts[3]
+                    act = storage.get_act(act_id)
+                    art = storage.get_article(act_id, art_no)
+                    if not art:
+                        self.send_error_json(404, f"Article '{art_no}' not found in act '{act_id}'.", "NotFound")
+                        return
+                    label_raw = getattr(art, "label_raw", "") or ""
+                    act_name = getattr(act, "name", "") if act else ""
+                    title_str = f"{act_name} {label_raw}".strip() if (act_name or label_raw) else act_name
+                    preview_data = {
+                        "act_id": act_id,
+                        "act_name": act_name,
+                        "article_no": art_no,
+                        "label_raw": label_raw,
+                        "title": title_str,
+                        "article_title": getattr(art, "title", "") or "",
+                        "content": art.content,
+                        "structure": getattr(art, "structure", []) or []
+                    }
+                    self.send_json(200, {"success": True, "data": preview_data})
+                    return
+
             # GET /api/acts (supports ?q=... for full statutes search)
             if path == "/api/acts":
                 q = query.get("q", [""])[0]
@@ -490,6 +517,29 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                         art_no = parts[4]
                         lits = storage.get_literature_for_article(act_id, art_no)
                         self.send_json(200, {"success": True, "data": lits, "total": len(lits), "act_id": act_id, "article_no": art_no})
+                        return
+
+                    # GET /api/acts/<act_id>/articles/<article_no>/preview (Prompt 4G §1.4 懸停預覽)
+                    if len(parts) == 6 and parts[5] == "preview":
+                        art_no = parts[4]
+                        art = storage.get_article(act_id, art_no)
+                        if not art:
+                            self.send_error_json(404, f"Article '{art_no}' not found in act '{act_id}'.", "NotFound")
+                            return
+                        label_raw = getattr(art, "label_raw", "") or ""
+                        act_name = getattr(act, "name", "") or ""
+                        title_str = f"{act_name} {label_raw}".strip() if (act_name or label_raw) else act_name
+                        preview_data = {
+                            "act_id": act_id,
+                            "act_name": act_name,
+                            "article_no": art_no,
+                            "label_raw": label_raw,
+                            "title": title_str,
+                            "article_title": getattr(art, "title", "") or "",
+                            "content": art.content,
+                            "structure": getattr(art, "structure", []) or []
+                        }
+                        self.send_json(200, {"success": True, "data": preview_data})
                         return
 
                     # GET /api/acts/<act_id>/articles/<article_no>

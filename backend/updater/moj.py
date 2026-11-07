@@ -268,6 +268,7 @@ class MojSource(Source):
 
                 # Scenario 1: New Act (brand new pcode)
                 new_act_id = law_pcode.lower() if law_pcode else f"act_{hashlib.md5(law_name.encode()).hexdigest()[:8]}"
+                is_std = 1 if any("第" in a.get("ArticleNo", "") for a in law.get("LawArticles", []) if a.get("ArticleType") == "A") else 0
                 changes.append({
                     "change_type": "add_act",
                     "act_id": new_act_id,
@@ -281,7 +282,8 @@ class MojSource(Source):
                         "effective_note": effective_note,
                         "abandon_note": abandon_note,
                         "foreword": (law.get("LawForeword") or "").strip(),
-                        "articles_count": len(law.get("LawArticles", []))
+                        "articles_count": len(law.get("LawArticles", [])),
+                        "is_standard": is_std
                     }
                 })
                 counts["add_act"] += 1
@@ -346,6 +348,9 @@ class MojSource(Source):
                 norm_new = _norm(raw_new_content)
                 new_hash = hashlib.sha256(norm_new.encode('utf-8')).hexdigest()
 
+                raw_art_no = (a_obj.get("ArticleNo") or "").strip()
+                label_raw = raw_art_no if "第" in raw_art_no else ""
+
                 existing = db_arts.get((act_id, art_no))
                 if not existing:
                     if not is_abolished:
@@ -355,8 +360,9 @@ class MojSource(Source):
                             "article_no": art_no,
                             "new_content": norm_new,
                             "new_hash": new_hash,
+                            "label_raw": label_raw,
                             "source_modified_date": modified_date,
-                            "detail": {"content": norm_new}
+                            "detail": {"content": norm_new, "label_raw": label_raw}
                         })
                         counts["add_article"] += 1
                 else:
@@ -371,8 +377,9 @@ class MojSource(Source):
                             "new_content": norm_new,
                             "old_hash": existing["hash"],
                             "new_hash": new_hash,
+                            "label_raw": label_raw,
                             "source_modified_date": modified_date,
-                            "detail": {"old_content": existing["content"], "new_content": norm_new}
+                            "detail": {"old_content": existing["content"], "new_content": norm_new, "label_raw": label_raw}
                         })
                         counts["modify_article"] += 1
 
@@ -417,9 +424,10 @@ class MojSource(Source):
                 d = ch["detail"]
                 pcode = d.get("pcode", "")
                 fw = d.get("foreword", "")
+                is_std = d.get("is_standard", 1)
                 cur.execute("""
-                    INSERT INTO acts (id, pcode, name, category, last_modified, status, effective_date, effective_note, abandon_note, effective_raw, effective_note_raw, foreword)
-                    VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)
+                    INSERT INTO acts (id, pcode, name, category, last_modified, status, effective_date, effective_note, abandon_note, effective_raw, effective_note_raw, foreword, is_standard)
+                    VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                         pcode = excluded.pcode,
                         name = excluded.name,
@@ -431,8 +439,9 @@ class MojSource(Source):
                         abandon_note = excluded.abandon_note,
                         effective_raw = excluded.effective_raw,
                         effective_note_raw = excluded.effective_note_raw,
-                        foreword = excluded.foreword
-                """, (act_id, pcode, d["name"], d.get("category", ""), d.get("last_modified", ""), d.get("effective_date", ""), d.get("effective_note", ""), d.get("abandon_note", ""), d.get("effective_date", ""), d.get("effective_note", ""), fw))
+                        foreword = excluded.foreword,
+                        is_standard = excluded.is_standard
+                """, (act_id, pcode, d["name"], d.get("category", ""), d.get("last_modified", ""), d.get("effective_date", ""), d.get("effective_note", ""), d.get("abandon_note", ""), d.get("effective_date", ""), d.get("effective_note", ""), fw, is_std))
                 if fw:
                     cur.execute("""
                         INSERT OR REPLACE INTO act_forewords (act_id, pcode, content, content_hash)
