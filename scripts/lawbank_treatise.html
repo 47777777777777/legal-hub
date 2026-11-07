@@ -1,0 +1,540 @@
+
+
+<!DOCTYPE HTML>
+
+<html lang="zh-Hant-TW">
+<head><meta http-equiv="pragma" content="no-cache" /><meta http-equiv="CACHE-CONTROL" content="NO-CACHE" /><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><meta name="Keywords" content="法規、法律、行政函釋、法規新訊、裁判書、英譯法規、法學期刊、博碩士論文、法學書籍、法學題庫" /><meta name="copyright" content="本網頁著作權屬法源資訊股份有限公司所有" /><meta name="description" content="「法源法律網」為專業法學資料庫，收錄：法規（憲法、法律、法規命令、行政規則、地方法規）、司法判解（大法官解釋、司法解釋、判例、精選裁判、具參考價值裁判、決議、法律問題）、各級法院裁判書、行政函釋（解釋令函、公告、裁決、處分）、訴願決定書、法學論著全文、法律新聞…等，並每日更新各類法學資料。建置、維運「司法院法學資料檢索系統」、「裁判書查詢系統」、「全國法規資料庫」……等政府法規公開機制，為領航臺灣法學資料庫的第一品牌。" /><meta property="fb:app_id" content="846305055438782" /><meta property="og:type" content="article" /><meta property="og:image" content="https://www-lawbank-com-tw.autorpa.lib.ccu.edu.tw:8443/images/logo_FBshare.png?ver=20190123" /><meta property="og:site_name" content="法源法律網" /><title>
+	法源法律網-法學論著-綜合查詢
+</title><link href="../css/reset.css" rel="stylesheet" type="text/css" media="screen" /><link href="../css/fontawesome.min.css" rel="stylesheet" /><link href="../css/brands.min.css" rel="stylesheet" /><link href="../css/solid.min.css" rel="stylesheet" /><link href="../css/lawbank.css?2025110515" rel="stylesheet" type="text/css" media="screen" /><link href="../css/jquery-ui.css" rel="stylesheet" type="text/css" media="screen" /><link href="../css/flexslider.css" rel="stylesheet" type="text/css" />
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-92YN8QGDF5"></script>
+    <script type="text/javascript" src="/js/jquery-1.12.4.min.js"></script>
+    <script type="text/javascript" src="/js/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="/js/jquery.cycle.all.js"></script>
+    <script type="text/javascript" src="/js/CommJS.js?20230407" defer="defer"></script>
+    <script type="text/javascript" src="/js/global.js?20251105" defer="defer"></script>
+    <script type="text/javascript" src="/js/GoogleAnalytics.js" defer="defer"></script>
+    <script type="text/javascript" src="/js/tinybox.js"></script>
+    <link href="../css/style.css" rel="stylesheet" type="text/css" media="screen" /><link rel="shortcut icon" href="../favicon.png" />
+    <link href="https://db-lawbank-com-tw.autorpa.lib.ccu.edu.tw:8443/css/autocomplete.css?20230217" rel="stylesheet" type="text/css" />
+    <script type="text/javascript" src="https://db-lawbank-com-tw.autorpa.lib.ccu.edu.tw:8443/js/jquery-ui-autocomplete-1.10.4.js"></script>
+    <script type="text/javascript" src="https://db-lawbank-com-tw.autorpa.lib.ccu.edu.tw:8443/js/autocomplete.js?20231231"></script>
+    <script type="text/javascript">
+        $(function() {
+            $("#Content input:text").addClass("qry01");
+            function SetSelectItem(ControlName) {
+                var TTsTypeAll = $(ControlName + " input:checkbox:first");
+                var TTsType = $(ControlName + " input:checkbox").not($(ControlName + " input:checkbox:first"));
+                //論著類型的勾選
+                //  全選
+                TTsTypeAll.click(function() {
+                    TTsType.prop('checked', TTsTypeAll.is(':checked'));
+                });
+                //  全部都勾選起來後，全選也要被勾選
+                TTsType.click(function() {
+                    if ($(this).attr("checked")) {
+                        var iCount = 0;
+                        for (i = 0; i < TTsType.length; i++) {
+                            if (TTsType.eq(i).prop("checked"))
+                                iCount++;
+                        }
+                        if (iCount == TTsType.length)
+                            TTsTypeAll.prop('checked', 'true');
+                    }
+                    else {
+                        TTsTypeAll.removeAttr('checked');
+                    }
+                });
+
+            }
+            //論著類型的勾選
+            SetSelectItem("#TTsType");
+            //論著分類的勾選
+            SetSelectItem("#TTsCate");
+            //語文別的勾選
+            SetSelectItem("#TTsLan");
+
+            AutoTerms("#ctl00_cphMain_txtKeyword0", "../Controls/GetTermList.ashx?ty=8");
+            AutoTerms("#ctl00_cphMain_txtKeyword1", "../Controls/GetTermList.ashx?ty=8");
+            AutoTerms("#ctl00_cphMain_txtKeyword2", "../Controls/GetTermList.ashx?ty=8");
+        });
+
+        function CheckValues() {
+
+            var bHasValue = false;
+            var bLeast = false;
+            var coltxt = $("#QueryKD input:text");
+            for (i = 0; i <2; i++) {
+                if (coltxt.eq(i).val() == "" && coltxt.eq(i+ 1).val() != "") {
+                    alert("請依序輸入檢索字詞");
+                    return false;
+                }
+            }
+            
+            if (coltxt.eq(0).val() != "")
+                bLeast = true;
+            var colYear = $("#trPub input:text");
+            if (colYear.eq(0).val() != "")
+                bLeast = true;
+            if (colYear.eq(3).val() != "")
+                bLeast = true;
+            if (bLeast == false) {
+                alert("請輸入 檢索字詞 或 出版日期 進行搜尋!");
+                return false;
+            }
+
+            bHasValue = false;
+            var colTTsCate = $("#TTsCate input:checkbox");
+            for (i = 0; i < colTTsCate.length; i++)
+            {
+                if (colTTsCate.eq(i).prop("checked"))
+                {
+                    bHasValue = true;
+                    break;
+                }
+            }
+            if (!bHasValue)
+            {
+                alert("請選擇論著分類");
+                return false;
+            }
+
+            for (i = 0; i < 2; i++) {
+                if ($.trim(coltxt.eq(i).val()) != "") {
+                    SendSeachKWLog("法學論著", $.trim(coltxt.eq(i).val()))
+                }
+            }
+
+            
+        }
+    </script>
+</head>
+<body>
+    <form name="aspnetForm" method="post" action="./query.aspx" onsubmit="javascript:return WebForm_OnSubmit();" onkeypress="javascript:return WebForm_FireDefaultButton(event, 'ctl00_cphMain_butSubmit')" id="aspnetForm">
+<div>
+<input type="hidden" name="__EVENTTARGET" id="__EVENTTARGET" value="" />
+<input type="hidden" name="__EVENTARGUMENT" id="__EVENTARGUMENT" value="" />
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="/wEPDwUJODM0NDY1Nzk2ZBgBBR5fX0NvbnRyb2xzUmVxdWlyZVBvc3RCYWNrS2V5X18WCgUZY3RsMDAkY3BoTWFpbiRjYlRUc0NhdGUkMAUZY3RsMDAkY3BoTWFpbiRjYlRUc0NhdGUkMQUZY3RsMDAkY3BoTWFpbiRjYlRUc0NhdGUkMgUZY3RsMDAkY3BoTWFpbiRjYlRUc0NhdGUkMwUZY3RsMDAkY3BoTWFpbiRjYlRUc0NhdGUkNAUZY3RsMDAkY3BoTWFpbiRjYlRUc0NhdGUkNQUZY3RsMDAkY3BoTWFpbiRjYlRUc0NhdGUkNgUZY3RsMDAkY3BoTWFpbiRjYlRUc0NhdGUkNwUZY3RsMDAkY3BoTWFpbiRjYlRUc0NhdGUkOAUZY3RsMDAkY3BoTWFpbiRjYlRUc0NhdGUkOKyxjKmViv7/2++fLYr8jpjdwPJl" />
+</div>
+
+<script type="text/javascript">
+//<![CDATA[
+var theForm = document.forms['aspnetForm'];
+if (!theForm) {
+    theForm = document.aspnetForm;
+}
+function __doPostBack(eventTarget, eventArgument) {
+    if (!theForm.onsubmit || (theForm.onsubmit() != false)) {
+        theForm.__EVENTTARGET.value = eventTarget;
+        theForm.__EVENTARGUMENT.value = eventArgument;
+        theForm.submit();
+    }
+}
+//]]>
+</script>
+
+
+<script src="/WebResource.axd?d=1GdnRGkIsLqoGr9asfYxHTmY4JIiah8siBSDkS0WVctlcn1yn11J1FOAE7nEaZOIlSlsQ-lHJO4J864b_otooZghc341&amp;t=637110536437816177" type="text/javascript"></script>
+
+
+<script src="/WebResource.axd?d=RUNstCUEeJKCgz3_FbOVyz3eTuwU7794BgRsSX31-v01WrLQ1xfbdvA44KJCQYTPRpX1rBVe878h0Js_bjrjHq1z5v-H2dCS5vgksCqftAwalrOs0&amp;t=637110536437816177" type="text/javascript"></script>
+<script type="text/javascript">
+//<![CDATA[
+function WebForm_OnSubmit() {
+if (typeof(ValidatorOnSubmit) == "function" && ValidatorOnSubmit() == false) return false;
+return true;
+}
+//]]>
+</script>
+
+<div>
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="E326578F" />
+	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="/wEdABrCtSalbZU71xETAOC72khnjzlDRxjyc5dYR1yYLY3Vep8+Q4lbRd+eOxovt0z5a8Hk5o/UVtKLyVgElNCbXlPY4ZMP5f9VNS8D1XCxGMV7ds5dPszVAiRparpeBYZI+OPd0l/fpHbkBeQU+AOb0pizisKM1MQ+oYetQwTK/XFWCocCnz8CX8C6KCsUNF7ocyWQdle+O0FU6iTMZBspUgP44bpkZ/xC/fDTC7I0j17p+JN+XQnSvuUaMezATIYgcof+/6af/9PSedmpYTe3ctPvhKUNRrRKNSPCNGyfdY1pH8PTaqjvF1afAQfxfb5ViFQn78+yOIruoo/nZxcZGb5BgO+FOEnFkLXwxi5AyJ8s6P2k+afu2aW4J7rAeQFTSyjcvhvfHdG9NT8WhfXgSzOs8ezzpAkZ2A9ythfyg36WD/DHKXEHnL9Lm3XMYc1MTi7xViXJm2ysEi5nsjR69aIfzr4nJ6zwAZty0g8+lwGmCPoZeN1Y7ZVCH83rD1snxNJaCGXShG15SGh8B0Zap++PI7I3I1xM5ZpV+cKNPpii1IXiby0dl6YazVV3jt2TCNIgswI4" />
+</div>
+        <!-- 頁首開始 -->
+        <!-- 廣告區 -->
+        
+        <div class="header">
+            <!-- 上方選單 -->
+            <div class="header-nav" role="navigation">
+                <div class="container">
+                    <div class="userinfo">國立中正大學，您好</div>
+                    <div class="menu">
+                        <a href="#U" id="AU" name="U" title="功能區塊" accesskey="U">:::</a>
+                        <ul>
+                            <li><a href="/index.aspx">回首頁</a></li>
+                            <li class="highlight">
+                                <a id="ctl00_hlLoginout" onclick="return ConfirmLogout();" href="../Logout.ashx">會員登出</a>
+                            </li>
+                            
+                            <li><a id="ctl00_hlBuyPoint"><a href="/member/BuyAuth.aspx?m=1">購買授權</a></a></li>
+                            <li><a href="/feature/List.aspx">功能介紹</a></li>
+                            <li class="tel"><a href="/vip/general-service.aspx">預約服務</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <!--主選單 開始-->
+            <div class="nav">
+                <div class="container">
+                    <ul>
+                        <li class="nav-Law11"><a href="https://db-lawbank-com-tw.autorpa.lib.ccu.edu.tw:8443/FSPE" title="精選六法">精選六法</a></li>
+                        <li class="nav-LawSearch"><a href="https://db-lawbank-com-tw.autorpa.lib.ccu.edu.tw:8443/FLAW" title="法規查詢">法規查詢</a></li>
+                        
+						<li class="nav-LawSolution"><a href="https://db-lawbank-com-tw.autorpa.lib.ccu.edu.tw:8443/FJ" title="司法判解">司法判解</a></li>
+                        <li class="nav-LawSolution"><a href="https://db-lawbank-com-tw.autorpa.lib.ccu.edu.tw:8443/FINT" title="行政函釋">行政函釋</a></li>
+                        <li class="nav-LawReferee"><a href="https://fyjud-lawbank-com-tw.autorpa.lib.ccu.edu.tw:8443/index.aspx" title="裁判書">裁判書</a></li>
+                        <li class="nav-Law12"><a href="https://fyjud-lawbank-com-tw.autorpa.lib.ccu.edu.tw:8443/indexpsue.aspx" title="起訴書">起訴書</a></li>
+                        <li class="nav-LawEnglish"><a href="https://db-lawbank-com-tw.autorpa.lib.ccu.edu.tw:8443/Eng" title="英譯法規">英譯法規</a></li>
+                        <li class="nav-LawTreatise"><a href="/treatise/query.aspx" title="法學論著">法學論著</a></li>
+                        <li class="nav-LawExam"><a href="/exam/index.aspx" title="法學題庫">法學題庫</a></li>
+                        <li class="nav-LawMember"><a href="/member/ManageFolder.aspx" title="會員專區">會員專區</a></li>
+                        <li class="nav-LawReceivedZone"><a href="/contributor/index.aspx" title="論著投稿">論著投稿</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <!-- 頁首結束 -->
+
+        
+        
+        
+        <div id="ctl00_plHeader" class="lawbank-header-in">
+	
+            <div class="container">
+                <h1 class="logo"><a href="/index.aspx">
+                    <img src="/images/logo.svg" width="235" height="75" alt="法源法律網"></a></h1>
+            </div>
+        
+</div>
+
+        <!-- 內容開始 -->
+        <div class="clearfix"></div>
+        <div id="main">
+            
+    <div id="Law-Container">
+<div id="Law-Content1">
+    <div class="pageTitle">法學論著綜合查詢</div>
+    <div class="pagebox">
+        <table width="100%" class="LawsTable">
+
+            <tr>
+                <th valign="nowrap"><span>論著分類</span></th>
+                <td id="TTsCate">
+                    <input type="checkbox" name="cbTTsCateAll" id="cbTTsCateAll" checked="checked" />
+                	<span class="keyword"> 全選</span>
+                    <table id="ctl00_cphMain_cbTTsCate" class="tabnone" border="0" style="width:90%;">
+	<tr>
+		<td><input id="ctl00_cphMain_cbTTsCate_0" type="checkbox" name="ctl00$cphMain$cbTTsCate$0" checked="checked" /><label for="ctl00_cphMain_cbTTsCate_0"> 憲法及關係法規</label></td><td><input id="ctl00_cphMain_cbTTsCate_1" type="checkbox" name="ctl00$cphMain$cbTTsCate$1" checked="checked" /><label for="ctl00_cphMain_cbTTsCate_1"> 民事法</label></td><td><input id="ctl00_cphMain_cbTTsCate_2" type="checkbox" name="ctl00$cphMain$cbTTsCate$2" checked="checked" /><label for="ctl00_cphMain_cbTTsCate_2"> 刑事法</label></td>
+	</tr><tr>
+		<td><input id="ctl00_cphMain_cbTTsCate_3" type="checkbox" name="ctl00$cphMain$cbTTsCate$3" checked="checked" /><label for="ctl00_cphMain_cbTTsCate_3"> 行政法</label></td><td><input id="ctl00_cphMain_cbTTsCate_4" type="checkbox" name="ctl00$cphMain$cbTTsCate$4" checked="checked" /><label for="ctl00_cphMain_cbTTsCate_4"> 法學、法律及法制</label></td><td><input id="ctl00_cphMain_cbTTsCate_5" type="checkbox" name="ctl00$cphMain$cbTTsCate$5" checked="checked" /><label for="ctl00_cphMain_cbTTsCate_5"> 國際法</label></td>
+	</tr><tr>
+		<td><input id="ctl00_cphMain_cbTTsCate_6" type="checkbox" name="ctl00$cphMain$cbTTsCate$6" checked="checked" /><label for="ctl00_cphMain_cbTTsCate_6"> 大陸事務</label></td><td><input id="ctl00_cphMain_cbTTsCate_7" type="checkbox" name="ctl00$cphMain$cbTTsCate$7" checked="checked" /><label for="ctl00_cphMain_cbTTsCate_7"> 博碩士論文</label></td><td><input id="ctl00_cphMain_cbTTsCate_8" type="checkbox" name="ctl00$cphMain$cbTTsCate$8" checked="checked" /><label for="ctl00_cphMain_cbTTsCate_8"> 其他</label></td>
+	</tr>
+</table>
+                </td>
+            </tr>
+            <tr>
+                <th valign="nowrap"><span>檢索字詞</span></th>
+                <td id="QueryKD">
+                
+                    <div id="dvKeywords">含&nbsp;&nbsp;&nbsp;有：
+                        <input name="ctl00$cphMain$txtKeyword0" type="text" id="ctl00_cphMain_txtKeyword0" size="60" maxlength="30" />
+                        <select name="ctl00$cphMain$sltColumn0" id="ctl00_cphMain_sltColumn0">
+	<option selected="selected" value="ALL">不限欄位</option>
+	<option value="T">論文/文章標題</option>
+	<option value="N">期刊/書籍名稱</option>
+	<option value="A">作者譯者</option>
+	<option value="K">關鍵詞</option>
+	<option value="S">摘要</option>
+	<option value="C">內文</option>
+</select>
+                        
+                    </div>
+                    
+                    <div id="dvKeywords1">
+                        <select name="ctl00$cphMain$sltOper0" id="ctl00_cphMain_sltOper0">
+	<option value="AND">AND</option>
+	<option value="OR">OR</option>
+	<option value="AND NOT">NOT</option>
+</select>
+                        <input name="ctl00$cphMain$txtKeyword1" type="text" id="ctl00_cphMain_txtKeyword1" size="60" maxlength="30" />
+                        <select name="ctl00$cphMain$sltColumn1" id="ctl00_cphMain_sltColumn1">
+	<option selected="selected" value="ALL">不限欄位</option>
+	<option value="T">論文/文章標題</option>
+	<option value="N">期刊/書籍名稱</option>
+	<option value="A">作者譯者</option>
+	<option value="K">關鍵詞</option>
+	<option value="S">摘要</option>
+	<option value="C">內文</option>
+</select>
+                    </div>
+                    
+                    <div id="dvKeywords2">
+                        <select name="ctl00$cphMain$sltOper1" id="ctl00_cphMain_sltOper1">
+	<option value="AND">AND</option>
+	<option value="OR">OR</option>
+	<option value="AND NOT">NOT</option>
+</select>
+                        <input name="ctl00$cphMain$txtKeyword2" type="text" id="ctl00_cphMain_txtKeyword2" size="60" maxlength="30" />
+                        <select name="ctl00$cphMain$sltColumn2" id="ctl00_cphMain_sltColumn2">
+	<option selected="selected" value="ALL">不限欄位</option>
+	<option value="T">論文/文章標題</option>
+	<option value="N">期刊/書籍名稱</option>
+	<option value="A">作者譯者</option>
+	<option value="K">關鍵詞</option>
+	<option value="S">摘要</option>
+	<option value="C">內文</option>
+</select>
+                    </div>
+                </td>
+            </tr>
+            
+                    
+               
+
+            <tr>
+                <th valign="nowrap"><span>出版日期</span></th>
+                <td id="trPub">
+                    西元
+                    <input name="ctl00$cphMain$txtSY" type="text" id="ctl00_cphMain_txtSY" size="4" maxlength="4" />年
+                    <span id="ctl00_cphMain_rvSY" style="color:Red;display:none;">格式錯誤,請輸入西元年,如:2009</span>
+                    <input name="ctl00$cphMain$txtSM" type="text" id="ctl00_cphMain_txtSM" size="3" maxlength="2" />月
+                    <span id="ctl00_cphMain_rvSM" style="color:Red;display:none;">格式錯誤,請輸入月份數字1~12</span>
+                    <input name="ctl00$cphMain$txtSD" type="text" id="ctl00_cphMain_txtSD" size="3" maxlength="2" />日
+                    <span id="ctl00_cphMain_SD" style="color:Red;display:none;">格式錯誤,請輸入日期數字1~31</span>
+                    至西元
+                    <input name="ctl00$cphMain$txtEY" type="text" id="ctl00_cphMain_txtEY" size="4" maxlength="4" />年
+                    <span id="ctl00_cphMain_rvEY" style="color:Red;display:none;">格式錯誤,請輸入西元年,如:2009</span>
+                    <input name="ctl00$cphMain$txtEM" type="text" id="ctl00_cphMain_txtEM" size="3" maxlength="2" />月
+                    <span id="ctl00_cphMain_rvEM" style="color:Red;display:none;">格式錯誤,請輸入月份數字1~12</span>
+                    <input name="ctl00$cphMain$txtED" type="text" id="ctl00_cphMain_txtED" size="3" maxlength="2" />日
+                    <span id="ctl00_cphMain_rvED" style="color:Red;display:none;">格式錯誤,請輸入日期數字1~31</span>
+                </td>
+            </tr>
+
+        </table>
+        <div class="LawsTable-submit">
+            <a onclick="return CheckValues();" id="ctl00_cphMain_butSubmit" href="javascript:WebForm_DoPostBackWithOptions(new WebForm_PostBackOptions(&quot;ctl00$cphMain$butSubmit&quot;, &quot;&quot;, true, &quot;&quot;, &quot;&quot;, false, true))"><img alt="送出查詢" width="104" height="25" src="../images/btn_qry_SubmitQuery.gif"/> </a>
+             <input type="image" src="../images/btn_qry_Clear.gif" alt="清除重填" onclick="javascript:document.aspnetForm.reset(); return false;" />
+        </div>
+    </div>
+</div>
+</div>
+
+            <input name="ctl00$hidSid" type="hidden" id="ctl00_hidSid" value="be5c468097bd41fea959b93e76e2cb3b-30" />
+        </div>
+        <!-- 內容結束 -->
+
+        <!-- 頁尾開始 -->
+        <div class="clearfix"></div>
+        <div class="footer">
+            <!-- 胖頁尾 -->
+            <div class="fatfooter">
+                <div class="container">
+                    <a href="#F" id="AF" name="F" title="網站資訊區塊" accesskey="F">:::</a>
+                    <div class="footer-nav">
+                        <ul>
+                            <li>公司簡介
+							<ul>
+                                <li><a href="/about/profile.aspx">法源資訊</a></li>
+                                <li><a href="/about/product01.aspx">產品服務</a></li>
+                                <li><a href="/vip/general-content.aspx">資料庫說明</a></li>
+                                <li><a href="/about/job.aspx">法源徵才</a></li>
+                                <li><a href="/about/map.aspx">交通資訊</a></li>
+                                <li><a href="/event/declare02.aspx">策略聯盟</a></li>
+                            </ul>
+                            </li>
+                            <li>會員服務
+							<ul>
+                                <li><a href="/vip/free-index.aspx">申請流程</a></li>
+                                <li><a href="/member/readme_Mem.aspx">會員條款</a></li>
+                                <li><a href="/vip/general-fee.aspx">授權費用</a></li>
+                                <li><a href="/vip/general-fee.aspx#fee04">付款方式</a></li>
+                            </ul>
+                            </li>
+                            <li id="fatfooter03">論著授權
+							<ul>
+                                <li><a href="/contributor/index.aspx">徵集論著</a></li>
+                                <li><a href="/author/index.aspx">啟用授權專區</a></li>
+                                <li><a href="#fatfooter03" onclick="window.open('/vip/license-fee.htm','','scrollbars=yes,resizable=yes,width=900,height=600')">權利金計算說明</a></li>
+                                <li><a href="/about/download.aspx">授權合約書下載</a></li>
+                                <li><a href="/contributor/AppForms.aspx">投稿基本資料表</a></li>
+                            </ul>
+                            </li>
+                            <li>常見問題
+							<ul>
+                                <li><a href="/about/download.aspx">使用手冊</a></li>
+                                <li><a href="/vip/general-faq.aspx">常見問題集</a></li>
+                            </ul>
+                            </li>
+                            <li class="more_s">更多服務
+							<ul>
+                                <li><a href="/service/news01.htm">法令訂閱服務</a></li>
+                                <li><a href="/service/news02.htm">金融法規自動關連AI</a></li>
+                                <li><a href="/service/news03.htm">金融法遵外規資料服務</a></li>
+                                <li><a href="/service/news04.htm">裁判書資料服務</a></li>
+                            </ul>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="service">
+                        <div class="epaper">
+                            <p class="title">
+                                <label for="txtmail">訂閱電子報</label>
+                            </p>
+                            <input type="text" name="txtmail" id="txtmail" placeholder="請輸入電子郵件信箱" />
+                            <div class="row">
+                                <a href="javascript:void(0)" onclick="SubEpaper('Sub')" class="btn btn-epaper">訂閱</a>
+                                <a href="javascript:void(0)" onclick="SubEpaper('Cancle')" class="btn btn-epaper">取消訂閱</a>
+                                <a href="/epaper/epaperlist.aspx" class="btn btn-epaper">訂閱舊報</a>
+                            </div>
+                        </div>
+                        <div class="contact">
+                            服務專線：<span class="tel">886-2-2509-3536</span><br />
+                            傳　　真：886-2-2503-1122<br />
+                            服務信箱：<a href="/vip/general-service.aspx">lawbank@lawbank.com.tw</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 網站說明 -->
+            <div class="notes">
+                <div class="container">
+                    <div class="logo">
+                        <a href="/index.aspx">
+                            <img src="/images/logo_lexdata.png" width="265" height="50" alt="法源資訊股份有限公司logo"></a>
+                    </div>
+                    <div class="info">
+                        <div class="addr">
+                            104 台北市中山區南京東路二段 150 號 6 樓<br />
+                            6F.,No.150,Sec.2,Nanjing E. RD., Taipei City Taiwan 104,R.O.C.
+                        </div>
+                        <div class="copyrights">
+                            <p>
+                                本網站智慧財產權為法源資訊股份有限公司所有<br />
+                                未經正式書面授權 禁止重製轉載節錄 敬請詳閱並遵守<a href="/event/declare01.aspx">使用規範</a>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="fb">
+                        <a href="https://www.facebook.com/lawbankonline/" target="_blank" title="另開新視窗">
+                            <img src="/images2020/logo_fbQRcode.gif" width="92" height="92" alt="法源法律網Facebook粉絲專頁（QRcode）"><img src="/images2020/logo_fb.gif" width="40" height="40" alt="法源法律網Facebook粉絲專頁">
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--到期通知-->
+        
+
+        <div id="toTop">返回功能列</div>
+        <!-- 頁尾結束 -->
+    
+<script type="text/javascript">
+//<![CDATA[
+var Page_Validators =  new Array(document.getElementById("ctl00_cphMain_rvSY"), document.getElementById("ctl00_cphMain_rvSM"), document.getElementById("ctl00_cphMain_SD"), document.getElementById("ctl00_cphMain_rvEY"), document.getElementById("ctl00_cphMain_rvEM"), document.getElementById("ctl00_cphMain_rvED"));
+//]]>
+</script>
+
+<script type="text/javascript">
+//<![CDATA[
+var ctl00_cphMain_rvSY = document.all ? document.all["ctl00_cphMain_rvSY"] : document.getElementById("ctl00_cphMain_rvSY");
+ctl00_cphMain_rvSY.controltovalidate = "ctl00_cphMain_txtSY";
+ctl00_cphMain_rvSY.focusOnError = "t";
+ctl00_cphMain_rvSY.errormessage = "格式錯誤,請輸入西元年,如:2009";
+ctl00_cphMain_rvSY.display = "Dynamic";
+ctl00_cphMain_rvSY.type = "Integer";
+ctl00_cphMain_rvSY.evaluationfunction = "RangeValidatorEvaluateIsValid";
+ctl00_cphMain_rvSY.maximumvalue = "9999";
+ctl00_cphMain_rvSY.minimumvalue = "1";
+var ctl00_cphMain_rvSM = document.all ? document.all["ctl00_cphMain_rvSM"] : document.getElementById("ctl00_cphMain_rvSM");
+ctl00_cphMain_rvSM.controltovalidate = "ctl00_cphMain_txtSM";
+ctl00_cphMain_rvSM.focusOnError = "t";
+ctl00_cphMain_rvSM.errormessage = "格式錯誤,請輸入月份數字1~12";
+ctl00_cphMain_rvSM.display = "Dynamic";
+ctl00_cphMain_rvSM.type = "Integer";
+ctl00_cphMain_rvSM.evaluationfunction = "RangeValidatorEvaluateIsValid";
+ctl00_cphMain_rvSM.maximumvalue = "12";
+ctl00_cphMain_rvSM.minimumvalue = "1";
+var ctl00_cphMain_SD = document.all ? document.all["ctl00_cphMain_SD"] : document.getElementById("ctl00_cphMain_SD");
+ctl00_cphMain_SD.controltovalidate = "ctl00_cphMain_txtSD";
+ctl00_cphMain_SD.focusOnError = "t";
+ctl00_cphMain_SD.errormessage = "格式錯誤,請輸入日期數字1~31";
+ctl00_cphMain_SD.display = "Dynamic";
+ctl00_cphMain_SD.type = "Integer";
+ctl00_cphMain_SD.evaluationfunction = "RangeValidatorEvaluateIsValid";
+ctl00_cphMain_SD.maximumvalue = "31";
+ctl00_cphMain_SD.minimumvalue = "1";
+var ctl00_cphMain_rvEY = document.all ? document.all["ctl00_cphMain_rvEY"] : document.getElementById("ctl00_cphMain_rvEY");
+ctl00_cphMain_rvEY.controltovalidate = "ctl00_cphMain_txtEY";
+ctl00_cphMain_rvEY.focusOnError = "t";
+ctl00_cphMain_rvEY.errormessage = "格式錯誤,請輸入西元年,如:2009";
+ctl00_cphMain_rvEY.display = "Dynamic";
+ctl00_cphMain_rvEY.type = "Integer";
+ctl00_cphMain_rvEY.evaluationfunction = "RangeValidatorEvaluateIsValid";
+ctl00_cphMain_rvEY.maximumvalue = "9999";
+ctl00_cphMain_rvEY.minimumvalue = "1";
+var ctl00_cphMain_rvEM = document.all ? document.all["ctl00_cphMain_rvEM"] : document.getElementById("ctl00_cphMain_rvEM");
+ctl00_cphMain_rvEM.controltovalidate = "ctl00_cphMain_txtEM";
+ctl00_cphMain_rvEM.focusOnError = "t";
+ctl00_cphMain_rvEM.errormessage = "格式錯誤,請輸入月份數字1~12";
+ctl00_cphMain_rvEM.display = "Dynamic";
+ctl00_cphMain_rvEM.type = "Integer";
+ctl00_cphMain_rvEM.evaluationfunction = "RangeValidatorEvaluateIsValid";
+ctl00_cphMain_rvEM.maximumvalue = "12";
+ctl00_cphMain_rvEM.minimumvalue = "1";
+var ctl00_cphMain_rvED = document.all ? document.all["ctl00_cphMain_rvED"] : document.getElementById("ctl00_cphMain_rvED");
+ctl00_cphMain_rvED.controltovalidate = "ctl00_cphMain_txtED";
+ctl00_cphMain_rvED.focusOnError = "t";
+ctl00_cphMain_rvED.errormessage = "格式錯誤,請輸入日期數字1~31";
+ctl00_cphMain_rvED.display = "Dynamic";
+ctl00_cphMain_rvED.type = "Integer";
+ctl00_cphMain_rvED.evaluationfunction = "RangeValidatorEvaluateIsValid";
+ctl00_cphMain_rvED.maximumvalue = "31";
+ctl00_cphMain_rvED.minimumvalue = "1";
+//]]>
+</script>
+
+
+<script type="text/javascript">
+//<![CDATA[
+
+var Page_ValidationActive = false;
+if (typeof(ValidatorOnLoad) == "function") {
+    ValidatorOnLoad();
+}
+
+function ValidatorOnSubmit() {
+    if (Page_ValidationActive) {
+        return ValidatorCommonOnSubmit();
+    }
+    else {
+        return true;
+    }
+}
+        //]]>
+</script>
+</form>
+
+    <script type="text/javascript" src="/js/jquery.placeholder.min.js"></script>
+    <script type="text/javascript" src="/js/jquery.flexslider-min.js"></script>
+    
+</body>
+</html>
+<script>
+    //清除斷行與無格式複製 AD JS
+
+    
+    if (document.getElementsByClassName('tmask')[0] != undefined)
+        document.getElementsByClassName('tmask')[0].onclick = null;
+
+    /*顯示免費會員通知*/
+    //function ShowMemberInfoDialog() {
+    //    TINY.box.show({ iframe: "../MemberAlert.htm", boxid: 'frameless', width: 720, height: 500, fixed: false, maskid: 'bluemask', opacity: 30 })
+    //}
+    /*關閉授權到期通知*/
+    function CloseAlertWindow() {
+        $("#ctl00_plAlert").css("display", "none");
+    }
+</script>

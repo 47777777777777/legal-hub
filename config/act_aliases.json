@@ -1,0 +1,14 @@
+{
+  "憲法": "constitution",
+  "民法": "civil_code",
+  "刑法": "criminal_code",
+  "民訴": "civil_procedure_code",
+  "刑訴": "criminal_procedure_code",
+  "行程序": "admin_procedure_act",
+  "行政程序": "admin_procedure_act",
+  "勞基法": "labor_standards_act",
+  "公司法": "company_act",
+  "交罰條例": "traffic_act",
+  "道交條例": "traffic_act"
+}
+

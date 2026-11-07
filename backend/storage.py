@@ -62,32 +62,34 @@ class CacheManager:
         }
 
 
-POPULAR_ACT_IDS = {
-    "criminal_code", "civil_code", "constitution", 
-    "criminal_procedure_code", "civil_procedure_code", 
-    "labor_standards_act", "admin_procedure_act", 
-    "traffic_act", "company_act"
-}
+# Load tiers and aliases dynamically from config/ (zero hardcoded act IDs)
+CONFIG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config")
+TIERS_PATH = os.path.join(CONFIG_DIR, "tiers.yaml")
+ALIASES_PATH = os.path.join(CONFIG_DIR, "act_aliases.json")
 
-POPULAR_ACT_NAMES = {
-    "中華民國刑法", "民法", "中華民國憲法",
-    "刑事訴訟法", "民事訴訟法", "勞動基準法",
-    "行政程序法", "道路交通管理處罰條例", "公司法"
-}
+POPULAR_ACT_IDS = set()
+POPULAR_ACT_NAMES = set()
+COMMON_ALIASES = {}
 
-COMMON_ALIASES = {
-    "刑法": "criminal_code",
-    "民法": "civil_code",
-    "憲法": "constitution",
-    "刑訴": "criminal_procedure_code",
-    "民訴": "civil_procedure_code",
-    "勞基法": "labor_standards_act",
-    "行政程序": "admin_procedure_act",
-    "行程序": "admin_procedure_act",
-    "公司法": "company_act",
-    "交罰條例": "traffic_act",
-    "道交條例": "traffic_act",
-}
+def reload_tiers_and_aliases():
+    global POPULAR_ACT_IDS, POPULAR_ACT_NAMES, COMMON_ALIASES
+    import yaml
+    if os.path.exists(TIERS_PATH):
+        try:
+            with open(TIERS_PATH, "r", encoding="utf-8") as f:
+                t_cfg = yaml.safe_load(f) or {}
+                POPULAR_ACT_IDS = set(t_cfg.get("tier_1", {}).get("acts", []))
+        except Exception:
+            pass
+    if os.path.exists(ALIASES_PATH):
+        try:
+            with open(ALIASES_PATH, "r", encoding="utf-8") as f:
+                COMMON_ALIASES = json.load(f)
+                POPULAR_ACT_NAMES = set(COMMON_ALIASES.keys())
+        except Exception:
+            pass
+
+reload_tiers_and_aliases()
 
 def calculate_act_relevance(item: Dict[str, Any], query_str: str) -> int:
     name = item["name"]
@@ -271,6 +273,66 @@ class LegalStorage:
             ORDER BY a.rowid ASC
         """, (row["id"],))
         art_rows = cur.fetchall()
+
+        # Query LIS article_reasons & article_comparison
+        cur.execute("""
+            SELECT article_no, version_date, action_type, reason, source, source_url, fetched_at,
+                   date_label_raw, date_raw, article_no_at_the_time, source_mode
+            FROM article_reasons
+            WHERE act_id = ?
+            ORDER BY version_date DESC
+        """, (row["id"],))
+        reasons_by_art = {}
+        for r_row in cur.fetchall():
+            art_no = r_row["article_no"]
+            if art_no not in reasons_by_art:
+                reasons_by_art[art_no] = []
+            reasons_by_art[art_no].append({
+                "version_date": r_row["version_date"],
+                "action_type": r_row["action_type"],
+                "reason": r_row["reason"],
+                "source": r_row["source"],
+                "source_url": r_row["source_url"],
+                "fetched_at": r_row["fetched_at"],
+                "date_label_raw": r_row["date_label_raw"] or "",
+                "date_raw": r_row["date_raw"] or "",
+                "article_no_at_the_time": r_row["article_no_at_the_time"] or "",
+                "source_mode": r_row["source_mode"] or "fullpage"
+            })
+
+        cur.execute("""
+            SELECT article_no, new_version_date, old_version_date, action_type,
+                   new_content, old_content, reason, table_data, source, source_url, fetched_at,
+                   date_label_raw, date_raw, article_no_at_the_time, source_mode,
+                   col_headers_json, cells_json
+            FROM article_comparison
+            WHERE act_id = ?
+            ORDER BY new_version_date DESC
+        """, (row["id"],))
+        comp_by_art = {}
+        for c_row in cur.fetchall():
+            art_no = c_row["article_no"]
+            if art_no not in comp_by_art:
+                comp_by_art[art_no] = []
+            comp_by_art[art_no].append({
+                "new_version_date": c_row["new_version_date"],
+                "old_version_date": c_row["old_version_date"],
+                "action_type": c_row["action_type"],
+                "new_content": c_row["new_content"],
+                "old_content": c_row["old_content"],
+                "reason": c_row["reason"],
+                "table_data": json.loads(c_row["table_data"] or "[]"),
+                "col_headers": json.loads(c_row["col_headers_json"] or "[]"),
+                "cells": json.loads(c_row["cells_json"] or "[]"),
+                "source": c_row["source"],
+                "source_url": c_row["source_url"],
+                "fetched_at": c_row["fetched_at"],
+                "date_label_raw": c_row["date_label_raw"] or "",
+                "date_raw": c_row["date_raw"] or "",
+                "article_no_at_the_time": c_row["article_no_at_the_time"] or "",
+                "source_mode": c_row["source_mode"] or "fullpage"
+            })
+
         conn.close()
 
         articles = []
@@ -301,11 +363,16 @@ class LegalStorage:
                 "source_url": a["source_url"] if "source_url" in a.keys() and a["source_url"] else "",
                 "fetched_at": a["fetched_at"] if "fetched_at" in a.keys() and a["fetched_at"] else "",
                 "article_hash": a["article_hash"] if "article_hash" in a.keys() and a["article_hash"] else "",
-                "paywalled_counts": json.loads(a["paywalled_counts_json"] or "{}") if "paywalled_counts_json" in a.keys() and a["paywalled_counts_json"] else {}
+                "paywalled_counts": json.loads(a["paywalled_counts_json"] or "{}") if "paywalled_counts_json" in a.keys() and a["paywalled_counts_json"] else {},
+                "lis_reasons": reasons_by_art.get(a["article_no"], []),
+                "lis_comparison": comp_by_art.get(a["article_no"], []),
+                "status": a["status"] if "status" in a.keys() and a["status"] else "active",
+                "stale": a["stale"] if "stale" in a.keys() and a["stale"] else 0
             })
 
         act_data = {
             "id": row["id"],
+            "pcode": row["pcode"] if "pcode" in row.keys() and row["pcode"] else "",
             "name": row["name"],
             "name_en": row["name_en"] or "",
             "last_modified": row["last_modified"] or "",
@@ -315,6 +382,12 @@ class LegalStorage:
             "legislative_process": json.loads(row["legislative_process_json"] or "[]"),
             "chapters": json.loads(row["chapters_json"] or "[]"),
             "attachments": json.loads(row["attachments_json"] or "[]"),
+            "status": row["status"] if "status" in row.keys() and row["status"] else "active",
+            "effective_date": row["effective_date"] if "effective_date" in row.keys() and row["effective_date"] else "",
+            "effective_note": row["effective_note"] if "effective_note" in row.keys() and row["effective_note"] else "",
+            "abandon_note": row["abandon_note"] if "abandon_note" in row.keys() and row["abandon_note"] else "",
+            "foreword": row["foreword"] if "foreword" in row.keys() and row["foreword"] else "",
+            "sync_time": row["last_modified"] or "",
             "articles": articles
         }
 
@@ -370,6 +443,437 @@ class LegalStorage:
         if not act:
             return None
         return act.articles_map.get(str(article_no).strip())
+
+    def get_article_revisions(self, act_id: str, article_no: str) -> List[Dict[str, Any]]:
+        conn = get_connection(self.db_path)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id, act_id, article_no, old_content, new_content, old_hash, new_hash,
+                   change_type, detected_at, source_modified_date
+            FROM article_revisions
+            WHERE act_id = ? AND article_no = ?
+            ORDER BY detected_at DESC
+        """, (act_id, str(article_no).strip()))
+        rows = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        return rows
+
+    def get_article_panel(self, act_id: str, article_no: str) -> Optional[Dict[str, Any]]:
+        """
+        Universal Article Panel (Prompt 4C):
+        Returns fixed sections list with strict status:
+        - present: Data available
+        - source_has_none: Source queried, confirmed no data for this article
+        - not_attempted: Source not yet queried
+        - not_applicable: Source does not cover this category by nature (e.g. orders in LIS)
+        """
+        act = self.get_act(act_id)
+        if not act:
+            return None
+        
+        real_act_id = act.id
+        art_no_str = str(article_no).strip()
+        art = act.articles_map.get(art_no_str)
+        
+        conn = get_connection(self.db_path)
+        cur = conn.cursor()
+        
+        sections = []
+        
+        # 1. 官方條文 (全國法規資料庫 MOJ)
+        if art:
+            sections.append({
+                "section_type": "official_text",
+                "title": "官方條文",
+                "source": "全國法規資料庫",
+                "status": "present",
+                "items": [{
+                    "article_no": art.article_no,
+                    "title": art.title or "",
+                    "content": art.content,
+                    "status": art.status
+                }],
+                "fetched_at": act.last_modified or ""
+            })
+        else:
+            sections.append({
+                "section_type": "official_text",
+                "title": "官方條文",
+                "source": "全國法規資料庫",
+                "status": "source_has_none",
+                "items": [],
+                "fetched_at": act.last_modified or ""
+            })
+
+        # 2. 法規/條文沿革 (全國法規資料庫 MOJ)
+        act_history = act.history or []
+        sections.append({
+            "section_type": "act_history",
+            "title": "法規沿革",
+            "source": "全國法規資料庫",
+            "status": "present" if act_history else "source_has_none",
+            "items": act_history,
+            "fetched_at": act.last_modified or ""
+        })
+
+        # 3. 立法理由與修正條文對照表 (立法院法律系統 LIS)
+        cat = (act.category or "").strip()
+        is_order = ("命令" in cat) or ("行政規則" in cat)
+        
+        reason_rows = []
+        comp_rows = []
+        reasons_status = "not_attempted"
+        comp_status = "not_attempted"
+        
+        if is_order:
+            reasons_status = "not_applicable"
+            comp_status = "not_applicable"
+            sections.append({
+                "section_type": "legislative_reasons",
+                "title": "立法理由",
+                "source": "立法院法律系統",
+                "status": "not_applicable",
+                "items": [],
+                "fetched_at": ""
+            })
+            sections.append({
+                "section_type": "amendment_comparison",
+                "title": "修正條文對照表",
+                "source": "立法院法律系統",
+                "status": "not_applicable",
+                "items": [],
+                "fetched_at": ""
+            })
+        else:
+            cur.execute("""
+                SELECT reason, date_label_raw, date_raw, action_type, source_url, fetched_at
+                FROM article_reasons
+                WHERE act_id = ? AND article_no = ?
+                ORDER BY version_date DESC, id DESC
+            """, (real_act_id, art_no_str))
+            reason_rows = [dict(r) for r in cur.fetchall()]
+
+            cur.execute("""
+                SELECT new_version_date, old_version_date, action_type, new_content, old_content,
+                       reason, table_data, col_headers_json, cells_json, date_label_raw, date_raw,
+                       source_url, fetched_at
+                FROM article_comparison
+                WHERE act_id = ? AND article_no = ?
+                ORDER BY new_version_date DESC, id DESC
+            """, (real_act_id, art_no_str))
+            comp_rows = [dict(r) for r in cur.fetchall()]
+
+            for cr in comp_rows:
+                if cr.get("col_headers_json"):
+                    try:
+                        cr["col_headers"] = json.loads(cr["col_headers_json"])
+                    except Exception:
+                        cr["col_headers"] = []
+                if cr.get("cells_json"):
+                    try:
+                        cr["cells"] = json.loads(cr["cells_json"])
+                    except Exception:
+                        cr["cells"] = []
+
+            cur.execute("SELECT count(*) FROM law_legislative_history WHERE act_id = ?", (real_act_id,))
+            c_hist = cur.fetchone()[0]
+            cur.execute("SELECT count(*) FROM article_reasons WHERE act_id = ?", (real_act_id,))
+            c_reas = cur.fetchone()[0]
+
+            if reason_rows:
+                reasons_status = "present"
+            elif c_hist > 0 or c_reas > 0:
+                reasons_status = "source_has_none"
+            else:
+                reasons_status = "not_attempted"
+
+            if comp_rows:
+                comp_status = "present"
+            elif c_hist > 0 or c_reas > 0:
+                comp_status = "source_has_none"
+            else:
+                comp_status = "not_attempted"
+
+            sections.append({
+                "section_type": "legislative_reasons",
+                "title": "立法理由",
+                "source": "立法院法律系統",
+                "status": reasons_status,
+                "items": reason_rows,
+                "fetched_at": reason_rows[0].get("fetched_at") if reason_rows else ""
+            })
+            sections.append({
+                "section_type": "amendment_comparison",
+                "title": "修正條文對照表",
+                "source": "立法院法律系統",
+                "status": comp_status,
+                "items": comp_rows,
+                "fetched_at": comp_rows[0].get("fetched_at") if comp_rows else ""
+            })
+
+        # 4. 法律人公開內容 (法律人 LawPlayer)
+        cur.execute("""
+            SELECT summary, vernacular_qa_json, practical_insights_json, faqs_json,
+                   official_letters_json, related_articles_json, source, source_url, fetched_at
+            FROM article_enrichments
+            WHERE act_id = ? AND article_no = ?
+        """, (real_act_id, art_no_str))
+        enr_row = cur.fetchone()
+        lp_items = []
+        if enr_row:
+            d = dict(enr_row)
+            has_content = bool(d.get("summary") or d.get("vernacular_qa_json") != "[]" or d.get("practical_insights_json") != "[]")
+            lp_status = "present" if has_content else "source_has_none"
+            lp_items = [d] if has_content else []
+            sections.append({
+                "section_type": "lawplayer_enrichments",
+                "title": "法律人解析與函釋判決",
+                "source": "法律人",
+                "status": lp_status,
+                "items": lp_items,
+                "fetched_at": d.get("fetched_at") or ""
+            })
+        else:
+            cur.execute("SELECT checked_at, not_found_at FROM law_map WHERE act_id = ? OR UPPER(pcode) = UPPER(?)", (real_act_id, act.pcode or ""))
+            lm = cur.fetchone()
+            if lm and (lm[0] or lm[1]):
+                lp_status = "source_has_none"
+            else:
+                lp_status = "not_attempted"
+            sections.append({
+                "section_type": "lawplayer_enrichments",
+                "title": "法律人解析與函釋判決",
+                "source": "法律人",
+                "status": lp_status,
+                "items": [],
+                "fetched_at": ""
+            })
+
+        # 5. 「文中提及本條」的解釋與裁判 (司法院裁判書系統 Prompt 5)
+        sections.append({
+            "section_type": "judicial_references",
+            "title": "相關司法裁判與解釋",
+            "source": "司法院裁判書系統",
+            "status": "not_attempted",
+            "items": [],
+            "fetched_at": ""
+        })
+
+        # 6. 我的文獻 (使用者文獻庫 Prompt 5B)
+        cur.execute("SELECT count(*) FROM literature_articles WHERE act_id = ? AND article_no = ?", (real_act_id, art_no_str))
+        lit_count = cur.fetchone()[0]
+        sections.append({
+            "section_type": "user_literature",
+            "title": "相關研究文獻",
+            "source": "使用者文獻庫",
+            "status": "present" if lit_count > 0 else "source_has_none",
+            "items": [],
+            "fetched_at": ""
+        })
+
+        conn.close()
+
+        article_obj = {
+            "status": "present" if art else "source_has_none",
+            "article_no": art_no_str,
+            "title": art.title if art else "",
+            "content": art.content if art else "",
+            "act_id": act.id,
+            "act_name": act.name
+        }
+
+        return {
+            "act_id": act.id,
+            "article_no": art_no_str,
+            "act_name": act.name,
+            "act_status": act.status,
+            "abandon_note": act.abandon_note,
+            "effective_date": act.effective_date,
+            "effective_note": act.effective_note,
+            "category": act.category,
+            "article": article_obj,
+            "legislative_reasons": {
+                "status": reasons_status,
+                "items": reason_rows
+            },
+            "amendment_comparison": {
+                "status": comp_status,
+                "items": comp_rows
+            },
+            "lawplayer": {
+                "status": lp_status,
+                "items": lp_items
+            },
+            "sections": sections
+        }
+
+    def get_update_status(self) -> Dict[str, Any]:
+        import yaml
+        cfg_path = os.path.join(os.path.dirname(os.path.dirname(self.db_path)), "config", "sources.yaml")
+        sources_meta = []
+        if os.path.exists(cfg_path):
+            with open(cfg_path, "r", encoding="utf-8") as f:
+                cfg = yaml.safe_load(f) or {}
+                sources_meta = cfg.get("sources", [])
+
+        conn = get_connection(self.db_path)
+        cur = conn.cursor()
+
+        # Build status for each source
+        sources_status = []
+        for s in sources_meta:
+            s_name = s.get("name")
+            last_run = cur.execute("""
+                SELECT run_id, started_at, finished_at, status, counts_json, error, dry_run
+                FROM update_runs
+                WHERE source = ?
+                ORDER BY started_at DESC
+                LIMIT 1
+            """, (s_name,)).fetchone()
+
+            last_success = cur.execute("""
+                SELECT started_at
+                FROM update_runs
+                WHERE source = ? AND status = 'success'
+                ORDER BY started_at DESC
+                LIMIT 1
+            """, (s_name,)).fetchone()
+
+            # Consecutive failures
+            recent_runs = cur.execute("""
+                SELECT status FROM update_runs
+                WHERE source = ?
+                ORDER BY started_at DESC
+                LIMIT 10
+            """, (s_name,)).fetchall()
+            fail_count = 0
+            for r in recent_runs:
+                if r[0] in ("failed", "fetch_failed", "canary_failed", "verify_failed_rolled_back", "exception_rolled_back"):
+                    fail_count += 1
+                else:
+                    break
+
+            sources_status.append({
+                "name": s_name,
+                "type": s.get("type", s_name),
+                "description": s.get("description", ""),
+                "location": s.get("location", "remote"),
+                "check_frequency": s.get("check_frequency", "daily"),
+                "enabled": s.get("enabled", True),
+                "last_run": dict(last_run) if last_run else None,
+                "last_success_at": last_success[0] if last_success else s.get("last_success_at", ""),
+                "consecutive_failures": fail_count,
+                "status": "normal" if fail_count == 0 else ("failed" if fail_count >= 5 else "warning")
+            })
+
+        # Recent changes split into "new_acts" (新增法規) and "modified_articles" (修正)
+        raw_changes = [dict(r) for r in cur.execute("""
+            SELECT uc.id, uc.run_id, uc.source, uc.act_id, a.name as act_name, a.last_modified as act_date_raw,
+                   a.effective_date, a.effective_note, a.status as act_status, uc.article_no,
+                   uc.change_type, uc.old_hash, uc.new_hash, uc.detail_json, uc.created_at
+            FROM update_changes uc
+            LEFT JOIN acts a ON a.id = uc.act_id
+            ORDER BY uc.id DESC
+            LIMIT 200
+        """).fetchall()]
+
+        new_acts = []
+        modified_articles = []
+        for rc in raw_changes:
+            if rc.get("detail_json"):
+                try:
+                    rc["detail"] = json.loads(rc["detail_json"])
+                except Exception:
+                    rc["detail"] = {}
+            if rc["change_type"] in ("onboard_act", "add_act"):
+                new_acts.append(rc)
+            else:
+                modified_articles.append(rc)
+
+        # Pending human review items
+        pending_human_rows = [dict(r) for r in cur.execute("""
+            SELECT id, type, old_pcode, new_pcode, law_name, reason, detected_at, status
+            FROM pending_human
+            WHERE status = 'pending'
+            ORDER BY detected_at DESC
+        """).fetchall()]
+
+        # Pending items queue
+        pending_lis_rows = [dict(r) for r in cur.execute("""
+            SELECT id, act_id, article_no, detected_at, retry_count, status, last_checked_at
+            FROM pending_lis
+            ORDER BY detected_at DESC
+        """).fetchall()]
+
+        # Check LIS last sync age (> 14 days warning)
+        lis_last_run = cur.execute("""
+            SELECT finished_at FROM update_runs
+            WHERE source = 'lis' AND status IN ('success', 'no_change')
+            ORDER BY finished_at DESC LIMIT 1
+        """).fetchone()
+        lis_warning = ""
+        lis_last_sync_time = lis_last_run[0] if lis_last_run and lis_last_run[0] else ""
+        if lis_last_sync_time:
+            try:
+                t = datetime.datetime.fromisoformat(lis_last_sync_time.split(".")[0])
+                diff_days = (datetime.datetime.now() - t).days
+                if diff_days > 14:
+                    lis_warning = f"LIS 本機同步已逾 {diff_days} 天未執行，請於本機執行同步管線並匯入至遠端。"
+            except Exception:
+                pass
+
+        conn.close()
+        return {
+            "sources": sources_status,
+            "new_acts": new_acts,
+            "modified_articles": modified_articles,
+            "recent_changes": raw_changes,
+            "pending_human": pending_human_rows,
+            "pending_lis": pending_lis_rows,
+            "lis_last_sync_time": lis_last_sync_time,
+            "lis_warning": lis_warning
+        }
+
+    def check_bookmarks(self, bookmarks: List[Dict[str, str]]) -> List[Dict[str, Any]]:
+        if not bookmarks:
+            return []
+        conn = get_connection(self.db_path)
+        cur = conn.cursor()
+        notifications = []
+        for bm in bookmarks:
+            act_id = bm.get("act_id")
+            art_no = str(bm.get("article_no", "")).strip()
+            if not act_id or not art_no:
+                continue
+            row = cur.execute("""
+                SELECT a.name as act_name, art.status, art.stale, art.content
+                FROM articles art
+                JOIN acts a ON a.id = art.act_id
+                WHERE art.act_id = ? AND art.article_no = ?
+            """, (act_id, art_no)).fetchone()
+            if not row:
+                continue
+            act_name = row[0]
+            status = row[1]
+            stale = row[2]
+            if status == "deleted":
+                notifications.append({
+                    "act_id": act_id,
+                    "act_name": act_name,
+                    "article_no": art_no,
+                    "type": "deleted",
+                    "message": f"您收藏的【{act_name} 第 {art_no} 條】已在最新修法中刪除。"
+                })
+            elif stale == 1:
+                notifications.append({
+                    "act_id": act_id,
+                    "act_name": act_name,
+                    "article_no": art_no,
+                    "type": "modified",
+                    "message": f"您收藏的【{act_name} 第 {art_no} 條】條文內容已修正更新。"
+                })
+        conn.close()
+        return notifications
 
     def search_articles(self, act_id: str, query: str) -> List[Dict[str, Any]]:
         act = self.get_act(act_id)

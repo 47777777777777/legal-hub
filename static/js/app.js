@@ -8,7 +8,9 @@ function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ESC_MAP[c]);
 }
 
+const UNICODE_ROMAN = ["", "Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ", "Ⅵ", "Ⅶ", "Ⅷ", "Ⅸ", "Ⅹ", "Ⅺ", "Ⅻ", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX"];
 function toRoman(n) {
+  if (n > 0 && n < UNICODE_ROMAN.length) return UNICODE_ROMAN[n];
   const map = [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"], [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
   let out = "";
   for (const [v, s] of map) {
@@ -48,12 +50,35 @@ const RE_MU = /^([（(][一二三四五六七八九十百]+[）)])\s*/;
 const RE_SUBMU = /^([0-9０-９]+[.．、])\s*/;
 
 function parseArticleStructure(content) {
-  const lines = String(content == null ? "" : content)
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
+  if (!content) return { paras: [] };
+  const rawLines = String(content).split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (!rawLines.length) return { paras: [] };
+
+  // Step 1: Unwrap hard line breaks that are continuation lines within a paragraph/sub-item
+  const mergedLines = [];
+  rawLines.forEach((l) => {
+    const trimmed = l.trim();
+    const isSub = RE_KUAN.test(trimmed) || RE_MU.test(trimmed) || RE_SUBMU.test(trimmed);
+    const isIndented = /^\s{2,}/.test(l);
+
+    if (mergedLines.length === 0) {
+      mergedLines.push(trimmed);
+      return;
+    }
+
+    const prev = mergedLines[mergedLines.length - 1];
+    const prevEndsSentence = /[。：；！？]$/.test(prev);
+
+    if ((isIndented && !isSub) || (!prevEndsSentence && !isSub)) {
+      mergedLines[mergedLines.length - 1] += trimmed;
+    } else {
+      mergedLines.push(trimmed);
+    }
+  });
+
+  // Step 2: Assemble paragraphs and sub-items (款、目、細目)
   const paras = [];
-  lines.forEach((line) => {
+  mergedLines.forEach((line) => {
     let m, level = 0;
     if ((m = line.match(RE_KUAN))) level = 1;
     else if ((m = line.match(RE_MU))) level = 2;
@@ -119,7 +144,7 @@ function renderArticleBody(content, q) {
         )
         .join("");
       return `<div class="para-block ${multi ? "" : "single"}">
-        ${multi ? `<span class="para-no" title="${no ? `第 ${no} 項` : ""}">${no ? toRoman(no) : ""}</span>` : ""}
+        ${multi ? `<span class="para-no" title="${no ? `第 ${no} 項 (點擊複製此項)` : ""}" data-para-idx="${no}">${no ? toRoman(no) : ""}</span>` : ""}
         <div class="para-body">${p.text ? `<div class="para-text">${linkifyArticleRefs(p.text, q)}</div>` : ""}${subs}</div>
       </div>`;
     })
@@ -127,15 +152,25 @@ function renderArticleBody(content, q) {
   return `<div class="article-body">${blocks}</div>`;
 }
 
-function articleCopyText(content) {
+function articleCopyText(content, mode = "roman") {
   const { paras } = parseArticleStructure(content);
   const multi = paras.filter((p) => p.text).length > 1;
   let n = 0;
   return paras
     .map((p) => {
-      const head = (multi && p.text ? `第 ${++n} 項　` : "") + p.text;
+      let head = p.text;
+      if (multi && p.text) {
+        n++;
+        if (mode === "roman") {
+          head = `${toRoman(n)}　${p.text}`;
+        } else if (mode === "label") {
+          head = `第 ${n} 項　${p.text}`;
+        } else {
+          head = p.text;
+        }
+      }
       const subs = p.subs.map((s) => `${"　".repeat(s.level)}${s.marker}${s.text}`);
-      return [head.trimEnd(), ...subs].filter((l) => l).join("\n");
+      return [head ? head.trimEnd() : "", ...subs].filter((l) => l).join("\n");
     })
     .join("\n");
 }
@@ -170,7 +205,7 @@ window.switchCCUSource = function(source) {
 
 class LegalHubApp {
   constructor() {
-    this.currentActId = "criminal_code";
+    this.currentActId = "";
     this.currentAct = null;
     this.selectedArticleNo = null;
     this.activeTab = "key_knowledge";
@@ -181,7 +216,7 @@ class LegalHubApp {
     this.isSplitMode = true; // True desktop split-view
     this.isTocCollapsed = false;
     this.activeChapterIdx = 0;
-    this.openTabs = [{ id: "criminal_code", name: "中華民國刑法" }];
+    this.openTabs = [];
     this.bookmarks = this.loadBookmarks();
 
     this.init();
@@ -193,6 +228,8 @@ class LegalHubApp {
     this.initDensity();
     this.initEventListeners();
     this.bindCCUEvents();
+    this.bindUpdateStatusEvents();
+    this.checkBookmarksAlert();
     this.refreshCCUStatus();
     this.renderResearchTabs();
     this.renderPopularActsModal();
@@ -207,8 +244,32 @@ class LegalHubApp {
         this.openStudyDrawer(route.articleNo);
       }
     } else {
-      await this.loadAct(this.currentActId);
+      try {
+        const resp = await fetch("/api/tiers");
+        const json = await resp.json();
+        const tiers = json.data || [];
+        if (tiers.length > 0) {
+          this.currentActId = tiers[0].id;
+          this.openTabs = [{ id: tiers[0].id, name: tiers[0].name }];
+        }
+      } catch (e) { console.warn(e); }
+      if (this.currentActId) {
+        await this.loadAct(this.currentActId);
+      }
     }
+
+    window.addEventListener("hashchange", async () => {
+      const r = this.parseHashRoute();
+      if (!r) return;
+      if (r.actId && r.actId !== this.currentActId) {
+        this.selectedArticleNo = null;
+        await this.loadAct(r.actId);
+      }
+      if (r.articleNo) {
+        this.scrollToArticleCard(r.articleNo);
+        await this.openStudyDrawer(r.articleNo);
+      }
+    });
 
     if (window.QuickDialer) {
       this.dialer = new QuickDialer(this);
@@ -786,18 +847,12 @@ class LegalHubApp {
     const actName = act ? act.name : "刑法";
 
     if (artNo) {
-      if (this.currentActId === "criminal_code" && artNo === "10") {
-        quickTags = ["公務員定義最新文獻", "重傷判準實務評析", "性交定義之演進", "刑法第10條"];
-      } else if (this.currentActId === "criminal_code" && artNo === "185-3") {
-        quickTags = ["酒駕不能安全駕駛評釋", "吐氣酒精濃度認定", "刑法第185條之3", "罪刑相當原則"];
-      } else {
-        quickTags = [
-          `${actName}第${artNo}條`,
-          `${actName} 第${artNo}條 專論評釋`,
-          `第${artNo}條 構成要件爭議`,
-          `${actName} 最新期刊`
-        ];
-      }
+      quickTags = [
+        `${actName}第${artNo}條`,
+        `${actName} 第${artNo}條 專論評釋`,
+        `第${artNo}條 構成要件爭議`,
+        `${actName} 最新期刊`
+      ];
     } else {
       quickTags = ["刑法修正爭點評析", "公務員定義實務論述", "酒後駕車罪刑爭端", "沒收新制實務分析", "正當防衛裁判評釋"];
     }
@@ -1123,22 +1178,18 @@ class LegalHubApp {
   }
 
   // ---------------- Modal ----------------
-  renderPopularActsModal() {
+  async renderPopularActsModal() {
     const grid = document.getElementById("popular-acts-grid");
-    const popular = [
-      ["criminal_code", "中華民國刑法"],
-      ["civil_code", "民法"],
-      ["constitution", "中華民國憲法"],
-      ["criminal_procedure_code", "刑事訴訟法"],
-      ["civil_procedure_code", "民事訴訟法"],
-      ["labor_standards_act", "勞動基準法"],
-      ["admin_procedure_act", "行政程序法"],
-      ["traffic_act", "道路交通管理處罰條例"],
-      ["company_act", "公司法"]
-    ];
-    grid.innerHTML = popular
-      .map(([id, name]) => `<button class="popular-act-chip" data-act-id="${id}" data-act-name="${name}">${name}</button>`)
-      .join("");
+    try {
+      const resp = await fetch("/api/tiers");
+      const json = await resp.json();
+      const popular = json.data || [];
+      grid.innerHTML = popular
+        .map((act) => `<button class="popular-act-chip" data-act-id="${esc(act.id)}" data-act-name="${esc(act.name)}">${esc(act.name)}</button>`)
+        .join("");
+    } catch (e) {
+      console.warn("Failed to load tiers modal", e);
+    }
     grid.querySelectorAll(".popular-act-chip").forEach((chip) => {
       chip.addEventListener("click", () => {
         this.openResearchTab(chip.dataset.actId, chip.dataset.actName);
@@ -1208,9 +1259,31 @@ class LegalHubApp {
     const badge = document.getElementById("search-count-badge");
     if (badge) badge.textContent = `${n} 條`;
 
+    const chapterIndicator = document.getElementById("active-chapter-name");
+    if (chapterIndicator && this.currentAct) {
+      const firstArt = (this.currentAct.articles || [])[0];
+      chapterIndicator.textContent = (firstArt && firstArt.chapter) ? firstArt.chapter : this.currentAct.name;
+    }
+
     const meta = document.getElementById("act-meta-inline");
     if (meta && this.currentAct) {
-      const parts = [this.currentAct.category, this.currentAct.last_modified].filter(Boolean);
+      const parts = [];
+      const isAbolished = this.currentAct.status === "abolished" || 
+                          (this.currentAct.category || "").startsWith("廢止法規") || 
+                          this.currentAct.abandon_note === "廢";
+      if (this.currentAct.category) {
+        parts.push(`法規類別：${this.currentAct.category}`);
+      }
+      if (this.currentAct.last_modified) {
+        if (isAbolished) {
+          parts.push(`廢止日期：${this.currentAct.last_modified}`);
+        } else {
+          parts.push(`修正日期：${this.currentAct.last_modified}`);
+        }
+      }
+      if (this.currentAct.effective_note) {
+        parts.push(`【${this.currentAct.effective_note}】`);
+      }
       meta.textContent = parts.length ? `(${parts.join(" · ")})` : "";
     }
   }
@@ -1303,17 +1376,42 @@ class LegalHubApp {
     if (countBadge) countBadge.textContent = `${articles.length} 條`;
 
     let html = "";
+    const isNonArticleAct = this.currentAct && (this.currentAct.pcode === "A0000005" || this.currentAct.pcode === "A0000003");
+
+    // Render official foreword if present
+    if (this.currentAct && this.currentAct.foreword && !q) {
+      const isConstitution = this.currentAct.pcode === "A0000001";
+      const badgeHtml = isConstitution 
+        ? `<div class="article-card-header" style="margin-bottom: 0.5rem;"><div class="article-card-no"><span style="font-weight: 600; color: #818cf8;">【前言】</span></div></div>` 
+        : "";
+      html += `
+        <div class="act-foreword-card stream-article-card" id="act-foreword-card" style="border-left: 3px solid ${isConstitution ? '#6366f1' : '#71717a'}; background: ${isConstitution ? 'rgba(99, 102, 241, 0.05)' : 'rgba(255, 255, 255, 0.02)'}; margin-bottom: 1.25rem;">
+          ${badgeHtml}
+          <div class="article-card-content" style="white-space: pre-wrap; line-height: 1.75; color: #e4e4e7;">${esc(this.currentAct.foreword)}</div>
+        </div>`;
+    }
+
+    let lastChapter = "";
     articles.forEach((art) => {
+      if (art.chapter && art.chapter !== lastChapter && !q) {
+        lastChapter = art.chapter;
+        html += `
+          <div class="stream-chapter-divider" style="padding: 1rem 0.5rem 0.5rem 0.5rem; font-weight: 700; font-size: 0.95rem; color: #a1a1aa; border-bottom: 1px solid rgba(255,255,255,0.08); margin: 1.5rem 0 1rem 0;">
+            ${esc(art.chapter)}
+          </div>`;
+      }
       const marked = this.isBookmarked(this.currentActId, art.article_no);
+      const artLabelHtml = isNonArticleAct ? "" : `<span>第 ${hl(art.article_no, q)} 條</span>`;
       html += `
         <article class="stream-article-card ${this.selectedArticleNo === art.article_no ? 'active' : ''}" id="article-card-${esc(art.article_no)}" data-article-no="${esc(art.article_no)}" data-chapter="${esc(art.chapter || '')}">
           <div class="article-card-header">
             <div class="article-card-no">
-              <span>第 ${hl(art.article_no, q)} 條</span>
+              ${artLabelHtml}
               ${art.title ? `<span class="article-card-title">${hl(art.title, q)}</span>` : ""}
               <span class="card-bookmark-mark ${marked ? "" : "hidden"}" title="已收藏">${icon("bookmark-filled", 13)}</span>
             </div>
             <div class="article-card-actions">
+              ${(art.lis_reasons && art.lis_reasons.length > 0) ? `<span class="article-history-badge" style="font-size:0.75rem; padding:2px 6px; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); border-radius:4px; margin-right:6px;">沿革 ${art.lis_reasons.length} 版</span>` : ""}
               <button class="article-study-btn" data-article-no="${esc(art.article_no)}">研析</button>
             </div>
           </div>
@@ -1327,6 +1425,20 @@ class LegalHubApp {
     list.querySelectorAll(".stream-article-card").forEach((card) => {
       card.addEventListener("click", (e) => {
         if (e.target.closest(".article-ref-link")) return; // Don't trigger drawer if clicking citation popover link
+        if (e.target.closest(".para-no")) {
+          e.stopPropagation();
+          const pEl = e.target.closest(".para-no");
+          const pBlock = pEl.closest(".para-block");
+          const paraText = pBlock ? (pBlock.querySelector(".para-text")?.innerText || "") : "";
+          const roman = pEl.innerText.trim();
+          const artNo = card.dataset.articleNo;
+          const artLabel = (this.currentAct && (this.currentAct.pcode === 'A0000005' || this.currentAct.pcode === 'A0000003'))
+            ? this.currentAct.name
+            : `${this.currentAct ? this.currentAct.name : ""} 第 ${artNo} 條`.trim();
+          const singleText = `${artLabel} ${roman}　${paraText}`;
+          this.copyToClipboard(singleText, pEl);
+          return;
+        }
         this.openStudyDrawer(card.dataset.articleNo);
       });
     });
@@ -1442,7 +1554,7 @@ class LegalHubApp {
     const scrollBody = document.getElementById("study-drawer-scroll-body");
     const nLinks = (art.related_articles || []).length + (art.attachments || []).length;
     const nInsights = (art.practical_insights || []).length;
-    const nAmend = (art.amendment_history || []).length;
+    const nAmend = (art.lis_reasons && art.lis_reasons.length) ? art.lis_reasons.length : (art.amendment_history || []).length;
 
     const tabBtn = (id, iconName, label, count) =>
       `<button class="drawer-tab-btn ${this.activeTab === id ? "active" : ""}" data-tab="${id}">${icon(iconName, 15)}<span>${label}</span>${count ? `<span class="tab-count">${count}</span>` : ""}</button>`;
@@ -1450,10 +1562,13 @@ class LegalHubApp {
     // Consistent Drawer Structure: Fixed Top Article Quote Box, followed by Sticky Tabs & Analysis
     scrollBody.innerHTML = `
       <section class="drawer-hero-section">
-        <h1 class="drawer-hero-title">${esc(this.currentAct.name)} 第 ${esc(art.article_no)} 條</h1>
+        <h1 class="drawer-hero-title">${esc(this.currentAct.name)}${this.currentAct && (this.currentAct.pcode === 'A0000005' || this.currentAct.pcode === 'A0000003') ? '' : ` 第 ${esc(art.article_no)} 條`}</h1>
         ${art.title ? `<div class="drawer-hero-subtitle">${esc(art.title)}</div>` : ""}
         <div class="drawer-hero-article-box">
-          <button class="article-box-copy-action" id="drawer-copy-article-btn" title="複製條文">${icon("copy", 13)}<span>複製</span></button>
+          <div class="article-box-copy-group" style="display:flex; gap:6px; align-items:center; position:absolute; top:0.75rem; right:0.75rem;">
+            <button class="article-box-copy-action" id="drawer-copy-roman-btn" title="複製條文（含羅馬數字項號 Ⅰ、Ⅱ）">${icon("copy", 13)}<span>複製 (含羅馬項號)</span></button>
+            <button class="article-box-copy-action" id="drawer-copy-article-btn" title="複製條文（官方純文字）">${icon("file", 13)}<span>複製 (純文字)</span></button>
+          </div>
           ${renderArticleBody(art.content, "")}
         </div>
       </section>
@@ -1480,9 +1595,38 @@ class LegalHubApp {
 
     scrollBody.scrollTop = 0;
 
-    scrollBody.querySelector("#drawer-copy-article-btn").addEventListener("click", (e) => {
-      const text = `${this.currentAct.name} 第 ${art.article_no} 條 ${art.title || ""}\n${articleCopyText(art.content)}`;
-      this.copyToClipboard(text, e.currentTarget);
+    const getArtHeader = () => {
+      return (this.currentAct && (this.currentAct.pcode === 'A0000005' || this.currentAct.pcode === 'A0000003'))
+        ? this.currentAct.name
+        : `${this.currentAct.name} 第 ${art.article_no} 條 ${art.title || ""}`.trim();
+    };
+
+    const copyRomanBtn = scrollBody.querySelector("#drawer-copy-roman-btn");
+    if (copyRomanBtn) {
+      copyRomanBtn.addEventListener("click", (e) => {
+        const full = `${getArtHeader()}\n${articleCopyText(art.content, "roman")}`;
+        this.copyToClipboard(full, e.currentTarget);
+      });
+    }
+
+    const copyPlainBtn = scrollBody.querySelector("#drawer-copy-article-btn");
+    if (copyPlainBtn) {
+      copyPlainBtn.addEventListener("click", (e) => {
+        const full = `${getArtHeader()}\n${articleCopyText(art.content, "plain")}`;
+        this.copyToClipboard(full, e.currentTarget);
+      });
+    }
+
+    // Paragraph-level Roman numeral click-to-copy
+    scrollBody.querySelectorAll(".para-no").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const pBlock = el.closest(".para-block");
+        const paraText = pBlock ? (pBlock.querySelector(".para-text")?.innerText || "") : "";
+        const roman = el.innerText.trim();
+        const singleText = `${getArtHeader()} ${roman}　${paraText}`;
+        this.copyToClipboard(singleText, el);
+      });
     });
     scrollBody.querySelector("#drawer-permalink-btn").addEventListener("click", () => {
       window.open(`${window.location.origin}${window.location.pathname}#/act/${this.currentActId}/article/${art.article_no}`, "_blank");
@@ -1670,6 +1814,14 @@ class LegalHubApp {
   // ---------------- Tab 1: 關鍵知識 ----------------
   renderKeyKnowledgeHtml(art) {
     let html = "";
+    if (art.stale === 1 || art.stale === true) {
+      const modDate = (this.currentAct && this.currentAct.last_modified) ? `於 ${esc(this.currentAct.last_modified)} ` : "";
+      html += `
+        <div class="stale-alert-banner" style="background:rgba(234, 179, 8, 0.12); border:1px solid rgba(234, 179, 8, 0.4); color:#fde047; padding:0.65rem 0.85rem; border-radius:6px; margin-bottom:1rem; font-size:0.85rem; display:flex; align-items:center; gap:0.5rem;">
+          <span style="font-size:1.1rem;">⚠️</span>
+          <span>本條已${modDate}修正，下列法律人解析可能對應修正前條文。</span>
+        </div>`;
+    }
     const sourceInfo = (art.source === "lawplayer" && art.source_url) 
       ? `法律人 (${(art.fetched_at || "").substring(0, 10)})` 
       : (art.source ? `${art.source} (${(art.fetched_at || "").substring(0, 10)})` : "");
@@ -1848,61 +2000,92 @@ class LegalHubApp {
   }
 
   // ---------------- Tab 4: 立法理由與沿革 ----------------
-  // ---------------- Tab 4: 立法理由與沿革 ----------------
-  // ---------------- Tab 4: 立法理由與沿革 ----------------
   renderLegislativeHtml(art) {
-    const history = (art.source && art.amendment_history) ? art.amendment_history : [];
-    const sourceInfo = (art.source === "lawplayer" && art.source_url) 
-      ? `法律人 (${(art.fetched_at || "").substring(0, 10)})` 
-      : (art.source ? `${art.source} (${(art.fetched_at || "").substring(0, 10)})` : "");
-    const paywalledReasons = (art.paywalled_counts && art.paywalled_counts.legislative_reasons) ? art.paywalled_counts.legislative_reasons : 0;
+    const lisReasons = art.lis_reasons || [];
+    const lisComp = art.lis_comparison || [];
 
-    let paywalledNoticeHtml = "";
-    if (paywalledReasons > 0) {
-      paywalledNoticeHtml = `
-        <div class="card" style="margin-bottom:1rem; border-left:3px solid #f59e0b; background:rgba(245,158,11,0.05);">
-          <div class="card-body" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <span>法律人頁面標示本條有 ${paywalledReasons} 段立法理由（會員內容），無法在此顯示</span>
-            ${art.source_url ? `<a href="${esc(art.source_url)}" target="_blank" rel="noopener" class="source-link" style="color:#60a5fa; text-decoration:none;">在法律人查看 ↗</a>` : ""}
-          </div>
-        </div>`;
-    }
+    if (lisReasons.length > 0 || lisComp.length > 0) {
+      const fetchedAt = (lisReasons[0] && lisReasons[0].fetched_at) || (lisComp[0] && lisComp[0].fetched_at) || "";
+      const sourceDateStr = fetchedAt ? fetchedAt.substring(0, 10) : "";
+      const sourceLabel = sourceDateStr ? `立法院法律系統 (抓取於 ${sourceDateStr})` : "立法院法律系統";
 
-    if (art.source && (history.length || art.legislative_reasons || paywalledReasons > 0)) {
-      if (history.length) {
-        return `
-          <section>${sectionHeading("file", "歷次修法理由與新舊法對照 Diff", `${history.length}`, sourceInfo)}
-            ${paywalledNoticeHtml}
-            ${history.map((item) => `
-              <div class="card">
-                <div class="card-title accent">${item.date ? `${esc(item.date)} · ` : ""}${esc(item.change_type || item.type || "")}</div>
-                <div class="card-body">${esc(item.reason || "")}</div>
-                ${item.old_content ? `
-                  <div class="diff-block">
-                    <div class="diff-row del"><span class="diff-tag">修正前</span>${esc(item.old_content)}</div>
-                    <div class="diff-row add"><span class="diff-tag">修正後</span>${esc(item.new_content || art.content)}</div>
-                  </div>` : ""}
-              </div>
-            `).join("")}
-          </section>`;
-      } else if (art.legislative_reasons) {
-        return `
-          <section>${sectionHeading("file", "制定與修正理由", null, sourceInfo)}
-            ${paywalledNoticeHtml}
-            <div class="card">
-              <div class="card-body">${esc(art.legislative_reasons)}</div>
-            </div>
-          </section>`;
-      } else {
-        return `
-          <section>${sectionHeading("file", "制定與修正理由", null, sourceInfo)}
-            ${paywalledNoticeHtml}
-          </section>`;
+      const formatRoc = (rawDate) => {
+        if (!rawDate) return "";
+        const s = String(rawDate).trim();
+        if (s.length === 7) {
+          const y = parseInt(s.substring(0, 3), 10);
+          const m = parseInt(s.substring(3, 5), 10);
+          const d = parseInt(s.substring(5, 7), 10);
+          return `民國 ${y} 年 ${m} 月 ${d} 日`;
+        }
+        return s;
+      };
+
+      let compHtml = "";
+      if (lisComp.length > 0) {
+        compHtml = lisComp.map((c) => {
+          const newDateStr = formatRoc(c.new_version_date);
+          const oldDateStr = formatRoc(c.old_version_date);
+          const subTitle = oldDateStr ? ` (修正前：${oldDateStr})` : "";
+          const actionText = c.action_type ? c.action_type : "";
+          const title = c.date_label_raw ? `${c.date_label_raw} 對照表${subTitle}` : `${newDateStr} ${actionText} 對照表${subTitle}`;
+          
+          let tableRowsHtml = "";
+          if (c.table_data && Array.isArray(c.table_data) && c.table_data.length > 0) {
+            tableRowsHtml = `
+              <div style="overflow-x:auto; margin:0.75rem 0;">
+                <table style="width:100%; border-collapse:collapse; border:1px solid #3f3f46; font-size:0.875rem;">
+                  <tbody>
+                    ${c.table_data.map((row) => `
+                      <tr style="border-bottom:1px solid #27272a;">
+                        ${row.map((cell, idx) => `
+                          <td style="padding:8px 12px; border-right:1px solid #27272a; vertical-align:top; ${idx === 0 ? 'width:120px; font-weight:600; color:#a1a1aa;' : ''}">
+                            ${esc(cell).replace(/\n/g, '<br>')}
+                          </td>
+                        `).join("")}
+                      </tr>
+                    `).join("")}
+                  </tbody>
+                </table>
+              </div>`;
+          }
+
+          const reasonBody = c.reason ? `<div class="card-body" style="white-space:pre-wrap; margin-top:0.5rem;"><strong style="color:#a1a1aa;">修正理由：</strong>\n${esc(c.reason)}</div>` : "";
+
+          return `
+            <div class="card" style="margin-bottom:1.25rem;">
+              <div class="card-title accent">${esc(title)}</div>
+              ${tableRowsHtml}
+              ${reasonBody}
+            </div>`;
+        }).join("");
       }
+
+      let reasonsHtml = "";
+      if (lisReasons.length > 0) {
+        reasonsHtml = lisReasons.map((v) => {
+          const dateStr = formatRoc(v.version_date);
+          const actionText = v.action_type ? v.action_type : "";
+          const title = v.date_label_raw ? v.date_label_raw : `${dateStr} ${actionText}`;
+          return `
+            <div class="card" style="margin-bottom:1rem;">
+              <div class="card-title accent">${esc(title)}</div>
+              <div class="card-body" style="white-space:pre-wrap;">${esc(v.reason)}</div>
+            </div>`;
+        }).join("");
+      }
+
+      const countStr = String(lisReasons.length);
+      return `
+        <section>
+          ${sectionHeading("file", "立法理由與沿革 (立法院法律系統)", countStr, sourceLabel)}
+          ${compHtml}
+          ${reasonsHtml}
+        </section>`;
     }
 
     return `<div style="padding:1.5rem 0.5rem; text-align:center; color:#71717a; font-size:0.9rem;">
-      此條尚無立法理由資料
+      立法院法律系統無此條資料
     </div>`;
   }
 
@@ -2276,7 +2459,292 @@ class LegalHubApp {
         `;
       });
   }
+
+  bindUpdateStatusEvents() {
+    const btn = document.getElementById("update-status-btn");
+    const modal = document.getElementById("update-status-modal");
+    const closeBtn = document.getElementById("update-status-modal-close");
+    const alertClose = document.getElementById("bookmark-alert-close");
+    const expBtn = document.getElementById("export-bookmarks-btn");
+    const impInput = document.getElementById("import-bookmarks-file");
+
+    if (btn) {
+      btn.addEventListener("click", () => this.openUpdateStatusModal());
+    }
+    if (closeBtn && modal) {
+      closeBtn.addEventListener("click", () => modal.classList.add("hidden"));
+    }
+    if (alertClose) {
+      alertClose.addEventListener("click", () => {
+        const banner = document.getElementById("bookmark-alert-banner");
+        if (banner) banner.classList.add("hidden");
+      });
+    }
+    if (expBtn) {
+      expBtn.addEventListener("click", () => this.exportBookmarks());
+    }
+    if (impInput) {
+      impInput.addEventListener("change", (e) => this.importBookmarks(e));
+    }
+  }
+
+  async openUpdateStatusModal() {
+    const modal = document.getElementById("update-status-modal");
+    if (!modal) return;
+    modal.classList.remove("hidden");
+
+    const sourcesGrid = document.getElementById("update-sources-grid");
+    const changesList = document.getElementById("recent-changes-list");
+    const pendingList = document.getElementById("pending-items-list");
+
+    if (sourcesGrid) sourcesGrid.innerHTML = `<div style="color:#a1a1aa; font-size:0.85rem;">載入中...</div>`;
+    if (changesList) changesList.innerHTML = `<div style="color:#a1a1aa; font-size:0.85rem;">載入中...</div>`;
+    if (pendingList) pendingList.innerHTML = `<div style="color:#a1a1aa; font-size:0.85rem;">載入中...</div>`;
+
+    try {
+      const res = await fetch("/api/updates/status");
+      const resp = await res.json();
+      const data = (resp && resp.data) ? resp.data : resp;
+
+      // 1. Sources Cards
+      if (sourcesGrid) {
+        let sources = data.sources || [];
+        if (!Array.isArray(sources)) {
+          sources = Object.values(sources);
+        }
+        const sourceKeys = Object.keys(sources);
+        if (sourceKeys.length === 0) {
+          sourcesGrid.innerHTML = `<div style="color:#71717a; font-size:0.85rem;">目前無來源紀錄</div>`;
+        } else {
+          sourcesGrid.innerHTML = sourceKeys.map((srcKey) => {
+            const s = sources[srcKey];
+            const isOk = s.status === "normal" || s.status === "success" || s.status === "no_change" || s.status === "dry_run_completed";
+            const badgeColor = isOk ? "#22c55e" : "#ef4444";
+            let lastRunStr = "從未執行";
+            if (s.last_run && typeof s.last_run === "object" && s.last_run.finished_at) {
+              lastRunStr = s.last_run.finished_at.substring(0, 19).replace("T", " ");
+            } else if (typeof s.last_run === "string") {
+              lastRunStr = s.last_run.substring(0, 19).replace("T", " ");
+            } else if (s.last_success_at) {
+              lastRunStr = s.last_success_at.substring(0, 19).replace("T", " ");
+            }
+            let lastCheckStr = "無紀錄";
+            if (s.last_run && typeof s.last_run === "object" && s.last_run.started_at) {
+              lastCheckStr = s.last_run.started_at.substring(0, 19).replace("T", " ");
+            } else if (typeof s.last_check === "string") {
+              lastCheckStr = s.last_check.substring(0, 19).replace("T", " ");
+            }
+            const freqStr = s.check_frequency || s.schedule || "daily";
+            return `
+              <div style="background:#18181b; border:1px solid #27272a; border-radius:8px; padding:0.85rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                  <strong style="color:#f4f4f5; font-size:0.92rem;">${esc(s.name)}</strong>
+                  <span style="font-size:0.75rem; color:${badgeColor}; border:1px solid ${badgeColor}; padding:1px 6px; border-radius:4px;">
+                    ${esc(s.status || "normal")}
+                  </span>
+                </div>
+                <div style="font-size:0.78rem; color:#a1a1aa; display:flex; flex-direction:column; gap:0.25rem;">
+                  <div>上次執行：${esc(lastRunStr)}</div>
+                  <div>檢查時間：${esc(lastCheckStr)}</div>
+                  <div>同步週期：${esc(freqStr)}</div>
+                </div>
+              </div>`;
+          }).join("");
+        }
+      }
+
+      // Pending Human Review Alert
+      if (data.pending_human && data.pending_human.length > 0) {
+        const phHtml = `
+          <div style="background:rgba(239, 68, 68, 0.15); border:1px solid #ef4444; border-radius:8px; padding:0.85rem; margin-bottom:1rem; color:#fca5a5;">
+            <div style="font-weight:700; font-size:0.92rem; display:flex; align-items:center; gap:6px;">
+              <span>⚠️ 待人工確認事項 (疑似換號或法規異常)</span>
+            </div>
+            <div style="font-size:0.82rem; margin-top:0.4rem; display:flex; flex-direction:column; gap:0.4rem;">
+              ${data.pending_human.map(ph => `
+                <div style="background:#18181b; padding:6px 10px; border-radius:4px; border:1px solid #3f3f46;">
+                  <strong>${esc(ph.law_name)}</strong> (舊號: ${esc(ph.old_pcode || '-')} → 新號: ${esc(ph.new_pcode || '-')})：${esc(ph.reason || '')}
+                </div>
+              `).join('')}
+            </div>
+          </div>`;
+        const container = changesList.parentElement;
+        if (!container.querySelector('.pending-human-banner')) {
+          const phDiv = document.createElement('div');
+          phDiv.className = 'pending-human-banner';
+          phDiv.innerHTML = phHtml;
+          container.insertBefore(phDiv, changesList);
+        }
+      }
+
+      // 2. Recent Changes List (Separated into 新增法規 & 條文修正 per Prompt 4C)
+      if (changesList) {
+        const newActs = data.new_acts || [];
+        const modArts = data.modified_articles || [];
+        let html = "";
+
+        // Section 2A: 新增法規
+        html += `<div style="margin-bottom:1rem;">
+          <div style="font-size:0.88rem; font-weight:700; color:#22c55e; margin-bottom:0.5rem; display:flex; align-items:center; gap:6px;">
+            <span>✨ 新增法規</span>
+            <span style="font-size:0.75rem; background:#14532d; color:#86efac; padding:1px 6px; border-radius:10px;">${newActs.length}</span>
+          </div>`;
+        if (newActs.length === 0) {
+          html += `<div style="color:#71717a; font-size:0.8rem; padding:0.3rem 0.5rem;">近期無新增法規</div>`;
+        } else {
+          html += `<div style="display:flex; flex-direction:column; gap:0.5rem;">` + newActs.map((na) => {
+            const detail = na.detail || {};
+            const pubDate = na.act_date_raw || detail.source_modified_date || detail.date_raw || "";
+            const effNote = na.effective_note || detail.effective_note_raw || "";
+            return `
+              <div class="new-act-change-card" style="background:#18181b; border:1px solid #166534; border-radius:6px; padding:0.65rem 0.85rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <span class="badge-new-act" style="background:#15803d; color:#ffffff; font-size:0.72rem; font-weight:700; padding:2px 6px; border-radius:4px;">新增</span>
+                    <strong style="color:#f4f4f5; font-size:0.92rem;">${esc(na.act_name || na.act_id)}</strong>
+                  </div>
+                  <span class="source-date-raw" style="color:#86efac; font-family:monospace; font-size:0.8rem;">${esc(pubDate)}</span>
+                </div>
+                ${effNote ? `<div class="effective-note-raw" style="margin-top:0.35rem; font-size:0.78rem; color:#f59e0b; background:#291e0a; padding:3px 8px; border-radius:4px;">⏳ 未生效備註：${esc(effNote)}</div>` : ""}
+              </div>`;
+          }).join("") + `</div>`;
+        }
+        html += `</div>`;
+
+        // Section 2B: 條文修正
+        html += `<div>
+          <div style="font-size:0.88rem; font-weight:700; color:#60a5fa; margin-bottom:0.5rem; display:flex; align-items:center; gap:6px;">
+            <span>📝 條文修正</span>
+            <span style="font-size:0.75rem; background:#1e3a8a; color:#93c5fd; padding:1px 6px; border-radius:10px;">${modArts.length}</span>
+          </div>`;
+        if (modArts.length === 0) {
+          html += `<div style="color:#71717a; font-size:0.8rem; padding:0.3rem 0.5rem;">近 30 天內無條文修正紀錄</div>`;
+        } else {
+          html += `<div style="display:flex; flex-direction:column; gap:0.5rem;">` + modArts.map((c) => {
+            const dateStr = c.created_at ? c.created_at.substring(0, 10) : "";
+            const actLabel = c.act_name ? `${c.act_name} (${c.act_id})` : c.act_id;
+            const artLabel = c.article_no ? `第 ${c.article_no} 條` : "全法規";
+            let diffHtml = "";
+            const detail = c.detail || {};
+            if (detail.old_content || detail.new_content) {
+              diffHtml = `
+                <div class="diff-block" style="margin-top:0.4rem; font-size:0.8rem;">
+                  ${detail.old_content ? `<div class="diff-row del" style="padding:4px 8px;"><span class="diff-tag">修正前</span>${esc(detail.old_content)}</div>` : ""}
+                  ${detail.new_content ? `<div class="diff-row add" style="padding:4px 8px;"><span class="diff-tag">修正後</span>${esc(detail.new_content)}</div>` : ""}
+                </div>`;
+            }
+            return `
+              <div style="background:#18181b; border:1px solid #27272a; border-radius:6px; padding:0.65rem 0.85rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem;">
+                  <div>
+                    <span style="font-weight:600; color:#60a5fa;">${esc(actLabel)}</span>
+                    <span style="color:#f4f4f5; margin-left:0.4rem;">${esc(artLabel)}</span>
+                    <span style="color:#a1a1aa; font-size:0.75rem; margin-left:0.5rem;">[${esc(c.change_type)}]</span>
+                  </div>
+                  <span style="color:#71717a; font-size:0.75rem;">${esc(dateStr)}</span>
+                </div>
+                ${diffHtml}
+              </div>`;
+          }).join("") + `</div>`;
+        }
+        html += `</div>`;
+
+        changesList.innerHTML = html;
+      }
+
+      // 3. Pending Queue
+      if (pendingList) {
+        const pending = data.pending_items || [];
+        if (pending.length === 0) {
+          pendingList.innerHTML = `<div style="color:#71717a; font-size:0.85rem; padding:0.5rem 0;">待抓取與異常佇列均已清空</div>`;
+        } else {
+          pendingList.innerHTML = pending.map((p) => {
+            return `
+              <div style="background:#18181b; border:1px solid #27272a; border-radius:6px; padding:0.5rem 0.85rem; display:flex; justify-content:space-between; align-items:center; font-size:0.82rem;">
+                <div>
+                  <span style="color:#e4e4e7;">${esc(p.act_id)} 第 ${esc(p.article_no)} 條</span>
+                  <span style="color:#a1a1aa; font-size:0.75rem; margin-left:0.5rem;">重試次數：${esc(String(p.retry_count))}</span>
+                </div>
+                <span style="font-size:0.75rem; color:${p.status === 'expired_8_weeks' ? '#f59e0b' : '#38bdf8'};">
+                  ${esc(p.status)}
+                </span>
+              </div>`;
+          }).join("");
+        }
+      }
+    } catch (e) {
+      if (sourcesGrid) sourcesGrid.innerHTML = `<div style="color:#ef4444; font-size:0.85rem;">載入失敗：${esc(e.message)}</div>`;
+    }
+  }
+
+  async checkBookmarksAlert() {
+    try {
+      const raw = localStorage.getItem("legal_hub_bookmarks");
+      if (!raw) return;
+      const bmarks = JSON.parse(raw);
+      if (!Array.isArray(bmarks) || bmarks.length === 0) return;
+
+      const res = await fetch("/api/updates/check_bookmarks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookmarks: bmarks })
+      });
+      const data = await res.json();
+      if (data.stale_count && data.stale_count > 0) {
+        const banner = document.getElementById("bookmark-alert-banner");
+        const content = document.getElementById("bookmark-alert-content");
+        if (banner && content) {
+          content.innerHTML = `⚠️ 提醒：您收藏的法條中有 <b>${data.stale_count}</b> 條已由主管機關發布新修正案，點擊上方更新按鈕可查看歷次修正與比對。`;
+          banner.classList.remove("hidden");
+        }
+      }
+    } catch (e) {
+      console.warn("Bookmark update check failed:", e);
+    }
+  }
+
+  exportBookmarks() {
+    const raw = localStorage.getItem("legal_hub_bookmarks") || "[]";
+    const blob = new Blob([raw], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `legal_hub_bookmarks_${new Date().toISOString().substring(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  importBookmarks(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const imported = JSON.parse(event.target.result);
+        if (Array.isArray(imported)) {
+          const current = JSON.parse(localStorage.getItem("legal_hub_bookmarks") || "[]");
+          const merged = [...current];
+          for (const item of imported) {
+            if (item && item.actId && item.articleNo) {
+              const exists = merged.some(b => b.actId === item.actId && b.articleNo === item.articleNo);
+              if (!exists) merged.push(item);
+            }
+          }
+          localStorage.setItem("legal_hub_bookmarks", JSON.stringify(merged));
+          alert(`成功匯入 ${imported.length} 筆書籤`);
+          this.renderBookmarksList();
+          this.checkBookmarksAlert();
+        }
+      } catch (err) {
+        alert("匯入失敗：檔案格式不正確");
+      }
+    };
+    reader.readAsText(file);
+  }
 }
+
 
 document.addEventListener("DOMContentLoaded", () => {
   window.legalHubApp = new LegalHubApp();
@@ -2303,7 +2771,7 @@ window.handleStartHarvest = async function(resetCheckpoint = false) {
   }
 
   try {
-    const actId = (window.legalHubApp && window.legalHubApp.currentActId) || "criminal_code";
+    const actId = (window.legalHubApp && window.legalHubApp.currentActId) || "";
     const res = await fetch("/api/ccu/harvest/start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

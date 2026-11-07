@@ -1,0 +1,602 @@
+[
+  {
+    "type": "core",
+    "act_id": "constitution",
+    "article_no": "89",
+    "content_len": 13
+  },
+  {
+    "type": "core",
+    "act_id": "constitution",
+    "article_no": "124",
+    "content_len": 35
+  },
+  {
+    "type": "core",
+    "act_id": "constitution",
+    "article_no": "104",
+    "content_len": 24
+  },
+  {
+    "type": "core",
+    "act_id": "constitution",
+    "article_no": "162",
+    "content_len": 23
+  },
+  {
+    "type": "core",
+    "act_id": "civil_code",
+    "article_no": "28",
+    "content_len": 44
+  },
+  {
+    "type": "core",
+    "act_id": "civil_code",
+    "article_no": "241",
+    "content_len": 56
+  },
+  {
+    "type": "core",
+    "act_id": "civil_code",
+    "article_no": "1203",
+    "content_len": 76
+  },
+  {
+    "type": "core",
+    "act_id": "civil_code",
+    "article_no": "1140",
+    "content_len": 55
+  },
+  {
+    "type": "core",
+    "act_id": "criminal_code",
+    "article_no": "38-3",
+    "content_len": 107
+  },
+  {
+    "type": "core",
+    "act_id": "criminal_code",
+    "article_no": "65",
+    "content_len": 35
+  },
+  {
+    "type": "core",
+    "act_id": "criminal_code",
+    "article_no": "319-2",
+    "content_len": 188
+  },
+  {
+    "type": "core",
+    "act_id": "criminal_code",
+    "article_no": "138",
+    "content_len": 52
+  },
+  {
+    "type": "core",
+    "act_id": "civil_procedure_code",
+    "article_no": "544",
+    "content_len": 38
+  },
+  {
+    "type": "core",
+    "act_id": "civil_procedure_code",
+    "article_no": "436-19",
+    "content_len": 51
+  },
+  {
+    "type": "core",
+    "act_id": "civil_procedure_code",
+    "article_no": "126",
+    "content_len": 28
+  },
+  {
+    "type": "core",
+    "act_id": "civil_procedure_code",
+    "article_no": "124",
+    "content_len": 43
+  },
+  {
+    "type": "core",
+    "act_id": "criminal_procedure_code",
+    "article_no": "155",
+    "content_len": 62
+  },
+  {
+    "type": "core",
+    "act_id": "criminal_procedure_code",
+    "article_no": "219-8",
+    "content_len": 32
+  },
+  {
+    "type": "core",
+    "act_id": "criminal_procedure_code",
+    "article_no": "231",
+    "content_len": 140
+  },
+  {
+    "type": "core",
+    "act_id": "criminal_procedure_code",
+    "article_no": "444",
+    "content_len": 17
+  },
+  {
+    "type": "core",
+    "act_id": "admin_procedure_act",
+    "article_no": "8",
+    "content_len": 31
+  },
+  {
+    "type": "core",
+    "act_id": "admin_procedure_act",
+    "article_no": "104",
+    "content_len": 214
+  },
+  {
+    "type": "core",
+    "act_id": "admin_procedure_act",
+    "article_no": "7",
+    "content_len": 97
+  },
+  {
+    "type": "core",
+    "act_id": "admin_procedure_act",
+    "article_no": "144",
+    "content_len": 49
+  },
+  {
+    "type": "core",
+    "act_id": "labor_standards_act",
+    "article_no": "84",
+    "content_len": 79
+  },
+  {
+    "type": "core",
+    "act_id": "labor_standards_act",
+    "article_no": "79",
+    "content_len": 392
+  },
+  {
+    "type": "core",
+    "act_id": "labor_standards_act",
+    "article_no": "82",
+    "content_len": 32
+  },
+  {
+    "type": "core",
+    "act_id": "labor_standards_act",
+    "article_no": "66",
+    "content_len": 17
+  },
+  {
+    "type": "core",
+    "act_id": "company_act",
+    "article_no": "411",
+    "content_len": 4
+  },
+  {
+    "type": "core",
+    "act_id": "company_act",
+    "article_no": "263",
+    "content_len": 192
+  },
+  {
+    "type": "core",
+    "act_id": "company_act",
+    "article_no": "439",
+    "content_len": 4
+  },
+  {
+    "type": "core",
+    "act_id": "company_act",
+    "article_no": "312",
+    "content_len": 90
+  },
+  {
+    "type": "core",
+    "act_id": "traffic_act",
+    "article_no": "10",
+    "content_len": 66
+  },
+  {
+    "type": "core",
+    "act_id": "traffic_act",
+    "article_no": "35-2",
+    "content_len": 219
+  },
+  {
+    "type": "core",
+    "act_id": "traffic_act",
+    "article_no": "81-1",
+    "content_len": 49
+  },
+  {
+    "type": "core",
+    "act_id": "traffic_act",
+    "article_no": "7-2",
+    "content_len": 762
+  },
+  {
+    "type": "core",
+    "act_id": "a0030154",
+    "article_no": "210",
+    "content_len": 308
+  },
+  {
+    "type": "core",
+    "act_id": "a0030154",
+    "article_no": "157",
+    "content_len": 302
+  },
+  {
+    "type": "core",
+    "act_id": "a0030154",
+    "article_no": "183",
+    "content_len": 128
+  },
+  {
+    "type": "core",
+    "act_id": "a0030154",
+    "article_no": "232",
+    "content_len": 142
+  },
+  {
+    "type": "other_law",
+    "act_id": "d0060001",
+    "article_no": "19",
+    "content_len": 226
+  },
+  {
+    "type": "other_law",
+    "act_id": "d0050078",
+    "article_no": "4",
+    "content_len": 442
+  },
+  {
+    "type": "other_law",
+    "act_id": "m0050010",
+    "article_no": "4",
+    "content_len": 86
+  },
+  {
+    "type": "other_law",
+    "act_id": "d0050100",
+    "article_no": "39",
+    "content_len": 133
+  },
+  {
+    "type": "other_law",
+    "act_id": "l0030023",
+    "article_no": "12",
+    "content_len": 102
+  },
+  {
+    "type": "other_law",
+    "act_id": "l0020021",
+    "article_no": "34",
+    "content_len": 233
+  },
+  {
+    "type": "other_law",
+    "act_id": "d0080211",
+    "article_no": "8",
+    "content_len": 45
+  },
+  {
+    "type": "other_law",
+    "act_id": "i0070001",
+    "article_no": "8",
+    "content_len": 63
+  },
+  {
+    "type": "other_law",
+    "act_id": "b0010006",
+    "article_no": "4",
+    "content_len": 38
+  },
+  {
+    "type": "other_law",
+    "act_id": "h0080050",
+    "article_no": "3",
+    "content_len": 70
+  },
+  {
+    "type": "other_law",
+    "act_id": "a0030243",
+    "article_no": "32",
+    "content_len": 70
+  },
+  {
+    "type": "other_law",
+    "act_id": "d0070112",
+    "article_no": "33",
+    "content_len": 136
+  },
+  {
+    "type": "other_law",
+    "act_id": "m0110001",
+    "article_no": "38-2",
+    "content_len": 228
+  },
+  {
+    "type": "other_law",
+    "act_id": "d0020040",
+    "article_no": "8",
+    "content_len": 251
+  },
+  {
+    "type": "other_law",
+    "act_id": "d0000172",
+    "article_no": "6",
+    "content_len": 103
+  },
+  {
+    "type": "other_law",
+    "act_id": "j0100001",
+    "article_no": "8",
+    "content_len": 261
+  },
+  {
+    "type": "other_law",
+    "act_id": "d0050217",
+    "article_no": "1",
+    "content_len": 120
+  },
+  {
+    "type": "other_law",
+    "act_id": "l0070065",
+    "article_no": "20",
+    "content_len": 98
+  },
+  {
+    "type": "other_law",
+    "act_id": "l0040006",
+    "article_no": "41",
+    "content_len": 31
+  },
+  {
+    "type": "other_law",
+    "act_id": "h0000170",
+    "article_no": "2",
+    "content_len": 168
+  },
+  {
+    "type": "other_law",
+    "act_id": "g0380006",
+    "article_no": "11",
+    "content_len": 203
+  },
+  {
+    "type": "other_law",
+    "act_id": "d0020007",
+    "article_no": "7",
+    "content_len": 19
+  },
+  {
+    "type": "other_law",
+    "act_id": "b0010006",
+    "article_no": "159",
+    "content_len": 44
+  },
+  {
+    "type": "other_law",
+    "act_id": "h0000057",
+    "article_no": "1",
+    "content_len": 48
+  },
+  {
+    "type": "other_law",
+    "act_id": "j0080009",
+    "article_no": "9",
+    "content_len": 79
+  },
+  {
+    "type": "other_law",
+    "act_id": "d0020040",
+    "article_no": "64",
+    "content_len": 106
+  },
+  {
+    "type": "other_law",
+    "act_id": "h0030001",
+    "article_no": "40",
+    "content_len": 86
+  },
+  {
+    "type": "other_law",
+    "act_id": "d0050125",
+    "article_no": "29",
+    "content_len": 155
+  },
+  {
+    "type": "other_law",
+    "act_id": "m0050010",
+    "article_no": "17",
+    "content_len": 189
+  },
+  {
+    "type": "other_law",
+    "act_id": "j0030043",
+    "article_no": "34",
+    "content_len": 449
+  },
+  {
+    "type": "order",
+    "act_id": "s0020056",
+    "article_no": "15-1",
+    "content_len": 114
+  },
+  {
+    "type": "order",
+    "act_id": "d0060140",
+    "article_no": "14",
+    "content_len": 173
+  },
+  {
+    "type": "order",
+    "act_id": "k0050017",
+    "article_no": "10",
+    "content_len": 10
+  },
+  {
+    "type": "order",
+    "act_id": "h0160011",
+    "article_no": "8",
+    "content_len": 45
+  },
+  {
+    "type": "order",
+    "act_id": "k0110020",
+    "article_no": "1",
+    "content_len": 21
+  },
+  {
+    "type": "order",
+    "act_id": "g0310035",
+    "article_no": "42",
+    "content_len": 39
+  },
+  {
+    "type": "order",
+    "act_id": "j0110017",
+    "article_no": "7",
+    "content_len": 2577
+  },
+  {
+    "type": "order",
+    "act_id": "l0020033",
+    "article_no": "2",
+    "content_len": 87
+  },
+  {
+    "type": "order",
+    "act_id": "h0070090",
+    "article_no": "2",
+    "content_len": 229
+  },
+  {
+    "type": "order",
+    "act_id": "d0080141",
+    "article_no": "1",
+    "content_len": 54
+  },
+  {
+    "type": "order",
+    "act_id": "i0040072",
+    "article_no": "2",
+    "content_len": 254
+  },
+  {
+    "type": "order",
+    "act_id": "a0030345",
+    "article_no": "19",
+    "content_len": 97
+  },
+  {
+    "type": "order",
+    "act_id": "i0020016",
+    "article_no": "11",
+    "content_len": 156
+  },
+  {
+    "type": "order",
+    "act_id": "l0000060",
+    "article_no": "9",
+    "content_len": 40
+  },
+  {
+    "type": "order",
+    "act_id": "k0070008",
+    "article_no": "99",
+    "content_len": 38
+  },
+  {
+    "type": "order",
+    "act_id": "h0160025",
+    "article_no": "9",
+    "content_len": 112
+  },
+  {
+    "type": "order",
+    "act_id": "d0030031",
+    "article_no": "10",
+    "content_len": 243
+  },
+  {
+    "type": "order",
+    "act_id": "s0020047",
+    "article_no": "9",
+    "content_len": 39
+  },
+  {
+    "type": "order",
+    "act_id": "l0030037",
+    "article_no": "39",
+    "content_len": 158
+  },
+  {
+    "type": "order",
+    "act_id": "m0010079",
+    "article_no": "3",
+    "content_len": 74
+  },
+  {
+    "type": "order",
+    "act_id": "h0040037",
+    "article_no": "4",
+    "content_len": 121
+  },
+  {
+    "type": "order",
+    "act_id": "k0000054",
+    "article_no": "3",
+    "content_len": 110
+  },
+  {
+    "type": "order",
+    "act_id": "q0040004",
+    "article_no": "5",
+    "content_len": 278
+  },
+  {
+    "type": "order",
+    "act_id": "d0070061",
+    "article_no": "31",
+    "content_len": 39
+  },
+  {
+    "type": "order",
+    "act_id": "k0030013",
+    "article_no": "14",
+    "content_len": 31
+  },
+  {
+    "type": "order",
+    "act_id": "d0010036",
+    "article_no": "3-1",
+    "content_len": 75
+  },
+  {
+    "type": "order",
+    "act_id": "o0060004",
+    "article_no": "4",
+    "content_len": 108
+  },
+  {
+    "type": "order",
+    "act_id": "k0080017",
+    "article_no": "6",
+    "content_len": 62
+  },
+  {
+    "type": "order",
+    "act_id": "l0020091",
+    "article_no": "1",
+    "content_len": 22
+  },
+  {
+    "type": "order",
+    "act_id": "d0080029",
+    "article_no": "7",
+    "content_len": 62
+  }
+]

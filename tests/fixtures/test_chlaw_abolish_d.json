@@ -1,0 +1,11 @@
+﻿{
+  "Laws": [
+    {
+      "LawName": "測試法規",
+      "LawURL": "https://example.com/test_act",
+      "LawModifiedDate": "2026-11-04",
+      "LawAbandonNote": "中華民國115年11月4日廢止",
+      "LawArticles": []
+    }
+  ]
+}

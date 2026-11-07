@@ -1,0 +1,15 @@
+[Unit]
+Description=Legal Hub LIS Weekly Update Service
+After=network.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/legal-hub
+ExecStart=/usr/bin/python3 -m backend.updater.cli --source lis --apply
+StandardOutput=append:/home/ubuntu/legal-hub/logs/update/lis_cron.log
+StandardError=append:/home/ubuntu/legal-hub/logs/update/lis_cron_error.log
+
+[Install]
+WantedBy=multi-user.target
+

@@ -583,20 +583,30 @@ mark {
 }
 
 /* 项 (Roman) & 款/目 Layout */
-.article-body { display: flex; flex-direction: column; gap: 0.45rem; }
-.para-block { display: grid; grid-template-columns: 2rem minmax(0, 1fr); column-gap: 0.4rem; }
-.para-block.single { grid-template-columns: minmax(0, 1fr); }
+.article-body { display: flex; flex-direction: column; gap: 0.65rem; }
+.para-block { display: flex; align-items: baseline; gap: 0.5rem; }
+.para-block.single { display: block; }
 .para-no {
-  padding-top: 0.2em;
-  text-align: right;
-  font-family: 'Outfit', Georgia, serif;
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: var(--text-dim);
+  flex: 0 0 1.6rem;
+  width: 1.6rem;
+  text-align: left;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #f59e0b;
+  cursor: pointer;
   user-select: none;
+  transition: color 0.15s ease;
+}
+.para-no:hover {
+  color: #fbbf24;
+}
+.para-body {
+  flex: 1;
+  min-width: 0;
 }
 .para-text { overflow-wrap: anywhere; line-height: 1.8; }
-.sub { display: flex; align-items: baseline; margin-top: 0.15rem; overflow-wrap: anywhere; line-height: 1.75; }
+.sub { display: flex; align-items: baseline; margin-top: 0.2rem; overflow-wrap: anywhere; line-height: 1.75; }
 .sub-1 { padding-left: 1.4rem; }
 .sub-2 { padding-left: 2.8rem; }
 .sub-3 { padding-left: 4.2rem; }

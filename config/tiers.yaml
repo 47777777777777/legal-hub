@@ -1,0 +1,15 @@
+default_act: "admin_procedure_act"
+
+tier_1:
+  name: "核心法規"
+  acts:
+    - constitution
+    - civil_code
+    - criminal_code
+    - civil_procedure_code
+    - criminal_procedure_code
+    - admin_procedure_act
+    - labor_standards_act
+    - company_act
+    - traffic_act
+    - a0030154

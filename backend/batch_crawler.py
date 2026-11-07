@@ -110,10 +110,11 @@ class BatchHarvester:
             logs = logs[-30:]
         self.progress["logs"] = logs
 
-    def start_harvest(self, act_id: str = "criminal_code", reset_checkpoint: bool = False) -> Dict[str, Any]:
+    def start_harvest(self, act_id: str = "", reset_checkpoint: bool = False) -> Dict[str, Any]:
         with self._lock:
             if self.is_running:
                 return {"success": False, "message": "採集排程已在執行中", "progress": self.get_status()}
+            self.target_act_id = act_id or ""
 
             if reset_checkpoint:
                 self.checkpoint["current_year"] = 2026
@@ -178,8 +179,8 @@ class BatchHarvester:
     def _extract_statute_articles(self, title: str, text: str = "") -> List[Dict[str, str]]:
         """
         Extracts cited act and article references from paper title and abstract.
-        E.g. "論刑法第185條之3酒駕" -> [{"act_id": "criminal_code", "article_no": "185-3"}]
         """
+        target_act_id = getattr(self, "target_act_id", "")
         articles = []
         combined = f"{title} {text}"
         matches = re.findall(r'第\s*(\d+)(?:條之(\d+)|-(\d+)|\s*條)?', combined)
@@ -187,7 +188,7 @@ class BatchHarvester:
             main_no = m[0]
             sub_no = m[1] or m[2]
             art_no = f"{main_no}-{sub_no}" if sub_no else main_no
-            articles.append({"act_id": "criminal_code", "article_no": art_no})
+            articles.append({"act_id": target_act_id, "article_no": art_no})
         
         # Semantic keyword mapping for authoritative legal themes
         semantic_map = [
@@ -258,12 +259,12 @@ class BatchHarvester:
         seen_articles = {a["article_no"] for a in articles}
         for kw, art_no in semantic_map:
             if kw in combined and art_no not in seen_articles:
-                articles.append({"act_id": "criminal_code", "article_no": art_no})
+                articles.append({"act_id": target_act_id, "article_no": art_no})
                 seen_articles.add(art_no)
         
         # Fallback to article 10 if general interpretation
-        if not articles and ("刑法" in combined or "公務員" in combined or "裁判" in combined or "專題" in combined):
-            articles.append({"act_id": "criminal_code", "article_no": "10"})
+        if not articles and ("公務員" in combined or "裁判" in combined or "專題" in combined):
+            articles.append({"act_id": target_act_id, "article_no": "10"})
         return articles
 
     def _check_head_incremental(self, crawler: CCUCrawler) -> int:

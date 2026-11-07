@@ -21,20 +21,18 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 CHLAW_PATH = os.path.join(DATA_DIR, "ChLaw.json")
 OFFICIAL_LAWS_ZIP_URL = "https://law.moj.gov.tw/api/ch/law/json"
 
-# Key statutory slugs mapping
-KNOWN_SLUGS = {
-    "中華民國刑法": "criminal_code",
-    "民法": "civil_code",
-    "中華民國憲法": "constitution",
-    "勞動基準法": "labor_standards_act",
-    "行政程序法": "admin_procedure_act",
-    "道路交通管理處罰條例": "traffic_act",
-    "公司法": "company_act",
-    "刑事訴訟法": "criminal_procedure_code",
-    "民事訴訟法": "civil_procedure_code",
-    "個人資料保護法": "personal_data_protection_act",
-    "著作權法": "copyright_act"
-}
+# Key statutory slugs mapping loaded dynamically from config/slugs.json
+SLUGS_PATH = os.path.join(BASE_DIR, "config", "slugs.json")
+def get_known_slugs() -> dict:
+    if os.path.exists(SLUGS_PATH):
+        try:
+            with open(SLUGS_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+KNOWN_SLUGS = get_known_slugs()
 
 def clean_article_no(raw_no: str) -> str:
     s = raw_no.replace("第", "").replace("條", "").strip()

@@ -1,0 +1,34 @@
+sources:
+  - name: moj
+    type: moj
+    description: "全國法規資料庫 (MOJ ChLaw.json 條文本體，最優先)"
+    check_frequency: "daily"
+    daily_limit: 10
+    location: remote
+    enabled: true
+    rate_limit_sec: 1.0
+    user_agent: "LegalHubPersonal/1.0"
+    last_success_at: "2026-11-03T00:00:00"
+
+  - name: lis
+    type: lis
+    description: "立法院法律系統 (全法立法理由、沿革、修正條文對照表)"
+    check_frequency: "weekly"
+    daily_limit: 50
+    location: local
+    enabled: true
+    rate_limit_sec: 1.0
+    user_agent: "LegalHubPersonal/1.0"
+    last_success_at: "2026-11-03T00:00:00"
+
+  - name: lawplayer
+    type: lawplayer
+    description: "法律人公開未登入內容 (條標、重點摘要、白話問答、函釋、判決)"
+    check_frequency: "daily"
+    daily_limit: 600
+    location: local
+    enabled: true
+    rate_limit_sec: 1.0
+    user_agent: "LegalHubPersonal/1.0"
+    last_success_at: "2026-11-03T00:00:00"
+

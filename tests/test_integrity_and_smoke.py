@@ -30,6 +30,7 @@ def test_check_7_paywall_guardrail_negative():
     # Insert negative test row
     test_act = "B0010001"
     test_art = "__TEST_PAYWALL_ART__"
+    cur.execute("DELETE FROM article_enrichments WHERE article_no = ?", (test_art,))
     cur.execute("""
         INSERT INTO article_enrichments (
             act_id, article_no, summary, source, source_url, fetched_at, article_hash

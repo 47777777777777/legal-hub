@@ -1,0 +1,199 @@
+﻿{
+  "Laws": [
+    {
+      "LawName": "測試法規01",
+      "LawURL": "https://example.com/act_01",
+      "LawModifiedDate": "2026-11-09",
+      "LawAbandonNote": "廢",
+      "LawArticles": [
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 1 條",
+          "ArticleContent": "測試條文內容"
+        }
+      ]
+    },
+    {
+      "LawName": "測試法規02",
+      "LawURL": "https://example.com/act_02",
+      "LawModifiedDate": "2026-11-09",
+      "LawAbandonNote": "廢",
+      "LawArticles": [
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 1 條",
+          "ArticleContent": "測試條文內容"
+        }
+      ]
+    },
+    {
+      "LawName": "測試法規03",
+      "LawURL": "https://example.com/act_03",
+      "LawModifiedDate": "2026-11-09",
+      "LawAbandonNote": "廢",
+      "LawArticles": [
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 1 條",
+          "ArticleContent": "測試條文內容"
+        }
+      ]
+    },
+    {
+      "LawName": "測試法規04",
+      "LawURL": "https://example.com/act_04",
+      "LawModifiedDate": "2026-11-09",
+      "LawAbandonNote": "廢",
+      "LawArticles": [
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 1 條",
+          "ArticleContent": "測試條文內容"
+        }
+      ]
+    },
+    {
+      "LawName": "測試法規05",
+      "LawURL": "https://example.com/act_05",
+      "LawModifiedDate": "2026-11-09",
+      "LawAbandonNote": "廢",
+      "LawArticles": [
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 1 條",
+          "ArticleContent": "測試條文內容"
+        }
+      ]
+    },
+    {
+      "LawName": "測試法規06",
+      "LawURL": "https://example.com/act_06",
+      "LawModifiedDate": "2026-11-09",
+      "LawAbandonNote": "廢",
+      "LawArticles": [
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 1 條",
+          "ArticleContent": "測試條文內容"
+        }
+      ]
+    },
+    {
+      "LawName": "測試法規07",
+      "LawURL": "https://example.com/act_07",
+      "LawModifiedDate": "2026-11-09",
+      "LawAbandonNote": "廢",
+      "LawArticles": [
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 1 條",
+          "ArticleContent": "測試條文內容"
+        }
+      ]
+    },
+    {
+      "LawName": "測試法規08",
+      "LawURL": "https://example.com/act_08",
+      "LawModifiedDate": "2026-11-09",
+      "LawAbandonNote": "廢",
+      "LawArticles": [
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 1 條",
+          "ArticleContent": "測試條文內容"
+        }
+      ]
+    },
+    {
+      "LawName": "測試法規09",
+      "LawURL": "https://example.com/act_09",
+      "LawModifiedDate": "2026-11-09",
+      "LawAbandonNote": "廢",
+      "LawArticles": [
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 1 條",
+          "ArticleContent": "測試條文內容"
+        }
+      ]
+    },
+    {
+      "LawName": "測試法規10",
+      "LawURL": "https://example.com/act_10",
+      "LawModifiedDate": "2026-11-09",
+      "LawAbandonNote": "廢",
+      "LawArticles": [
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 1 條",
+          "ArticleContent": "測試條文內容"
+        }
+      ]
+    },
+    {
+      "LawName": "測試法規11",
+      "LawURL": "https://example.com/act_11",
+      "LawModifiedDate": "2026-11-09",
+      "LawAbandonNote": "廢",
+      "LawArticles": [
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 1 條",
+          "ArticleContent": "測試條文內容"
+        }
+      ]
+    },
+    {
+      "LawName": "測試法規12",
+      "LawURL": "https://example.com/act_12",
+      "LawModifiedDate": "2026-11-09",
+      "LawAbandonNote": "",
+      "LawArticles": [
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 1 條",
+          "ArticleContent": "測試條文內容"
+        }
+      ]
+    },
+    {
+      "LawName": "測試法規13",
+      "LawURL": "https://example.com/act_13",
+      "LawModifiedDate": "2026-11-09",
+      "LawAbandonNote": "",
+      "LawArticles": [
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 1 條",
+          "ArticleContent": "測試條文內容"
+        }
+      ]
+    },
+    {
+      "LawName": "測試法規14",
+      "LawURL": "https://example.com/act_14",
+      "LawModifiedDate": "2026-11-09",
+      "LawAbandonNote": "",
+      "LawArticles": [
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 1 條",
+          "ArticleContent": "測試條文內容"
+        }
+      ]
+    },
+    {
+      "LawName": "測試法規15",
+      "LawURL": "https://example.com/act_15",
+      "LawModifiedDate": "2026-11-09",
+      "LawAbandonNote": "",
+      "LawArticles": [
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 1 條",
+          "ArticleContent": "測試條文內容"
+        }
+      ]
+    }
+  ]
+}

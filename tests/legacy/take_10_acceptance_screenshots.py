@@ -139,3 +139,4 @@ def take_screenshots():
 
 if __name__ == "__main__":
     take_screenshots()
+

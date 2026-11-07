@@ -1,0 +1,26 @@
+﻿{
+  "Laws": [
+    {
+      "LawName": "測試法規",
+      "LawURL": "https://example.com/test_act",
+      "LawModifiedDate": "2026-11-09",
+      "LawArticles": [
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 1 條",
+          "ArticleContent": "第一條再次修訂。"
+        },
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 2 條",
+          "ArticleContent": "第二條原始條文內容。"
+        },
+        {
+          "ArticleType": "A",
+          "ArticleNo": "第 3 條",
+          "ArticleContent": "第三條原始條文內容。"
+        }
+      ]
+    }
+  ]
+}

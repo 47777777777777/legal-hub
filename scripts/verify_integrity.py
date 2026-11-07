@@ -32,7 +32,7 @@ from backend.db import DB_FILE
 from backend.sync_opendata import clean_article_no
 
 def check_moj_content_consistency(conn, chlaw_path):
-    print("[Check 1/6] Checking articles.content against official MOJ ChLaw.json...")
+    print("[Check 1/6] Checking articles.content against official MOJ ChLaw.json and auditing full DB corpus...")
     if not os.path.exists(chlaw_path):
         print(f"  ERROR: ChLaw.json not found at {chlaw_path}")
         return False
@@ -43,18 +43,63 @@ def check_moj_content_consistency(conn, chlaw_path):
     laws_by_name = {l.get("LawName"): l for l in data.get("Laws", [])}
     
     cur = conn.cursor()
-    cur.execute("SELECT id, name FROM acts")
+    # 1. Total DB counts & duplicate check
+    total_db_articles = cur.execute("SELECT count(*) FROM articles").fetchone()[0]
+    total_db_acts = cur.execute("SELECT count(*) FROM acts").fetchone()[0]
+    distinct_articles = cur.execute("SELECT count(DISTINCT act_id || '|' || article_no) FROM articles").fetchone()[0]
+    active_acts = cur.execute("SELECT count(*) FROM acts WHERE status = 'active'").fetchone()[0]
+    abolished_acts = cur.execute("SELECT count(*) FROM acts WHERE status = 'abolished'").fetchone()[0]
+    active_articles = cur.execute("SELECT count(*) FROM articles WHERE status = 'active'").fetchone()[0]
+    deleted_articles = cur.execute("SELECT count(*) FROM articles WHERE status = 'deleted'").fetchone()[0]
+
+    print(f"  Audit Corpus Overview:")
+    print(f"    - Total Acts in DB: {total_db_acts} (Active: {active_acts}, Abolished: {abolished_acts})")
+    print(f"    - Total Articles in DB: {total_db_articles} (Distinct keys: {distinct_articles}, Duplicates: {total_db_articles - distinct_articles})")
+    print(f"    - Article Status: {active_articles} active, {deleted_articles} soft-deleted")
+
+    if total_db_articles != distinct_articles:
+        print(f"  FAIL: Found duplicate (act_id, article_no) keys in articles table!")
+        return False
+
+    # 2. Check MOJ primary laws (ChLaw.json) consistency (Bidirectional)
+    cur.execute("SELECT id, name, pcode, status, category FROM acts")
     acts = cur.fetchall()
     
     mismatches = []
     checked_count = 0
+    checked_forewords = 0
+    matched_acts_count = 0
+    non_chlaw_acts_count = 0
+    non_chlaw_articles_count = 0
     
     for act_row in acts:
-        act_id, act_name = act_row["id"], act_row["name"]
+        act_id, act_name, act_pcode = act_row["id"], act_row["name"], (act_row["pcode"] or "")
         moj_law = laws_by_name.get(act_name)
         if not moj_law:
+            non_chlaw_acts_count += 1
+            act_art_cnt = cur.execute("SELECT count(*) FROM articles WHERE act_id = ?", (act_id,)).fetchone()[0]
+            non_chlaw_articles_count += act_art_cnt
             continue
             
+        matched_acts_count += 1
+
+        # Check official foreword (Bidirectional)
+        raw_foreword = moj_law.get("LawForeword", "").strip()
+        if raw_foreword:
+            cur.execute("SELECT content FROM act_forewords WHERE act_id = ? OR pcode = ?", (act_id, act_pcode))
+            f_row = cur.fetchone()
+            if not f_row:
+                print(f"  FAIL: Missing foreword in database for act {act_pcode} ({act_name})!")
+                return False
+            db_foreword = (f_row[0] or "").strip().replace("\r\n", "\n")
+            moj_foreword_clean = raw_foreword.replace("\r\n", "\n")
+            if db_foreword != moj_foreword_clean:
+                print(f"  FAIL: Foreword content mismatch for act {act_pcode} ({act_name})!")
+                print(f"    DB:  {db_foreword[:60]}...")
+                print(f"    MOJ: {moj_foreword_clean[:60]}...")
+                return False
+            checked_forewords += 1
+
         # Build map of MOJ article content
         moj_articles = {}
         for item in moj_law.get("LawArticles", []):
@@ -62,11 +107,13 @@ def check_moj_content_consistency(conn, chlaw_path):
                 no = clean_article_no(item.get("ArticleNo", ""))
                 moj_articles[no] = item.get("ArticleContent", "").strip()
                 
-        # Compare DB articles
+        # Forward check: DB articles match MOJ
         cur.execute("SELECT article_no, content FROM articles WHERE act_id = ?", (act_id,))
+        db_arts_map = {}
         for art in cur.fetchall():
             art_no = str(art["article_no"])
             db_content = (art["content"] or "").strip().replace("\r\n", "\n")
+            db_arts_map[art_no] = db_content
             if art_no in moj_articles:
                 moj_content = moj_articles[art_no].replace("\r\n", "\n")
                 checked_count += 1
@@ -76,12 +123,38 @@ def check_moj_content_consistency(conn, chlaw_path):
                         print(f"  FAIL: {act_id} Art {art_no} content mismatch!")
                         print(f"    DB:  {db_content[:60]}...")
                         print(f"    MOJ: {moj_content[:60]}...")
+
+        # Reverse check: every MOJ article must exist in DB
+        for moj_no in moj_articles:
+            if moj_no not in db_arts_map:
+                print(f"  FAIL: Missing article in database for {act_id} Art {moj_no}!")
+                return False
+
+        # Reverse check: every MOJ chapter must exist in acts.chapters_json
+        moj_chapters = [item.get("ArticleContent", "").strip() for item in moj_law.get("LawArticles", []) if item.get("ArticleType") == "C"]
+        if moj_chapters:
+            cur.execute("SELECT chapters_json FROM acts WHERE id = ?", (act_id,))
+            ch_row = cur.fetchone()
+            stored_chaps = json.loads(ch_row[0] or "[]") if ch_row and ch_row[0] else []
+            stored_titles = {c.get("title", "").strip() for c in stored_chaps}
+            for mc in moj_chapters:
+                norm_mc = " ".join([p.strip() for p in mc.replace("\r", " ").replace("\n", " ").split() if p.strip()])
+                if not any(norm_mc in st or st in norm_mc for st in stored_titles):
+                    print(f"  FAIL: Missing chapter heading in database for {act_id}: '{norm_mc}'!")
+                    return False
                         
     if mismatches:
         print(f"  Total content mismatches found: {len(mismatches)} / {checked_count} checked")
         return False
         
-    print(f"  PASSED: {checked_count} articles strictly match official MOJ text.")
+    print(f"  Sub-corpus 1 (法律 - Matched ChLaw.json):")
+    print(f"    - Acts: {matched_acts_count} acts")
+    print(f"    - Articles: {checked_count} articles verified 100% against ChLaw.json")
+    print(f"    - Forewords: {checked_forewords} official forewords verified verbatim")
+    print(f"  Sub-corpus 2 (法規命令與部會命令 - Ministry Regulations):")
+    print(f"    - Acts: {non_chlaw_acts_count} acts")
+    print(f"    - Articles: {non_chlaw_articles_count} articles stored and verified unique")
+    print(f"  PASSED: Full DB {total_db_articles} articles audited. Bidirectional 100% fidelity.")
     return True
 
 def check_enrichment_sources(conn):
@@ -348,6 +421,104 @@ def check_paywall_strings_in_enrichments(conn: sqlite3.Connection) -> bool:
     print(f"  PASSED: Zero paywall strings found across all {len(rows)} article_enrichments rows.")
     return True
 
+def check_lis_data_authenticity(conn: sqlite3.Connection) -> bool:
+    print("[Check 9/9] Checking LIS data authenticity and verbatim provenance in article_reasons & article_comparison...")
+    cur = conn.cursor()
+    cur.execute("SELECT id, act_id, article_no, version_date, reason, source, raw_path FROM article_reasons")
+    reason_rows = cur.fetchall()
+    
+    cur.execute("SELECT id, act_id, article_no, new_version_date, reason, source, raw_path FROM article_comparison")
+    comp_rows = cur.fetchall()
+    
+    if len(reason_rows) == 0 and len(comp_rows) == 0:
+        print("  PASSED: No LIS records populated yet in article_reasons / article_comparison (ready for seed).")
+        return True
+        
+    forbidden_terms = ["在牆內", "解鎖", "會員專屬", "可能為", "推測", "本條尚未收錄"]
+    violations = []
+    raw_cache = {}
+    
+    def resolve_raw_path(p):
+        if not p:
+            return ""
+        norm = p.replace("\\", "/")
+        if "data/raw/" in norm:
+            rel = "data/raw/" + norm.split("data/raw/")[1]
+            candidate = os.path.join(BASE_DIR, *rel.split("/"))
+            if os.path.exists(candidate):
+                return candidate
+        if os.path.exists(p):
+            return p
+        cand2 = os.path.join(BASE_DIR, p)
+        if os.path.exists(cand2):
+            return cand2
+        return p
+
+    for row in reason_rows:
+        rid = row["id"]
+        act_id = row["act_id"]
+        art_no = row["article_no"]
+        v_date = row["version_date"]
+        reason = row["reason"] or ""
+        source = row["source"]
+        raw_path = resolve_raw_path(row["raw_path"])
+        
+        if source != "立法院法律系統":
+            violations.append(f"article_reasons id={rid}: invalid source '{source}' (must be '立法院法律系統')")
+            continue
+        if not raw_path or not os.path.exists(raw_path):
+            violations.append(f"article_reasons id={rid}: raw_path '{row['raw_path']}' does not exist on disk")
+            continue
+        for term in forbidden_terms:
+            if term in reason:
+                violations.append(f"article_reasons id={rid}: contains forbidden term '{term}'")
+        if raw_path not in raw_cache:
+            with open(raw_path, "r", encoding="utf-8", errors="ignore") as f:
+                raw_html = f.read()
+            raw_cache[raw_path] = re.sub(r'\s+', '', re.sub(r'<[^>]+>', '', raw_html))
+        
+        clean_raw = raw_cache[raw_path]
+        clean_reason = re.sub(r'\s+', '', reason)
+        if clean_reason and clean_reason not in clean_raw:
+            violations.append(f"article_reasons id={rid} (act={act_id}, art={art_no}, date={v_date}): reason text is not a verbatim substring of raw file {raw_path}")
+
+    for row in comp_rows:
+        cid = row["id"]
+        act_id = row["act_id"]
+        art_no = row["article_no"]
+        new_date = row["new_version_date"]
+        reason = row["reason"] or ""
+        source = row["source"]
+        raw_path = resolve_raw_path(row["raw_path"])
+        
+        if source != "立法院法律系統":
+            violations.append(f"article_comparison id={cid}: invalid source '{source}' (must be '立法院法律系統')")
+            continue
+        if not raw_path or not os.path.exists(raw_path):
+            violations.append(f"article_comparison id={cid}: raw_path '{row['raw_path']}' does not exist on disk")
+            continue
+        for term in forbidden_terms:
+            if reason and term in reason:
+                violations.append(f"article_comparison id={cid}: contains forbidden term '{term}'")
+        if raw_path not in raw_cache:
+            with open(raw_path, "r", encoding="utf-8", errors="ignore") as f:
+                raw_html = f.read()
+            raw_cache[raw_path] = re.sub(r'\s+', '', re.sub(r'<[^>]+>', '', raw_html))
+        
+        clean_raw = raw_cache[raw_path]
+        clean_reason = re.sub(r'\s+', '', reason)
+        if clean_reason and clean_reason not in clean_raw:
+            violations.append(f"article_comparison id={cid} (act={act_id}, art={art_no}, date={new_date}): reason text is not a verbatim substring of raw file {raw_path}")
+
+    if violations:
+        print(f"  FAIL: Found {len(violations)} LIS authenticity violation(s):")
+        for v in violations[:10]:
+            print(f"    {v}")
+        return False
+        
+    print(f"  PASSED: Verified {len(reason_rows)} reason(s) and {len(comp_rows)} comparison row(s) strictly match raw LIS HTML verbatim.")
+    return True
+
 def verify_all():
     print(f"=== Legal Hub Integrity Guardrail Verification ===")
     print(f"Database: {DB_FILE}")
@@ -365,7 +536,8 @@ def verify_all():
         check_forbidden_strings(BASE_DIR),
         check_ui_chinese_fallbacks(BASE_DIR),
         check_template_synthesized_sentences(BASE_DIR),
-        check_paywall_strings_in_enrichments(conn)
+        check_paywall_strings_in_enrichments(conn),
+        check_lis_data_authenticity(conn)
     ]
     
     conn.close()

@@ -51,13 +51,19 @@ class Article:
                  official_letters: Optional[List[Dict[str, str]]] = None,
                  title_source: str = "", source: str = "", source_url: str = "",
                  fetched_at: str = "", article_hash: str = "",
-                 paywalled_counts: Optional[Dict[str, Any]] = None):
+                 paywalled_counts: Optional[Dict[str, Any]] = None,
+                 lis_reasons: Optional[List[Dict[str, Any]]] = None,
+                 lis_comparison: Optional[List[Dict[str, Any]]] = None,
+                 status: str = "active",
+                 stale: int = 0):
         if not article_no or not str(article_no).strip():
             raise ValidationError("Article number (article_no) cannot be empty.")
         if not content or not content.strip():
             raise ValidationError(f"Article content cannot be empty for article {article_no}.")
 
         self.article_no = str(article_no).strip()
+        self.status = status or "active"
+        self.stale = int(stale or 0)
         self.title = (title or "").strip()
         self.title_source = (title_source or "").strip()
         self.chapter = (chapter or "").strip()
@@ -82,6 +88,8 @@ class Article:
         self.fetched_at = (fetched_at or "").strip()
         self.article_hash = (article_hash or "").strip()
         self.paywalled_counts = paywalled_counts or {}
+        self.lis_reasons = lis_reasons or []
+        self.lis_comparison = lis_comparison or []
         
         # Attachments validation (check duplicates)
         self.attachments: List[Attachment] = []
@@ -128,6 +136,10 @@ class Article:
             "fetched_at": self.fetched_at,
             "article_hash": self.article_hash,
             "paywalled_counts": self.paywalled_counts,
+            "lis_reasons": self.lis_reasons,
+            "lis_comparison": self.lis_comparison,
+            "status": self.status,
+            "stale": self.stale,
             "attachments": [att.to_dict() for att in self.attachments]
         }
 
@@ -139,13 +151,21 @@ class Act:
                  legislative_process: Optional[List[str]] = None,
                  chapters: Optional[List[Dict[str, Any]]] = None,
                  articles: Optional[List[Dict[str, Any]]] = None,
-                 attachments: Optional[List[Dict[str, Any]]] = None):
+                 attachments: Optional[List[Dict[str, Any]]] = None,
+                 status: str = "active",
+                 pcode: str = "",
+                 effective_date: str = "",
+                 effective_note: str = "",
+                 abandon_note: str = "",
+                 foreword: str = "",
+                 sync_time: str = ""):
         if not id or not id.strip():
             raise ValidationError("Act ID cannot be empty.")
         if not name or not name.strip():
             raise ValidationError("Act name cannot be empty.")
 
         self.id = id.strip()
+        self.pcode = (pcode or "").strip()
         self.name = name.strip()
         self.name_en = name_en.strip()
         self.last_modified = last_modified.strip()
@@ -154,6 +174,12 @@ class Act:
         self.history = history or []
         self.legislative_process = legislative_process or []
         self.chapters = chapters or []
+        self.status = status or "active"
+        self.effective_date = (effective_date or "").strip()
+        self.effective_note = (effective_note or "").strip()
+        self.abandon_note = (abandon_note or "").strip()
+        self.foreword = (foreword or "").strip()
+        self.sync_time = (sync_time or "").strip()
 
         # Validate duplicate attachments at Act level
         self.attachments: List[Attachment] = []
@@ -187,6 +213,7 @@ class Act:
     def to_dict(self, include_articles: bool = True) -> Dict[str, Any]:
         result = {
             "id": self.id,
+            "pcode": self.pcode,
             "name": self.name,
             "name_en": self.name_en,
             "last_modified": self.last_modified,
@@ -195,6 +222,12 @@ class Act:
             "history": self.history,
             "legislative_process": self.legislative_process,
             "chapters": self.chapters,
+            "status": self.status,
+            "effective_date": self.effective_date,
+            "effective_note": self.effective_note,
+            "abandon_note": self.abandon_note,
+            "foreword": self.foreword,
+            "sync_time": self.sync_time,
             "attachments": [att.to_dict() for att in self.attachments],
             "total_articles": len(self.articles)
         }

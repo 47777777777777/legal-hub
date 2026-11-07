@@ -25,6 +25,18 @@ STATIC_DIR = os.path.join(BASE_DIR, "static")
 # Initialize storage instance
 storage = LegalStorage(DATA_DIR)
 
+def get_default_act_id() -> str:
+    cfg_file = os.path.join(BASE_DIR, "config", "tiers.yaml")
+    if os.path.exists(cfg_file):
+        try:
+            import yaml
+            with open(cfg_file, "r", encoding="utf-8") as f:
+                c = yaml.safe_load(f) or {}
+                return c.get("default_act") or (c.get("tier_1", {}).get("acts", [""])[0])
+        except Exception:
+            pass
+    return ""
+
 
 class LegalApiHandler(BaseHTTPRequestHandler):
     timeout = 15  # Timeout for slow/stalled client connections
@@ -73,6 +85,18 @@ class LegalApiHandler(BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
 
+        if path == "/api/updates/check_bookmarks":
+            content_length = int(self.headers.get("Content-Length", 0))
+            body_raw = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            try:
+                payload = json.loads(body_raw)
+            except Exception:
+                payload = {}
+            bookmarks = payload.get("bookmarks", [])
+            notifications = storage.check_bookmarks(bookmarks)
+            self.send_json(200, {"success": True, "data": notifications})
+            return
+
         if path == "/api/ccu/session":
             content_length = int(self.headers.get("Content-Length", 0))
             if content_length == 0:
@@ -114,13 +138,14 @@ class LegalApiHandler(BaseHTTPRequestHandler):
 
         if path == "/api/ccu/harvest/start":
             content_length = int(self.headers.get("Content-Length", 0))
-            act_id = "criminal_code"
+            def_act = get_default_act_id()
+            act_id = def_act
             reset_cp = False
             if content_length > 0:
                 try:
                     body_raw = self.rfile.read(content_length).decode("utf-8")
                     payload = json.loads(body_raw)
-                    act_id = payload.get("act_id") or "criminal_code"
+                    act_id = payload.get("act_id") or def_act
                     reset_cp = bool(payload.get("reset_checkpoint", False) or payload.get("reset", False))
                 except Exception:
                     pass
@@ -177,6 +202,40 @@ class LegalApiHandler(BaseHTTPRequestHandler):
 
     def handle_api_get(self, path: str, query: dict):
         try:
+            # GET /api/tiers and /api/popular-acts (dynamic from config/tiers.yaml)
+            if path in ("/api/tiers", "/api/popular-acts"):
+                import yaml
+                tiers_file = os.path.join(BASE_DIR, "config", "tiers.yaml")
+                tier_acts = []
+                if os.path.exists(tiers_file):
+                    try:
+                        with open(tiers_file, "r", encoding="utf-8") as f:
+                            t_cfg = yaml.safe_load(f) or {}
+                            act_ids = t_cfg.get("tier_1", {}).get("acts", [])
+                            for aid in act_ids:
+                                act = storage.get_act(aid)
+                                if act:
+                                    tier_acts.append({"id": act.id, "name": act.name})
+                                else:
+                                    tier_acts.append({"id": aid, "name": aid})
+                    except Exception:
+                        pass
+                self.send_json(200, {"success": True, "data": tier_acts})
+                return
+
+            # GET /api/articles/{act_id}/{article_no}/panel (Universal Article Panel)
+            if path.startswith("/api/articles/") and path.endswith("/panel"):
+                parts = path.strip("/").split("/")
+                if len(parts) == 5 and parts[0] == "api" and parts[1] == "articles" and parts[4] == "panel":
+                    act_id = parts[2]
+                    art_no = parts[3]
+                    panel = storage.get_article_panel(act_id, art_no)
+                    if not panel:
+                        self.send_error_json(404, f"Act '{act_id}' or article '{art_no}' not found.", "NotFound")
+                        return
+                    self.send_json(200, {"success": True, "data": panel})
+                    return
+
             # GET /api/acts (supports ?q=... for full statutes search)
             if path == "/api/acts":
                 q = query.get("q", [""])[0]
@@ -242,7 +301,8 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                     art_m = re.search(r'(?:第\s*)?(\d+(?:-\d+|之\d+)?)\s*條?', q)
                     if art_m:
                         raw_no = art_m.group(1).replace("之", "-")
-                        art_res = storage.list_literature(act_id="criminal_code", article_no=raw_no, page=1, page_size=50)
+                        target_act_id = query.get("act_id", [None])[0]
+                        art_res = storage.list_literature(act_id=target_act_id, article_no=raw_no, page=1, page_size=50)
                         for lit in art_res.get("items", []):
                             t = lit.get("title", "").strip()
                             if t and t not in seen_titles:
@@ -385,7 +445,13 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                     self.send_json(200, {"success": True, "data": lit})
                     return
 
-            # Paths like /api/acts/<act_id>...
+            # GET /api/updates/status
+            if path == "/api/updates/status":
+                status_data = storage.get_update_status()
+                self.send_json(200, {"success": True, "data": status_data})
+                return
+
+            # GET /api/acts/<act_id>...
             parts = [p for p in path.split("/") if p]
             if len(parts) >= 3 and parts[1] == "acts":
                 act_id = parts[2]
@@ -402,6 +468,23 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                 sub = parts[3]
                 # GET /api/acts/<act_id>/articles
                 if sub == "articles":
+                    # GET /api/acts/<act_id>/articles/<article_no>/panel (Universal Article Panel)
+                    if len(parts) == 6 and parts[5] == "panel":
+                        art_no = parts[4]
+                        panel = storage.get_article_panel(act_id, art_no)
+                        if not panel:
+                            self.send_error_json(404, f"Article '{art_no}' not found in act '{act_id}'.", "NotFound")
+                            return
+                        self.send_json(200, {"success": True, "data": panel})
+                        return
+
+                    # GET /api/acts/<act_id>/articles/<article_no>/revisions (法條歷次修正)
+                    if len(parts) == 6 and parts[5] == "revisions":
+                        art_no = parts[4]
+                        revs = storage.get_article_revisions(act_id, art_no)
+                        self.send_json(200, {"success": True, "data": revs, "total": len(revs), "act_id": act_id, "article_no": art_no})
+                        return
+
                     # GET /api/acts/<act_id>/articles/<article_no>/literature (二級維度：法條關聯文獻)
                     if len(parts) == 6 and parts[5] == "literature":
                         art_no = parts[4]

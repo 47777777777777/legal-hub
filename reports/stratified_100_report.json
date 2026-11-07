@@ -1,0 +1,43 @@
+{
+  "total_tested": 100,
+  "status_distribution": {
+    "article": {
+      "present": 100,
+      "source_has_none": 0,
+      "not_attempted": 0,
+      "not_applicable": 0
+    },
+    "legislative_reasons": {
+      "present": 4,
+      "source_has_none": 0,
+      "not_attempted": 66,
+      "not_applicable": 30
+    },
+    "amendment_comparison": {
+      "present": 0,
+      "source_has_none": 4,
+      "not_attempted": 66,
+      "not_applicable": 30
+    },
+    "lawplayer": {
+      "present": 0,
+      "source_has_none": 40,
+      "not_attempted": 60,
+      "not_applicable": 0
+    }
+  },
+  "timings_ms": {
+    "path_a_list_click": {
+      "p50_ms": 65.6,
+      "p95_ms": 281.7
+    },
+    "path_b_permalink": {
+      "p50_ms": 69.9,
+      "p95_ms": 552.3
+    },
+    "path_c_dialer": {
+      "p50_ms": 38.0,
+      "p95_ms": 136.9
+    }
+  }
+}

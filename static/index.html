@@ -54,6 +54,12 @@
         <span id="ccu-header-indicator" style="position:absolute; top:4px; right:4px; width:7px; height:7px; border-radius:50%; background:#71717a;" title="連線狀態"></span>
       </button>
 
+      <!-- Update Status & Legal Tracking Modal Button -->
+      <button id="update-status-btn" class="icon-btn" title="資料更新狀態與修法追蹤" aria-label="資料更新狀態" style="position:relative; display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; padding:0; border-radius:6px; border:1px solid #3f3f46; background:#18181b; cursor:pointer;">
+        <span data-icon="refresh-cw" data-size="16">↻</span>
+        <span id="update-status-indicator" style="position:absolute; top:4px; right:4px; width:7px; height:7px; border-radius:50%; background:#22c55e;" title="資料狀態正常"></span>
+      </button>
+
       <div class="font-size-controls" title="調整字體大小">
         <button id="font-minus-btn" class="font-size-btn" aria-label="縮小字體">A-</button>
         <button id="font-plus-btn" class="font-size-btn" aria-label="放大字體">A+</button>
@@ -66,6 +72,12 @@
     </div>
   </header>
 
+  <!-- Bookmark Modification Alert Banner -->
+  <div id="bookmark-alert-banner" class="bookmark-alert-banner hidden" style="background:#451a03; color:#fde047; padding:8px 16px; font-size:13px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #78350f;">
+    <div id="bookmark-alert-content"></div>
+    <button id="bookmark-alert-close" style="background:transparent; border:none; color:#fde047; cursor:pointer; font-size:16px;">&times;</button>
+  </div>
+
   <!-- LAYER 2: Ultra-compact Statute Action Toolbar (Chapter on left, In-act search on right) -->
   <section class="statute-toolbar-layer" id="statute-toolbar-layer">
     <div class="toolbar-left">
@@ -73,7 +85,7 @@
         <span data-icon="book" data-size="15"></span>
       </button>
       <div class="current-chapter-indicator" id="current-chapter-indicator">
-        <span class="chapter-text" id="active-chapter-name">載入中...</span>
+        <span class="chapter-text" id="active-chapter-name"></span>
         <span class="act-meta-inline" id="act-meta-inline"></span>
       </div>
     </div>
@@ -380,6 +392,46 @@
     </div>
   </div>
 
+  <!-- Update Status & Legislative Tracking Modal -->
+  <div class="modal-backdrop hidden" id="update-status-modal">
+    <div class="modal-dialog" style="max-width: 820px; width: 95vw; display: flex; flex-direction: column; height: 90vh; max-height: 92vh; border-radius: 12px; border: 1px solid #27272a; background: #0c0c0f; box-shadow: 0 25px 60px rgba(0,0,0,0.9); overflow: hidden;">
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; padding: 0.85rem 1.35rem; border-bottom: 1px solid #27272a; background: #121216; flex-shrink: 0;">
+        <div style="display:flex; align-items:center; gap:0.65rem;">
+          <span style="font-size:1.15rem;">🔄</span>
+          <h3 class="modal-title" style="font-size:1.02rem; font-weight:700; color:#fafafa; margin:0;">資料更新狀態與修法追蹤</h3>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+          <button id="export-bookmarks-btn" class="filter-chip" style="font-size:0.75rem; padding:0.25rem 0.6rem;">匯出書籤 JSON</button>
+          <label class="filter-chip" style="font-size:0.75rem; padding:0.25rem 0.6rem; cursor:pointer; margin:0;">
+            匯入書籤 JSON
+            <input type="file" id="import-bookmarks-file" accept=".json" style="display:none;" />
+          </label>
+          <button class="icon-btn" id="update-status-modal-close" aria-label="關閉" style="color:#a1a1aa; cursor:pointer; background:none; border:none; padding:4px; font-size:1.1rem; line-height:1;">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding: 1rem 1.25rem; overflow-y: auto; flex: 1; display:flex; flex-direction:column; gap:1.25rem;">
+        <!-- Sources Cards Grid -->
+        <section>
+          <h4 style="font-size:0.85rem; color:#a1a1aa; margin:0 0 0.5rem 0; text-transform:uppercase; letter-spacing:0.5px;">資料來源即時狀態</h4>
+          <div id="update-sources-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap:0.75rem;"></div>
+        </section>
+
+        <!-- Recent 30 Days Changes with Diff -->
+        <section>
+          <h4 style="font-size:0.85rem; color:#a1a1aa; margin:0 0 0.5rem 0; text-transform:uppercase; letter-spacing:0.5px;">近 30 天法規與條文異動 (含逐字紅綠對照)</h4>
+          <div id="recent-changes-list" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
+        </section>
+
+        <!-- Pending LIS & Aborted Anomalies Queue -->
+        <section>
+          <h4 style="font-size:0.85rem; color:#a1a1aa; margin:0 0 0.5rem 0; text-transform:uppercase; letter-spacing:0.5px;">待處理清單 (立法理由排程追蹤)</h4>
+          <div id="pending-items-list" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
   <!-- Floating Action Button for Mobile Dialer -->
   <button id="dialer-fab" class="dialer-fab" title="條號直達數字鍵盤" aria-label="條號直達數字鍵盤">🔢</button>
 
@@ -417,6 +469,6 @@
 
   <script src="/js/icons.js?v=20261102_v4"></script>
   <script src="/js/dialer.js?v=20261102_v4"></script>
-  <script src="/js/app.js?v=20261102_v4"></script>
+  <script src="/js/app.js?v=20261107_v1"></script>
 </body>
 </html>

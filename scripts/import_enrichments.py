@@ -153,3 +153,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     import_enrichments(args.input_path, args.db_path)
+

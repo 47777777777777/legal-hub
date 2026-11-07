@@ -1,0 +1,276 @@
+<!DOCTYPE html>  
+
+<html lang="zh-Hant-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="format-detection" content="telephone=no">
+    <!-- Fix phone number style for MS Edge -->
+    <meta name="Designer&Developer" content="楊軒羽 Shen Yang | Graphic Web Designer & Front-end Developer | 前端設計工程師">
+    <title></title>
+    <link rel="stylesheet" href='/static/css/uikit.min.css'>
+    <link rel="stylesheet" href='/static/css/tailwind.min.css'>
+    <link rel="stylesheet" href='/static/css/fontawesome.min.css'>
+    <link rel="stylesheet" href='/static/css/main.min.css'>
+    <link rel="stylesheet" href='/static/css/colors.min.css'>
+    <link rel="stylesheet" href='/static/css/style.min.css'>
+    <link rel="stylesheet" href='/static/css/jquery-ui.min.css'>
+    <script src='/static/js/uikit.min.js'></script>
+    <script src='/static/js/uikit-icons.min.js'></script>
+    <script src='/static/js/script.js' defer></script>
+    <script src='/static/js/jquery.min.js'></script>
+    <script src='/static/js/jquery-3.4.1.min.js'></script>
+    <script src='/static/js/jquery-ui.min.js'></script>
+		<link rel="stylesheet" href="/static/css/idm_colors.min.css
+">
+    
+
+</head>
+
+<body id="top" >
+		<!-- header -->
+		<header>
+			<div class="tw-bg-white uk-sticky" uk-sticky="media: (max-width: 959px); cls-active: tw-shadow tw-bg-white">
+				<nav>
+					<!-- logo & sideLinks -->
+					<div class="tw-relative tw-shadow">
+						<div class="tw-px-4 tw-py-1 m:tw-py-2 uk-container">
+							<div class="uk-flex-middle uk-grid uk-grid-small uk-grid-match uk-child-width-expand" uk-grid>
+								<div class="logo">
+									<h1 class="tw-m-0 uk-flex uk-flex-middle">
+										<a class="logo" href="https://lib.ccu.edu.tw/" target="_blank" title="IdM系統-系統登入服務">
+											<img class="max_width-2/3@m uk-preserve" data-src="/media/infosettingf/1690446008.png" data-width
+												data-height alt="IdM系統-系統登入服務" uk-img uk-svg>
+										</a>
+									</h1>
+								</div>
+								<div class="tw-m-0 tw-relative uk-width-auto">
+									<div class="sub_nav tw-space-x-3 uk-flex uk-flex-middle">
+										
+											<p><span><a href="https://lib.ccu.edu.tw/" target="_blank">圖書館</a></span></p>
+										
+										<div class="uk-inline">
+											<button class="tw-border-none tw-text-lg" type="button" title="語言切換"><i
+													class="-tw-mb-1 fas fa-language fa-lg"></i><span class="tw-sr-only">語言切換</span></button>
+											<div class="min_width-50 uk-dropdown" uk-dropdown="">
+												<ul class="uk-nav uk-dropdown-nav">
+													
+														<li><a class="hover:tw-underline tw-py-2" href="Javascript: document.setlang.language.value='en-us'; document.setlang.submit();" title="English">English</a> </li>
+													
+													<form name="setlang" action="/setlang/" method="post">
+														<input type="hidden" name="csrfmiddlewaretoken" value="ANRKiu0lFU7cpeu2mtqfce9oZXkeBG5EzXZCydGqoE9mQWR8S5zTpduRkWMs6cY5">
+														<input name="next" type="hidden" value="/openid/idm/authorize/?client_id=616339&amp;response_type=code&amp;redirect_uri=https%3A%2F%2Fautorpa.lib.ccu.edu.tw%2Flogin&amp;scope=openid&amp;state=https%3A%2F%2Fautorpa.lib.ccu.edu.tw%2Flogin%2F%3Furl%3Dhttps%253A%2F%2Fwww-lawdata-com-tw.autorpa.lib.ccu.edu.tw%253A8443%2Fanglekmc%2Flawkm%253F%254059%255E1869995081%255E991%255E%255E%255E1%255Epdf%2540%2540430744267" />
+														<input name="language" type="hidden" value="" />
+													</form>
+												</ul>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<!-- /logo & sideLinks -->
+				</nav>
+			</div>
+			<div class="min_height-100 min_height-200@m m:tw-mb-6 uk-flex uk-flex-center uk-flex-middle uk-background-cover"
+				data-src="/media/infosettingf/1690446008_VdU9cwC.png" uk-img>
+				<h2 class="tw-w-full tw-relative tw-text-center tw-p-2 tw-m-0 tw-text-xl tw-font-bold">
+					<div
+						class="tw-opacity-70 tw-text-black tw-bg-gradient-to-r tw-from-transparent tw-via-white tw-to-transparent uk-position-cover">
+					</div>
+					<div class="tw-relative">
+						系統登入服務
+						
+					</div>
+				</h2>
+
+			</div>
+		</header>
+		<!-- /header -->
+
+		<!-- page main content -->
+		<section class="tw-p-0 tw-py-2 tw-relative" uk-height-viewport="expand: true">
+		  <!-- container -->
+		  <div class="container_responsive@s uk-container">
+		    <!-- Breadcrumb & User -->
+		    <div class="tw-px-2 tw-mb-2 tw-justify-between uk-grid uk-grid-small uk-grid-match uk-flex-middle" uk-grid>
+		    </div>
+		    <!-- /Breadcrumb & User -->
+		    <!-- uk-card -->
+		    <div class="min_height-550@m s:tw-mb-2 uk-card uk-card-small uk-card-default uk-card-body" >
+		      <!-- uk-grid -->
+		      <div class="uk-grid-medium uk-grid-row-collapse uk-grid" uk-grid>
+		        <!-- right column -->
+		        <div class="uk-width-expand@m">
+		          <h2 class="tw-border-b tw-border-solid tw-text-base s:tw-text-2xl mt-0">
+		            <div class="tw-justify-between uk-flex-middle uk-grid uk-grid-small uk-grid-row-collapse uk-child-width-expand@m" uk-grid>
+		              <div class="uk-width-expand">使用者登入</div>
+		            </div>
+		          </h2>
+		          <!-- content -->
+		            <div id="content">
+					  			
+<!-- login -->
+<div class="uk-margin-top">
+  <div class="uk-grid uk-grid-small uk-child-width-expand@m" uk-grid>
+    <!-- left login -->
+    <div class="tw-space-4">
+      <div class="uk-card uk-flex uk-flex-column uk-text-secondary uk-background-muted uk-height-1-1">
+        <div class="uk-card-title uk-card-body tw-font-bold tw-text-base tw-bg-zinc-200 tw-py-2">SSO讀者</div>
+        <div class="uk-card-body uk-flex uk-flex-auto uk-flex-bottom uk-flex-column">
+          <p class="uk-margin-remove-top">意指本校編制內在職或在學使用者，且以本校員工編號或學號為讀者帳號者。包括教師級人員(專任教師、專案教師、研究人員及博士級研究人員)、職員(公務人員、專案工作人員、專任助理及技工友)、學生。</p>
+          <a class="btn_primary uk-button uk-button-primary uk-text-nowrap tw-block tw-w-full tw-mt-auto" href='https://cas.ccu.edu.tw/login?service=https%3A//idm.lib.ccu.edu.tw/sso/idm/caslogin_callback?next=/openid/idm/authorize/?client_id=616339&amp;response_type=code&amp;redirect_uri=https%3A%2F%2Fautorpa.lib.ccu.edu.tw%2Flogin&amp;scope=openid&amp;state=https%3A%2F%2Fautorpa.lib.ccu.edu.tw%2Flogin%2F%3Furl%3Dhttps%253A%2F%2Fwww-lawdata-com-tw.autorpa.lib.ccu.edu.tw%253A8443%2Fanglekmc%2Flawkm%253F%254059%255E1869995081%255E991%255E%255E%255E1%255Epdf%2540%2540430744267'>
+            <input class="btn_primary uk-button uk-button-primary uk-text-nowrap tw-block tw-w-full tw-mt-auto"type="button" value="單一登入">
+          </a>
+        </div>
+      </div>
+    </div>
+    <!-- /left login -->
+    <!-- right login -->
+    <div class="tw-space-4">
+      <form method="post" action="/sso/idm/oidc/login/">
+        <input type="hidden" name="csrfmiddlewaretoken" value="ANRKiu0lFU7cpeu2mtqfce9oZXkeBG5EzXZCydGqoE9mQWR8S5zTpduRkWMs6cY5">
+        <div class="tw-space-y-1 tw-text-nowrap uk-flex-center">
+          
+            
+        </div>
+        <div class="uk-card uk-flex uk-flex-column uk-text-secondary uk-background-muted uk-height-1-1">
+          <div class="uk-card-title uk-card-body tw-font-bold tw-text-base tw-bg-zinc-200 tw-py-2">其他身分讀者</div>
+          <div class="uk-card-body uk-flex uk-flex-auto uk-flex-bottom uk-flex-column">
+            <div class="tw-w-full">
+              <ol class="tw-pl-4">
+              <li>非本校編制內人員，且讀者帳號由本館指定者。</li>
+              <li>本校教師級人員因計畫需要，所申請長期借閱帳號者。</li>
+              </ol>
+            </div>
+            <div class="tw-space-y-4 tw-w-full">
+              <div class="input">
+                <label for="id_username" id="id_username" name="username"class="tw-w-full">帳號</label>
+                <input type="text" name="username" autofocus class="uk-input" required id="id_username">
+              </div>
+              <div class="input">
+                <label for="id_password" id="id_password" name="password" class="tw-w-full">密碼</label>
+                <div class="uk-grid uk-grid-small uk-child-width-expand" uk-grid>
+                  <div class="uk-width-expand"><input type="password" name="password" class="uk-input" required id="id_password"></div>
+                </div>
+              </div>
+              <div class="captcha">
+                <input type="hidden" id="hashkey" name="hashkey" value="82a192ccebabc83f8637eb18b56c5e893b463ee3">
+                <label class="tw-w-full" for="ip_captcha">驗證</label>
+                <div class="uk-grid uk-grid-small uk-child-width-auto" uk-grid>
+                  <div class="min_width-200 uk-width-1-1 uk-width-auto@s uk-width-1-1@m uk-width-auto@l">
+                    <input name="captcha_value" id="checkNum" type="text" class="uk-input" maxlength="4" placeholder="請輸入圖中字元">
+                  </div>
+                  <div>
+                    <a id="captcha_audio" onclick="window.open('/patron/play/', '播放聲音', config='height=60px,width=308px')" target="_blank">
+                      <button class="btnPlayAudio uk-button uk-button-link uk-height-1-1" title="播放驗證碼語音" playaudio='img/audio.wav' type="button"><i class="fas fa-volume-up"></i><span class="tw-sr-only">播放驗證碼語音</span></button>
+                    </a>                      
+                  </div>
+                  <div style="height:50px;overflow: hidden;">
+                    <img id="captcha_img" src="/captcha/image/82a192ccebabc83f8637eb18b56c5e893b463ee3@2/" width="150" height="40" alt=" If you can't read it, press the play-voice button.">
+                  </div>
+                  <div>
+                    <button class="uk-button uk-button-link uk-height-1-1" type="button" title="更新驗證碼圖片" onclick="refresh()"><i class="fas fa-redo"></i><span class="tw-sr-only">更新驗證碼圖片</span></button>
+                  </div>
+                  <div class="tw-w-full">
+                    <p class="error color_primary tw-text-sm tw-m-0" hidden></p>
+                  </div>
+                </div>
+              </div>
+              <div class="buttons">
+                <div class="uk-grid uk-grid-small uk-child-width-expand" uk-grid>
+                  <input type="hidden" name="next" value="/openid/idm/authorize/?client_id=616339&amp;response_type=code&amp;redirect_uri=https%3A%2F%2Fautorpa.lib.ccu.edu.tw%2Flogin&amp;scope=openid&amp;state=https%3A%2F%2Fautorpa.lib.ccu.edu.tw%2Flogin%2F%3Furl%3Dhttps%253A%2F%2Fwww-lawdata-com-tw.autorpa.lib.ccu.edu.tw%253A8443%2Fanglekmc%2Flawkm%253F%254059%255E1869995081%255E991%255E%255E%255E1%255Epdf%2540%2540430744267">
+                  <div><button class="btn_secondary uk-button uk-button-primary uk-text-nowrap tw-w-full" type="submit">登入</button></div>
+                  
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+    <!-- right login -->
+  </div>
+</div>
+
+<div class="links uk-flex uk-flex-column uk-margin-top" uk-margin>
+  <div class="uk-grid uk-grid-collapse uk-child-width-auto uk-flex-center@s" uk-grid>
+    <div>教職員學生：</div>
+    <div>
+      <div class="uk-grid uk-grid-small uk-grid-divider uk-flex-center uk-child-width-auto" uk-grid>
+        
+        <div><a class="color_primary-text link_line" href="https://portal.ccu.edu.tw/cas_forget_password.php">重設密碼</a></div>
+      </div>
+    </div>
+  </div>
+  <div class="uk-grid uk-grid-collapse uk-child-width-auto uk-flex-center@s" uk-grid>
+    <div>校外讀者：</div>
+    <div>
+      <div class="uk-grid uk-grid-small uk-grid-divider uk-flex-center uk-child-width-auto" uk-grid>
+	      <!-- <div><a class="color_primary-text link_line" href="/patron/idm/update_profile/">修改個人資料</a></div> -->
+        <div><a class="color_primary-text link_line" href="/patron/idm/reset_pwd/">修改密碼</a></div>
+        <div><a class="color_primary-text link_line" href="/patron/idm/reset_pwd_form/">重設密碼</a></div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- /login -->
+
+<p>問題諮詢請洽出納台或電洽 05-2720411轉分機15112。</p>
+
+<script>
+  function refresh() {
+      $.ajax({
+          url: "/ajax/captcha_refresh/" ,
+          dataType: "json",
+          type: "GET",
+          error: function(XMLHttpRequest, textStatus, errorThrown) {
+              alert('Ajax request 發生錯誤 '+xhr.XMLHttpRequest);
+          },
+          success: function(response) {
+              $('#hashkey').val(response.hashkey);
+              $('#captcha_img').prop('src',response.img);
+          }
+      });
+  }
+</script>
+
+                </div>
+		          <!-- /content -->
+		        </div>
+		        <!-- /right column -->
+		      </div>
+		      <!-- /uk-grid -->
+		    </div>
+		    <!-- /uk-card -->
+		  </div>
+		  <!-- /container -->
+		</section>
+		<!-- /page main content -->
+		<!-- footer -->
+		<div id="footer" class="tw-relative">
+				<div class="tw-p-3">
+					<!-- uk-container -->
+					<div class="container_responsive@s uk-container tw-relative">
+						<footer class="tw-text-sm uk-flex-top uk-grid uk-grid-divider uk-grid-small uk-child-width-expand@m" uk-grid>
+							<div uk-margin>
+								<div class="uk-flex-center uk-text-center uk-grid" uk-grid uk-margin>
+									
+    <p>地址：621301 嘉義縣民雄鄉大學路一段168號｜電話：(886)-5-272-0411 分機 15113｜Email: <a href="mailto:cculibsys@ccu.edu.tw">cculibsys@ccu.edu.tw</a></p>
+
+<p>國立中正大學圖書館 Copyright &copy;2023 All rights reserved.</p>
+
+								</div>
+							</div>
+						</footer>
+					</div>
+					<!-- /uk-container -->
+				</div>
+		</div>
+		<!-- /footer -->
+		<a id="gototop" class="tw-text-white tw-bg-black tw-bg-opacity-50 hover:tw-bg-opacity-70 tw-opacity-0 tw-no-underline tw-p-2 tw-px-3 tw-rounded tw-text-center tw-fixed tw-bottom-0 tw-right-0 tw-mr-3 tw-mb-3" href="#top" title="回到最上"><i class="fas fa-angle-up"></i><span class="sr-only">回到最上</span></a>	</body>
+
+</html>

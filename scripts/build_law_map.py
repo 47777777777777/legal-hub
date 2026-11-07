@@ -17,104 +17,12 @@ REPORT_PATH = os.path.join(BASE_DIR, "reports", "law_map_unmatched.csv")
 os.makedirs(os.path.join(BASE_DIR, "reports"), exist_ok=True)
 
 # 12 Target Tier 1 Laws:
-TIER1_TARGETS = [
-    {
-        "pcode": "A0000001",
-        "act_id": "constitution",
-        "name": "中華民國憲法",
-        "lp_name": "中華民國憲法",
-        "lp_act_url": "https://lawplayer.com/act/6437d027e800e5f0b9300e5d",
-        "matched_by": "sitemap_verified"
-    },
-    {
-        "pcode": "B0000001",
-        "act_id": "civil_code",
-        "name": "民法",
-        "lp_name": "民法",
-        "lp_act_url": "https://lawplayer.com/act/6437d054e800e5f0b930159a",
-        "matched_by": "sitemap_verified"
-    },
-    {
-        "pcode": "C0000001",
-        "act_id": "criminal_code",
-        "name": "中華民國刑法",
-        "lp_name": "刑法",
-        "lp_act_url": "https://lawplayer.com/act/6437d05ae800e5f0b9301656",
-        "matched_by": "sitemap_verified"
-    },
-    {
-        "pcode": "B0010001",
-        "act_id": "civil_procedure_code",
-        "name": "民事訴訟法",
-        "lp_name": "民事訴訟法",
-        "lp_act_url": "https://lawplayer.com/act/6437d054e800e5f0b93015aa",
-        "matched_by": "sitemap_verified"
-    },
-    {
-        "pcode": "C0010001",
-        "act_id": "criminal_procedure_code",
-        "name": "刑事訴訟法",
-        "lp_name": "刑事訴訟法",
-        "lp_act_url": "https://lawplayer.com/act/6437d05be800e5f0b9301674",
-        "matched_by": "sitemap_verified"
-    },
-    {
-        "pcode": "A0030055",
-        "act_id": "admin_procedure_act",
-        "name": "行政程序法",
-        "lp_name": "行政程序法",
-        "lp_act_url": "https://lawplayer.com/act/6437d040e800e5f0b9301329",
-        "matched_by": "sitemap_verified"
-    },
-    {
-        "pcode": "A0030154",
-        "act_id": "admin_litigation_act",
-        "name": "行政訴訟法",
-        "lp_name": "行政訴訟法",
-        "lp_act_url": "https://lawplayer.com/act/6437d046e800e5f0b93013f3",
-        "matched_by": "sitemap_verified"
-    },
-    {
-        "pcode": "J0080001",
-        "act_id": "company_act",
-        "name": "公司法",
-        "lp_name": "公司法",
-        "lp_act_url": "https://lawplayer.com/act/6437d1bfe800e5f0b9304389",
-        "matched_by": "sitemap_verified"
-    },
-    {
-        "pcode": "N0030001",
-        "act_id": "labor_standards_act",
-        "name": "勞動基準法",
-        "lp_name": "勞動基準法",
-        "lp_act_url": "https://lawplayer.com/act/6437d280e800e5f0b9305c1a",
-        "matched_by": "sitemap_verified"
-    },
-    {
-        "pcode": "J0070017",
-        "act_id": "copyright_act",
-        "name": "著作權法",
-        "lp_name": "著作權法",
-        "lp_act_url": "https://lawplayer.com/act/6437d1bde800e5f0b930433e",
-        "matched_by": "sitemap_verified"
-    },
-    {
-        "pcode": "I0050021",
-        "act_id": "personal_data_protection_act",
-        "name": "個人資料保護法",
-        "lp_name": "個資法",
-        "lp_act_url": "https://lawplayer.com/act/6437d19de800e5f0b9303f41",
-        "matched_by": "sitemap_verified"
-    },
-    {
-        "pcode": "K0040012",
-        "act_id": "traffic_act",
-        "name": "道路交通管理處罰條例",
-        "lp_name": "道路交通管理處罰條例",
-        "lp_act_url": "https://lawplayer.com/act/6437d202e800e5f0b9304be8",
-        "matched_by": "sitemap_verified"
-    }
-]
+TIER1_JSON_PATH = os.path.join(BASE_DIR, "config", "lawplayer_tier1.json")
+if os.path.exists(TIER1_JSON_PATH):
+    with open(TIER1_JSON_PATH, "r", encoding="utf-8") as f:
+        TIER1_TARGETS = json.load(f)
+else:
+    TIER1_TARGETS = []
 
 def build_law_map():
     print("=== Building law_map Table & Unmatched Report ===")
@@ -197,3 +105,4 @@ if __name__ == "__main__":
     print(f"\n--- Top 20 Unmatched Laws (Total: {count}) ---")
     for r in top20:
         print(f"[{r['pcode']}] {r['moj_name']} ({r['category']}) - {r['reason']}")
+

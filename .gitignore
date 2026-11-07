@@ -2,6 +2,8 @@
 *.log
 *.sqlite3
 *.db
+*.db.gz
+data/chlaw/
 
 # Environment variables & secrets (CRITICAL for credentials & sessions)
 .env

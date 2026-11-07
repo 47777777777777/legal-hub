@@ -1,0 +1,15 @@
+[Unit]
+Description=Legal Hub MOJ Weekly Update Service
+After=network.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/legal-hub
+ExecStart=/usr/bin/python3 -m backend.updater.cli --source moj --apply
+StandardOutput=append:/home/ubuntu/legal-hub/logs/update/moj_cron.log
+StandardError=append:/home/ubuntu/legal-hub/logs/update/moj_cron_error.log
+
+[Install]
+WantedBy=multi-user.target
+
