@@ -627,19 +627,13 @@ mark {
   flex: 1;
   min-width: 0;
 }
-.block-item .block-body,
-.block-sub .block-body,
-.block-sub_sub .block-body {
-  display: flex;
-  align-items: baseline;
-  gap: 0.35rem;
-}
 .para-text, .block-text { overflow-wrap: anywhere; line-height: 1.8; }
 .block-marker {
-  flex: 0 0 auto;
+  display: inline;
   font-weight: 600;
   color: var(--text-muted);
   white-space: nowrap;
+  margin-right: 0.35rem;
 }
 .sub { display: flex; align-items: baseline; margin-top: 0.2rem; overflow-wrap: anywhere; line-height: 1.75; }
 .sub-1 { padding-left: 1.4rem; }

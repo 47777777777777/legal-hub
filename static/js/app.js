@@ -45,14 +45,34 @@ function parseChnNumber(str) {
   return val + temp;
 }
 
-// Convert citations like "第二百二十一條" or "第 185-3 條" into interactive hover/tap links
+// Convert citations like "第二百二十一條" or "第 185-3 條" or ranges like "第一百二十一條至第一百二十三條" into interactive hover/tap links
 function linkifyArticleRefs(text, q) {
   let safe = hl(text, q);
-  const refRegex = /(第\s*([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[一二三四五六七八九十百千]+(?:\s*之\s*[一二三四五六七八九十百]+)?)\s*條)/g;
-  return safe.replace(refRegex, (match, full, rawNo) => {
+
+  // 1. Range citations: e.g. "第一百二十一條至第一百二十三條" or "第 121 條至第 123 條" or "第 121 條至 123 條"
+  const rangeRegex = /(?:第\s*)?([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[一二三四五六七八九十百千]+(?:\s*之\s*[一二三四五六七八九十百]+)?)\s*條\s*至\s*(?:第\s*)?([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[一二三四五六七八九十百千]+(?:\s*之\s*[一二三四五六七八九十百]+)?)\s*條/g;
+
+  safe = safe.replace(rangeRegex, (match, rawStart, rawEnd) => {
+    const cleanStart = cleanRawNo(rawStart);
+    const cleanEnd = cleanRawNo(rawEnd);
+    return `§§RANGE_${cleanStart}_${cleanEnd}_${encodeURIComponent(match)}§§`;
+  });
+
+  // 2. Single citations: e.g. "第一百二十五條" or "第 185-3 條"
+  const singleRegex = /(第\s*([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[一二三四五六七八九十百千]+(?:\s*之\s*[一二三四五六七八九十百]+)?)\s*條)/g;
+  safe = safe.replace(singleRegex, (match, full, rawNo) => {
     const cleanNo = cleanRawNo(rawNo);
     return `<span class="article-ref-link" data-ref-no="${cleanNo}">${full}</span>`;
   });
+
+  // 3. Restore range placeholders
+  const placeholderRegex = /§§RANGE_([^_]+)_([^_]+)_([^§]+)§§/g;
+  safe = safe.replace(placeholderRegex, (match, startNo, endNo, encText) => {
+    const label = decodeURIComponent(encText);
+    return `<span class="article-ref-link" data-ref-range="true" data-ref-start="${startNo}" data-ref-end="${endNo}">${label}</span>`;
+  });
+
+  return safe;
 }
 
 function cleanRawNo(raw) {
@@ -1442,40 +1462,101 @@ class LegalHubApp {
     const popTitle = document.getElementById("popover-title");
     const popBody = document.getElementById("popover-body");
     const popJump = document.getElementById("popover-jump-btn");
+    if (!popover) return;
+
+    if (!this._popoverHoverBound) {
+      this._popoverHoverBound = true;
+      popover.addEventListener("mouseenter", () => {
+        if (this._popoverHideTimer) {
+          clearTimeout(this._popoverHideTimer);
+          this._popoverHideTimer = null;
+        }
+      });
+      popover.addEventListener("mouseleave", () => {
+        this._popoverHideTimer = setTimeout(() => {
+          popover.classList.add("hidden");
+        }, 200);
+      });
+    }
 
     root.querySelectorAll(".article-ref-link").forEach((link) => {
+      const isRange = link.dataset.refRange === "true";
       const targetNo = link.dataset.refNo;
+      const startNo = parseInt(link.dataset.refStart, 10);
+      const endNo = parseInt(link.dataset.refEnd, 10);
 
       const showPopover = (e) => {
         e.stopPropagation();
-        const art = (this.currentAct.articles || []).find((a) => a.article_no === targetNo);
-        if (art) {
-          popTitle.textContent = `${this.currentAct.name} 第 ${targetNo} 條 ${art.title || ""}`;
-          popBody.textContent = art.content;
-          popJump.onclick = () => {
-            popover.classList.add("hidden");
-            this.loadAndJumpArticle(targetNo);
-          };
+        if (this._popoverHideTimer) {
+          clearTimeout(this._popoverHideTimer);
+          this._popoverHideTimer = null;
+        }
+
+        if (isRange) {
+          const matchedArts = (this.currentAct.articles || []).filter((a) => {
+            const num = parseInt(a.article_no, 10);
+            return !isNaN(num) && num >= startNo && num <= endNo;
+          });
+
+          popTitle.textContent = `${this.currentAct.name} 第 ${startNo} 條至第 ${endNo} 條 (共 ${matchedArts.length} 條)`;
+          if (matchedArts.length > 0) {
+            popBody.innerHTML = matchedArts.map(a => `
+              <div style="margin-bottom:0.85rem; padding-bottom:0.6rem; border-bottom:1px solid rgba(255,255,255,0.08);">
+                <div style="font-weight:700; color:#60a5fa; margin-bottom:2px;">第 ${esc(a.article_no)} 條 ${esc(a.title || "")}</div>
+                <div style="color:#d4d4d8; font-size:0.875rem; line-height:1.6;">${esc(a.content)}</div>
+              </div>
+            `).join("");
+            popJump.textContent = `跳至第 ${startNo} 條`;
+            popJump.onclick = () => {
+              popover.classList.add("hidden");
+              this.loadAndJumpArticle(String(startNo));
+            };
+          } else {
+            popBody.textContent = `此為條文範圍參照（第 ${startNo} 條至第 ${endNo} 條）。`;
+            popJump.textContent = `跳至第 ${startNo} 條`;
+            popJump.onclick = () => {
+              popover.classList.add("hidden");
+              this.loadAndJumpArticle(String(startNo));
+            };
+          }
         } else {
-          popTitle.textContent = `第 ${targetNo} 條 (跨法規參照)`;
-          popBody.textContent = `此為跨法規條文，點選下方前往全國法規檢索。`;
-          popJump.onclick = () => {
-            window.open(`https://law.moj.gov.tw/LawClass/LawSearchNo.aspx?PC=${this.currentAct.pcode}&AN=${targetNo}`, "_blank");
-          };
+          const art = (this.currentAct.articles || []).find((a) => a.article_no === targetNo);
+          popJump.textContent = "跳至該條";
+          if (art) {
+            popTitle.textContent = `${this.currentAct.name} 第 ${targetNo} 條 ${art.title || ""}`;
+            popBody.textContent = art.content;
+            popJump.onclick = () => {
+              popover.classList.add("hidden");
+              this.loadAndJumpArticle(targetNo);
+            };
+          } else {
+            popTitle.textContent = `第 ${targetNo} 條 (跨法規參照)`;
+            popBody.textContent = `此為跨法規條文，點選下方前往全國法規檢索。`;
+            popJump.onclick = () => {
+              window.open(`https://law.moj.gov.tw/LawClass/LawSearchNo.aspx?PC=${this.currentAct.pcode}&AN=${targetNo}`, "_blank");
+            };
+          }
         }
 
         const rect = link.getBoundingClientRect();
         let top = rect.bottom + 8;
-        let left = Math.max(10, Math.min(window.innerWidth - 330, rect.left));
-        if (top + 200 > window.innerHeight) top = rect.top - 200;
+        let left = Math.max(10, Math.min(window.innerWidth - 380, rect.left));
+        if (top + 280 > window.innerHeight) top = Math.max(10, rect.top - 280);
 
         popover.style.top = `${top}px`;
         popover.style.left = `${left}px`;
+        popover.style.maxHeight = "360px";
+        popover.style.overflowY = "auto";
         popover.classList.remove("hidden");
       };
 
       link.addEventListener("mouseenter", showPopover);
       link.addEventListener("click", showPopover);
+      link.addEventListener("mouseleave", () => {
+        this._popoverHideTimer = setTimeout(() => {
+          popover.classList.add("hidden");
+        }, 200);
+      });
     });
   }
 
