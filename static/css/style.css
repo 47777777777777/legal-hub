@@ -588,36 +588,58 @@ mark {
 
 .structure-block { display: flex; align-items: baseline; min-width: 0; line-height: 1.8; }
 .structure-block.block-para { display: block; }
-.structure-block.block-para.has-roman { display: flex; align-items: baseline; gap: 0.5rem; }
-.structure-block.block-item { padding-left: 1.6rem; gap: 0.3rem; }
-.structure-block.block-sub { padding-left: 3.2rem; gap: 0.3rem; }
-.structure-block.block-sub_sub { padding-left: 4.8rem; gap: 0.3rem; }
+.structure-block.block-para.has-roman { display: flex; align-items: baseline; }
+
+/* Default / no-roman articles (e.g. 刑法第 6 條): 項 at 0, 款 indents 2rem (~2 chars), 目 indents 3.6rem */
+.structure-block.block-item { padding-left: 2.0rem; }
+.structure-block.block-sub { padding-left: 3.6rem; }
+.structure-block.block-sub_sub { padding-left: 5.2rem; }
+
+/* Articles with Roman numerals (e.g. 刑法第 10 條): 項 text starts at 2.4rem (1.8rem + 0.6rem). 款 MUST indent deeper than 2.4rem! */
+.article-body.has-roman-article .structure-block.block-item { padding-left: 4.0rem; }
+.article-body.has-roman-article .structure-block.block-sub { padding-left: 5.6rem; }
+.article-body.has-roman-article .structure-block.block-sub_sub { padding-left: 7.2rem; }
+
+/* Non-standard acts (e.g. 動員戡亂時期臨時條款): unified single-card presentation */
+.article-body.non-standard-act-body .article-body { margin-bottom: 1.1rem; }
+.article-body.non-standard-act-body .structure-block.block-item { padding-left: 0; }
+.article-body.non-standard-act-body .structure-block.block-sub { padding-left: 2.0rem; }
+.article-body.non-standard-act-body .structure-block.block-sub_sub { padding-left: 3.6rem; }
 
 .para-no {
-  flex: 0 0 1.6rem;
-  width: 1.6rem;
+  flex: 0 0 1.8rem;
+  width: 1.8rem;
+  margin-right: 0.6rem;
   text-align: left;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #f59e0b !important;
+  color: #ffd700 !important; /* 金黃色 (Gold) */
   cursor: pointer;
   user-select: none;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, text-shadow 0.15s ease;
 }
 .para-no:hover {
-  color: #fbbf24 !important;
+  color: #ffffff !important;
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
 }
 .para-body, .block-body {
   flex: 1;
   min-width: 0;
 }
+.block-item .block-body,
+.block-sub .block-body,
+.block-sub_sub .block-body {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
 .para-text, .block-text { overflow-wrap: anywhere; line-height: 1.8; }
 .block-marker {
+  flex: 0 0 auto;
   font-weight: 600;
   color: var(--text-muted);
   white-space: nowrap;
-  margin-right: 0.3rem;
 }
 .sub { display: flex; align-items: baseline; margin-top: 0.2rem; overflow-wrap: anywhere; line-height: 1.75; }
 .sub-1 { padding-left: 1.4rem; }

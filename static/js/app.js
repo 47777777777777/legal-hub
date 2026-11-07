@@ -85,8 +85,11 @@ function renderArticleBody(art, q) {
   const blocks = art && art.blocks ? art.blocks : [];
   if (!blocks.length) {
     const rawContent = (typeof art === "string") ? art : (art && art.content ? art.content : "");
-    return `<div class="article-body"><div class="block-text">${linkifyArticleRefs(rawContent, q)}</div></div>`;
+    return `<div class="article-body no-roman-article"><div class="block-text">${linkifyArticleRefs(rawContent, q)}</div></div>`;
   }
+
+  const hasAnyRoman = blocks.some((b) => Boolean(b.roman_no));
+  const romanClass = hasAnyRoman ? "has-roman-article" : "no-roman-article";
 
   const html = blocks.map((b) => {
     const roman = b.roman_no ? `<span class="para-no" data-para-idx="${b.para_idx || 0}" title="第 ${b.para_idx} 項 (點擊複製此項)">${esc(b.roman_no)}</span>` : "";
@@ -99,7 +102,7 @@ function renderArticleBody(art, q) {
     </div>`;
   }).join("");
 
-  return `<div class="article-body">${html}</div>`;
+  return `<div class="article-body ${romanClass}">${html}</div>`;
 }
 
 function formatArticleCopy(art, mode = "roman", actName = "") {
@@ -1340,7 +1343,8 @@ class LegalHubApp {
       if (countBadge) countBadge.textContent = "0 條";
       return;
     }
-    if (countBadge) countBadge.textContent = `${articles.length} 條`;
+    const isStandardAct = articles.some((a) => Boolean(a.label_raw && a.label_raw.trim()));
+    if (countBadge) countBadge.textContent = isStandardAct ? `${articles.length} 條` : "1 條";
 
     let html = "";
     // Render official foreword if present (unbadged plain text block before articles)
@@ -1351,33 +1355,60 @@ class LegalHubApp {
         </div>`;
     }
 
-    let lastChapter = "";
-    articles.forEach((art) => {
-      if (art.chapter && art.chapter !== lastChapter && !q) {
-        lastChapter = art.chapter;
-        html += `
-          <div class="stream-chapter-divider" style="padding: 1rem 0.5rem 0.5rem 0.5rem; font-weight: 700; font-size: 0.95rem; color: #a1a1aa; border-bottom: 1px solid rgba(255,255,255,0.08); margin: 1.5rem 0 1rem 0;">
-            ${esc(art.chapter)}
-          </div>`;
-      }
-      const marked = this.isBookmarked(this.currentActId, art.article_no);
-      const artLabelHtml = art.label_raw ? `<span>${hl(art.label_raw, q)}</span>` : "";
+    if (!isStandardAct) {
+      // Non-standard act without "第 N 條" structure (e.g. 動員戡亂時期臨時條款):
+      // The entire act is ONE single enactment/article; all items (款 一、二、三...) are rendered together inside ONE single card!
+      const firstArt = articles[0] || {};
+      const marked = this.isBookmarked(this.currentActId, firstArt.article_no || "1");
+      const itemsHtml = articles.map((art) => renderArticleBody(art, q)).join("");
+
       html += `
-        <article class="stream-article-card ${this.selectedArticleNo === art.article_no ? 'active' : ''}" id="article-card-${esc(art.article_no)}" data-article-no="${esc(art.article_no)}" data-chapter="${esc(art.chapter || '')}">
+        <article class="stream-article-card active" id="article-card-1" data-article-no="${esc(firstArt.article_no || '1')}">
           <div class="article-card-header">
             <div class="article-card-no">
-              ${artLabelHtml}
-              ${art.title ? `<span class="article-card-title">${hl(art.title, q)}</span>` : ""}
+              <span class="article-card-title">${esc(this.currentAct ? this.currentAct.name : "")} 全文</span>
               <span class="card-bookmark-mark ${marked ? "" : "hidden"}" title="已收藏">${icon("bookmark-filled", 13)}</span>
             </div>
             <div class="article-card-actions">
-              ${(art.lis_reasons && art.lis_reasons.length > 0) ? `<span class="article-history-badge" style="font-size:0.75rem; padding:2px 6px; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); border-radius:4px; margin-right:6px;">沿革 ${art.lis_reasons.length} 版</span>` : ""}
-              <button class="article-study-btn" data-article-no="${esc(art.article_no)}">研析</button>
+              ${(firstArt.lis_reasons && firstArt.lis_reasons.length > 0) ? `<span class="article-history-badge" style="font-size:0.75rem; padding:2px 6px; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); border-radius:4px; margin-right:6px;">沿革 ${firstArt.lis_reasons.length} 版</span>` : ""}
+              <button class="article-study-btn" data-article-no="${esc(firstArt.article_no || '1')}">研析</button>
             </div>
           </div>
-          <div class="article-card-content">${renderArticleBody(art, q)}</div>
+          <div class="article-card-content">
+            <div class="article-body non-standard-act-body">
+              ${itemsHtml}
+            </div>
+          </div>
         </article>`;
-    });
+    } else {
+      let lastChapter = "";
+      articles.forEach((art) => {
+        if (art.chapter && art.chapter !== lastChapter && !q) {
+          lastChapter = art.chapter;
+          html += `
+            <div class="stream-chapter-divider" style="padding: 1rem 0.5rem 0.5rem 0.5rem; font-weight: 700; font-size: 0.95rem; color: #a1a1aa; border-bottom: 1px solid rgba(255,255,255,0.08); margin: 1.5rem 0 1rem 0;">
+              ${esc(art.chapter)}
+            </div>`;
+        }
+        const marked = this.isBookmarked(this.currentActId, art.article_no);
+        const artLabelHtml = art.label_raw ? `<span>${hl(art.label_raw, q)}</span>` : "";
+        html += `
+          <article class="stream-article-card ${this.selectedArticleNo === art.article_no ? 'active' : ''}" id="article-card-${esc(art.article_no)}" data-article-no="${esc(art.article_no)}" data-chapter="${esc(art.chapter || '')}">
+            <div class="article-card-header">
+              <div class="article-card-no">
+                ${artLabelHtml}
+                ${art.title ? `<span class="article-card-title">${hl(art.title, q)}</span>` : ""}
+                <span class="card-bookmark-mark ${marked ? "" : "hidden"}" title="已收藏">${icon("bookmark-filled", 13)}</span>
+              </div>
+              <div class="article-card-actions">
+                ${(art.lis_reasons && art.lis_reasons.length > 0) ? `<span class="article-history-badge" style="font-size:0.75rem; padding:2px 6px; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); border-radius:4px; margin-right:6px;">沿革 ${art.lis_reasons.length} 版</span>` : ""}
+                <button class="article-study-btn" data-article-no="${esc(art.article_no)}">研析</button>
+              </div>
+            </div>
+            <div class="article-card-content">${renderArticleBody(art, q)}</div>
+          </article>`;
+      });
+    }
 
     list.innerHTML = html;
 
@@ -1492,8 +1523,6 @@ class LegalHubApp {
       c.classList.toggle("active", c.dataset.articleNo === articleNo);
     });
 
-    document.getElementById("drawer-article-badge").textContent = `第 ${articleNo} 條`;
-
     let art = (this.currentAct.articles || []).find((a) => a.article_no === articleNo) || {
       article_no: articleNo,
       content: ""
@@ -1503,6 +1532,9 @@ class LegalHubApp {
       const json = await resp.json();
       if (json.success && json.data) art = json.data;
     } catch (e) { console.warn(e); }
+
+    const drawerBadge = art.label_raw || (this.currentAct && (this.currentAct.articles || []).some(a => a.label_raw) ? `第 ${articleNo} 條` : "全文");
+    document.getElementById("drawer-article-badge").textContent = drawerBadge;
 
     const crumb = [this.currentAct.name, art.chapter].filter(Boolean).join("  ›  ");
     const crumbEl = document.getElementById("drawer-breadcrumb");
