@@ -49,8 +49,8 @@ function parseChnNumber(str) {
 function linkifyArticleRefs(text, q) {
   let safe = hl(text, q);
 
-  // 1. Range citations: e.g. "第一百二十一條至第一百二十三條" or "第 121 條至第 123 條" or "第 121 條至 123 條"
-  const rangeRegex = /(?:第\s*)?([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[一二三四五六七八九十百千]+(?:\s*之\s*[一二三四五六七八九十百]+)?)\s*條\s*至\s*(?:第\s*)?([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[一二三四五六七八九十百千]+(?:\s*之\s*[一二三四五六七八九十百]+)?)\s*條/g;
+  // 1. Range citations: e.g. "第一百二十一條至第一百二十三條" or "第二百零一條至第二百零二條" (支援零、〇)
+  const rangeRegex = /(?:第\s*)?([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[零〇一二三四五六七八九十百千]+(?:\s*之\s*[零〇一二三四五六七八九十百]+)?)\s*條\s*至\s*(?:第\s*)?([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[零〇一二三四五六七八九十百千]+(?:\s*之\s*[零〇一二三四五六七八九十百]+)?)\s*條/g;
 
   safe = safe.replace(rangeRegex, (match, rawStart, rawEnd) => {
     const cleanStart = cleanRawNo(rawStart);
@@ -58,8 +58,8 @@ function linkifyArticleRefs(text, q) {
     return `§§RANGE_${cleanStart}_${cleanEnd}_${encodeURIComponent(match)}§§`;
   });
 
-  // 2. Single citations: e.g. "第一百二十五條" or "第 185-3 條"
-  const singleRegex = /(第\s*([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[一二三四五六七八九十百千]+(?:\s*之\s*[一二三四五六七八九十百]+)?)\s*條)/g;
+  // 2. Single citations: e.g. "第一百二十五條" or "第二百零一條"
+  const singleRegex = /(第\s*([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[零〇一二三四五六七八九十百千]+(?:\s*之\s*[零〇一二三四五六七八九十百]+)?)\s*條)/g;
   safe = safe.replace(singleRegex, (match, full, rawNo) => {
     const cleanNo = cleanRawNo(rawNo);
     return `<span class="article-ref-link" data-ref-no="${cleanNo}">${full}</span>`;
@@ -76,7 +76,7 @@ function linkifyArticleRefs(text, q) {
 }
 
 function cleanRawNo(raw) {
-  if (/[一二三四五六七八九十百千]/.test(raw)) {
+  if (/[零〇一二三四五六七八九十百千]/.test(raw)) {
     const parts = raw.split(/之/);
     const main = parseChnNumber(parts[0]);
     if (parts.length > 1) {
@@ -1501,9 +1501,9 @@ class LegalHubApp {
           popTitle.textContent = `${this.currentAct.name} 第 ${startNo} 條至第 ${endNo} 條 (共 ${matchedArts.length} 條)`;
           if (matchedArts.length > 0) {
             popBody.innerHTML = matchedArts.map(a => `
-              <div style="margin-bottom:0.85rem; padding-bottom:0.6rem; border-bottom:1px solid rgba(255,255,255,0.08);">
-                <div style="font-weight:700; color:#60a5fa; margin-bottom:2px;">第 ${esc(a.article_no)} 條 ${esc(a.title || "")}</div>
-                <div style="color:#d4d4d8; font-size:0.875rem; line-height:1.6;">${esc(a.content)}</div>
+              <div class="popover-article-item" style="margin-bottom:0.65rem; padding-bottom:0.5rem; border-bottom:1px solid rgba(255,255,255,0.08);">
+                <div style="font-weight:700; color:#60a5fa; margin-bottom:0.25rem; font-size:0.88rem;">第 ${esc(a.article_no)} 條 ${esc(a.title || "")}</div>
+                ${renderArticleBody(a, "")}
               </div>
             `).join("");
             popJump.textContent = `跳至第 ${startNo} 條`;
@@ -1512,7 +1512,7 @@ class LegalHubApp {
               this.loadAndJumpArticle(String(startNo));
             };
           } else {
-            popBody.textContent = `此為條文範圍參照（第 ${startNo} 條至第 ${endNo} 條）。`;
+            popBody.innerHTML = `<div style="color:#a1a1aa; padding:0.5rem 0;">此為條文範圍參照（第 ${startNo} 條至第 ${endNo} 條）。</div>`;
             popJump.textContent = `跳至第 ${startNo} 條`;
             popJump.onclick = () => {
               popover.classList.add("hidden");
@@ -1524,7 +1524,7 @@ class LegalHubApp {
           popJump.textContent = "跳至該條";
           if (art) {
             popTitle.textContent = `${this.currentAct.name} 第 ${targetNo} 條 ${art.title || ""}`;
-            popBody.textContent = art.content;
+            popBody.innerHTML = renderArticleBody(art, "");
             popJump.onclick = () => {
               popover.classList.add("hidden");
               this.loadAndJumpArticle(targetNo);
