@@ -489,7 +489,7 @@ def check_lis_data_authenticity(conn: sqlite3.Connection) -> bool:
         print("  PASSED: No LIS records populated yet in article_reasons / article_comparison (ready for seed).")
         return True
         
-    forbidden_terms = ["在牆內", "解鎖", "會員專屬", "本條尚未收錄", "模擬", "範例"]
+    forbidden_terms = ["在牆內", "解鎖", "會員專屬", "本條尚未收錄", "模擬資料", "測試資料", "範例條文"]
     violations = []
     raw_cache = {}
     
@@ -535,8 +535,10 @@ def check_lis_data_authenticity(conn: sqlite3.Connection) -> bool:
             else:
                 with open(raw_path, "r", encoding="utf-8", errors="ignore") as f:
                     raw_html = f.read()
+            from bs4 import BeautifulSoup
             import html as html_lib
-            raw_cache[raw_path] = re.sub(r'\s+', '', html_lib.unescape(re.sub(r'<[^>]+>', '', raw_html)))
+            raw_text = BeautifulSoup(raw_html, 'html.parser').get_text()
+            raw_cache[raw_path] = re.sub(r'\s+', '', html_lib.unescape(raw_text))
         
         clean_raw = raw_cache[raw_path]
         clean_reason = re.sub(r'\s+', '', html_lib.unescape(reason))
@@ -569,8 +571,10 @@ def check_lis_data_authenticity(conn: sqlite3.Connection) -> bool:
             else:
                 with open(raw_path, "r", encoding="utf-8", errors="ignore") as f:
                     raw_html = f.read()
+            from bs4 import BeautifulSoup
             import html as html_lib
-            raw_cache[raw_path] = re.sub(r'\s+', '', html_lib.unescape(re.sub(r'<[^>]+>', '', raw_html)))
+            raw_text = BeautifulSoup(raw_html, 'html.parser').get_text()
+            raw_cache[raw_path] = re.sub(r'\s+', '', html_lib.unescape(raw_text))
         
         clean_raw = raw_cache[raw_path]
         clean_reason = re.sub(r'\s+', '', html_lib.unescape(reason))

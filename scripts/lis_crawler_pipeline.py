@@ -6,10 +6,17 @@ import json
 import gzip
 import hashlib
 import sqlite3
+import socket
 import urllib.request
 import urllib.parse
 from http.cookiejar import CookieJar
 from bs4 import BeautifulSoup
+
+# Force IPv4 resolution to prevent 21-second TCP connect timeout on dead IPv6 address (2001:4420:601b:2::ac8:c069)
+orig_getaddrinfo = socket.getaddrinfo
+def getaddrinfo_ipv4(host, port, family=0, type=0, proto=0, flags=0):
+    return orig_getaddrinfo(host, port, family=socket.AF_INET, type=type, proto=proto, flags=flags)
+socket.getaddrinfo = getaddrinfo_ipv4
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:

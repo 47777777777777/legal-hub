@@ -18,3 +18,4 @@ first_reason = next((a for a in articles if a.get("lis_reasons")), None)
 if first_reason:
     print(f"Sample Art {first_reason['article_no']} Status:", first_reason.get("lis_reasons_status"))
     print(f"Sample Art {first_reason['article_no']} Reasons count:", len(first_reason.get("lis_reasons", [])))
+

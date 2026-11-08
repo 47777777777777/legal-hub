@@ -100,12 +100,15 @@ def verify_sample(act_id, pcode):
         raw_html = f.read()
 
     import re
-    clean_raw = re.sub(r'\s+', '', re.sub(r'<[^>]+>', '', raw_html))
+    from bs4 import BeautifulSoup
+    import html as html_lib
+    raw_text = BeautifulSoup(raw_html, 'html.parser').get_text()
+    clean_raw = re.sub(r'\s+', '', html_lib.unescape(raw_text))
     
     if v_rows:
         sample_v = random.choice(v_rows)
         if sample_v["content"]:
-            clean_content = re.sub(r'\s+', '', sample_v["content"])
+            clean_content = re.sub(r'\s+', '', html_lib.unescape(sample_v["content"]))
             if clean_content and clean_content not in clean_raw:
                 print(f"[STOP-LOSS ERROR] Sample version article {sample_v['article_no']} ({sample_v['version_date']}) content mismatch in {act_id}!")
                 return False
@@ -113,7 +116,7 @@ def verify_sample(act_id, pcode):
     if r_rows:
         sample_r = random.choice(r_rows)
         if sample_r["reason"]:
-            clean_reason = re.sub(r'\s+', '', sample_r["reason"])
+            clean_reason = re.sub(r'\s+', '', html_lib.unescape(sample_r["reason"]))
             if clean_reason and clean_reason not in clean_raw:
                 print(f"[STOP-LOSS ERROR] Sample reason article {sample_r['article_no']} ({sample_r['version_date']}) reason mismatch in {act_id}!")
                 return False
