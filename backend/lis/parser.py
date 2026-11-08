@@ -62,13 +62,82 @@ def parse_full_act_reasons(
     source_url: str = ""
 ) -> List[Dict[str, Any]]:
     """
-    解析全法全文含立法理由頁 (對應 sample_1.html)
+    解析全法全文含立法理由頁 (對應 sample_1.html 及所有 LIS 歷史沿革頁面)
     回傳每條條文及其逐字立法理由列表。
     """
     soup = BeautifulSoup(html_content, 'html.parser')
     results = []
 
-    # 取得最底層的條文表格 (無嵌套子 table 的 leaf table)
+    # 優先策略：利用 LIS 標準 CSS 類別結構解析 (artino, upddate, artiupd_TH_2, artiupd_RS_2)
+    art_fonts = soup.find_all('font', class_='artino')
+    if art_fonts:
+        for af in art_fonts:
+            art_raw = af.get_text(strip=True).replace(' ', '')
+            art_no = parse_lis_article_no(art_raw)
+            tbl = af.find_parent('table')
+            if not tbl:
+                continue
+
+            cur_v = None
+            versions = []
+            for tr in tbl.find_all('tr', recursive=False):
+                upd = tr.find('font', class_='upddate')
+                th = tr.find('td', class_='artiupd_TH_2')
+                rs = tr.find('td', class_='artiupd_RS_2')
+
+                if upd:
+                    upd_txt = upd.get_text(strip=True)
+                    m_date = re.search(r'(\d{6,7})', upd_txt)
+                    m_act = re.search(r'\d{6,7}\s*([^\)]+)', upd_txt)
+                    if m_date:
+                        if cur_v:
+                            versions.append(cur_v)
+                        cur_v = {
+                            "version_date": m_date.group(1),
+                            "action_type": m_act.group(1).strip() if m_act else upd_txt.replace('(', '').replace(')', '').strip(),
+                            "date_label_raw": upd_txt,
+                            "date_raw": m_date.group(1),
+                            "content": "",
+                            "reason": ""
+                        }
+
+                if cur_v:
+                    if th:
+                        c_txt = th.get_text(separator='\n', strip=True)
+                        if c_txt:
+                            cur_v["content"] = cur_v["content"] + "\n" + c_txt if cur_v["content"] else c_txt
+                    if rs:
+                        r_txt = rs.get_text(separator='\n', strip=True)
+                        if r_txt:
+                            cur_v["reason"] = cur_v["reason"] + "\n" + r_txt if cur_v["reason"] else r_txt
+
+            if cur_v:
+                versions.append(cur_v)
+
+            for v in versions:
+                c = v["content"].strip()
+                r = v["reason"].strip()
+                if art_no and (c or r):
+                    results.append({
+                        "article_no": art_no,
+                        "article_no_raw": art_raw,
+                        "version_date": v["version_date"],
+                        "action_type": v["action_type"],
+                        "date_label_raw": v.get("date_label_raw", f"({v['version_date']} {v['action_type']})"),
+                        "date_raw": v.get("date_raw", v["version_date"]),
+                        "article_no_at_the_time": art_raw,
+                        "source_mode": "fullpage",
+                        "content": c,
+                        "reason": r,
+                        "source": "立法院法律系統",
+                        "source_url": source_url,
+                        "raw_path": raw_path
+                    })
+
+        if results:
+            return results
+
+    # 備援策略：取得最底層的條文表格 (無嵌套子 table 的 leaf table)
     leaf_tables = [t for t in soup.find_all('table') if len(t.find_all('table')) == 0]
 
     for tbl in leaf_tables:
@@ -94,13 +163,13 @@ def parse_full_act_reasons(
         art_raw = m_art.group(1).replace(' ', '')
         art_no = parse_lis_article_no(art_raw)
 
-        # 逐版本解析：條文與理由可能有多個歷史版本 (例如 (0880115 制定) 及 (1091230 修正))
+        # 逐版本解析
         versions = []
         cur_v = None
         target = None
 
         for line in lines:
-            m_paren = re.search(r'^\(([0-9]{7})\s*([^\)]+)\)$', line)
+            m_paren = re.search(r'^\(([0-9]{6,7})\s*([^\)]+)\)$', line)
             if m_paren:
                 if cur_v:
                     versions.append(cur_v)
@@ -120,7 +189,7 @@ def parse_full_act_reasons(
             elif line == '理由':
                 target = 'reason'
                 continue
-            elif line.startswith('第') and '條' in line:
+            elif target is None and re.match(r'^第[零一二三四五六七八九十百千萬\d\s]+條', line):
                 continue
             elif '立法院國會圖書館' in line or 'Copyright' in line:
                 break
@@ -152,6 +221,8 @@ def parse_full_act_reasons(
                     "source_url": source_url,
                     "raw_path": raw_path
                 })
+
+    return results
 
     return results
 

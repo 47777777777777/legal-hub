@@ -12,3 +12,4 @@ print("Comparison Reason:")
 print(row[1])
 print("\nTable data:")
 print(json.loads(row[0] or '[]'))
+

@@ -334,6 +334,28 @@ class LegalStorage:
                 "source_mode": c_row["source_mode"] or "fullpage"
             })
 
+        cur.execute("""
+            SELECT article_no, version_date, action_type, content,
+                   date_label_raw, date_raw, source_url, fetched_at
+            FROM article_versions
+            WHERE act_id = ?
+            ORDER BY version_date ASC, id ASC
+        """, (row["id"],))
+        versions_by_art = {}
+        for v_row in cur.fetchall():
+            v_no = v_row["article_no"]
+            if v_no not in versions_by_art:
+                versions_by_art[v_no] = []
+            versions_by_art[v_no].append({
+                "version_date": v_row["version_date"],
+                "action_type": v_row["action_type"] or "",
+                "content": v_row["content"] or "",
+                "date_label_raw": v_row["date_label_raw"] or "",
+                "date_raw": v_row["date_raw"] or "",
+                "source_url": v_row["source_url"] or "",
+                "fetched_at": v_row["fetched_at"] or ""
+            })
+
         cur.execute("SELECT count(*) FROM source_attempts WHERE act_id = ? AND source = 'lis'", (row["id"],))
         has_lis_attempt = (cur.fetchone()[0] > 0) or (len(reasons_by_art) > 0)
         cat = (row["category"] or "").strip()
@@ -341,9 +363,40 @@ class LegalStorage:
 
         conn.close()
 
+        from backend.compare import compare_articles
+
         articles = []
         for a in art_rows:
             art_reasons = reasons_by_art.get(a["article_no"], [])
+            art_versions = versions_by_art.get(a["article_no"], [])
+
+            version_cards = []
+            if art_versions:
+                reason_map = {r.get("version_date"): r.get("reason", "") for r in art_reasons}
+                for v_idx, v_cur in enumerate(art_versions):
+                    prior_content = art_versions[v_idx - 1]["content"] if v_idx > 0 else None
+                    comp = compare_articles(prior_content, v_cur["content"], action_type=v_cur["action_type"])
+                    v_reason = reason_map.get(v_cur["version_date"]) or reason_map.get(v_cur["date_raw"]) or ""
+                    version_cards.append({
+                        "version_date": v_cur["version_date"],
+                        "date_label_raw": v_cur["date_label_raw"] or f"({v_cur['version_date']} {v_cur['action_type']})",
+                        "date_raw": v_cur["date_raw"],
+                        "action_type": v_cur["action_type"],
+                        "reason": v_reason,
+                        "status": comp["status"],
+                        "status_label": comp["status_label"],
+                        "is_table": comp["is_table"],
+                        "col_new_title": comp["col_new_title"],
+                        "col_old_title": comp["col_old_title"],
+                        "new_html": comp["new_html"],
+                        "old_html": comp["old_html"],
+                        "new_plain": comp["new_plain"],
+                        "old_plain": comp["old_plain"],
+                        "paragraphs": comp["paragraphs"],
+                        "source_url": v_cur["source_url"],
+                        "fetched_at": v_cur["fetched_at"]
+                    })
+                version_cards.reverse()  # Latest version first
             if art_reasons:
                 lis_status = "present"
             elif is_order:
@@ -383,6 +436,7 @@ class LegalStorage:
                 "paywalled_counts": json.loads(a["paywalled_counts_json"] or "{}") if "paywalled_counts_json" in a.keys() and a["paywalled_counts_json"] else {},
                 "lis_reasons": art_reasons,
                 "lis_comparison": comp_by_art.get(a["article_no"], []),
+                "lis_versions": version_cards,
                 "lis_reasons_status": lis_status,
                 "status": a["status"] if "status" in a.keys() and a["status"] else "active",
                 "stale": a["stale"] if "stale" in a.keys() and a["stale"] else 0
@@ -564,7 +618,7 @@ class LegalStorage:
             })
         else:
             cur.execute("""
-                SELECT reason, date_label_raw, date_raw, action_type, source_url, fetched_at
+                SELECT version_date, reason, date_label_raw, date_raw, action_type, source_url, fetched_at
                 FROM article_reasons
                 WHERE act_id = ? AND article_no = ?
                 ORDER BY version_date DESC, id DESC
@@ -611,6 +665,42 @@ class LegalStorage:
                 comp_status = "source_has_none"
             else:
                 comp_status = "not_attempted"
+
+            cur.execute("""
+                SELECT version_date, action_type, content, date_label_raw, date_raw, source_url, fetched_at
+                FROM article_versions
+                WHERE act_id = ? AND article_no = ?
+                ORDER BY version_date ASC, id ASC
+            """, (real_act_id, art_no_str))
+            v_rows = cur.fetchall()
+            panel_versions = []
+            if v_rows:
+                from backend.compare import compare_articles
+                reason_map = {r.get("version_date"): r.get("reason", "") for r in reason_rows}
+                for v_idx, v_cur in enumerate(v_rows):
+                    prior_content = v_rows[v_idx - 1]["content"] if v_idx > 0 else None
+                    comp = compare_articles(prior_content, v_cur["content"], action_type=v_cur["action_type"])
+                    v_reason = reason_map.get(v_cur["version_date"]) or reason_map.get(v_cur["date_raw"]) or ""
+                    panel_versions.append({
+                        "version_date": v_cur["version_date"],
+                        "date_label_raw": v_cur["date_label_raw"] or f"({v_cur['version_date']} {v_cur['action_type']})",
+                        "date_raw": v_cur["date_raw"],
+                        "action_type": v_cur["action_type"],
+                        "reason": v_reason,
+                        "status": comp["status"],
+                        "status_label": comp["status_label"],
+                        "is_table": comp["is_table"],
+                        "col_new_title": comp["col_new_title"],
+                        "col_old_title": comp["col_old_title"],
+                        "new_html": comp["new_html"],
+                        "old_html": comp["old_html"],
+                        "new_plain": comp["new_plain"],
+                        "old_plain": comp["old_plain"],
+                        "paragraphs": comp["paragraphs"],
+                        "source_url": v_cur["source_url"],
+                        "fetched_at": v_cur["fetched_at"]
+                    })
+                panel_versions.reverse()
 
             sections.append({
                 "section_type": "legislative_reasons",
@@ -718,6 +808,7 @@ class LegalStorage:
                 "status": comp_status,
                 "items": comp_rows
             },
+            "lis_versions": panel_versions,
             "lawplayer": {
                 "status": lp_status,
                 "items": lp_items

@@ -10,3 +10,4 @@ row = cur.fetchone()
 print("Act:", row[0], "Art:", row[1], "Date:", row[2])
 print("Reason:")
 print(row[3])
+

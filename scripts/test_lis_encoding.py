@@ -11,3 +11,4 @@ with urllib.request.urlopen(req) as resp:
 print('Meta charset:', re.findall(b'charset=[^"\' >]*', raw, re.I))
 print("big5 contains 立法院:", '立法院' in raw.decode('big5', errors='ignore'))
 print("utf-8 contains 立法院:", '立法院' in raw.decode('utf-8', errors='ignore'))
+

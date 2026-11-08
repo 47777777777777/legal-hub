@@ -55,6 +55,7 @@ class Article:
                  paywalled_counts: Optional[Dict[str, Any]] = None,
                  lis_reasons: Optional[List[Dict[str, Any]]] = None,
                  lis_comparison: Optional[List[Dict[str, Any]]] = None,
+                 lis_versions: Optional[List[Dict[str, Any]]] = None,
                  lis_reasons_status: str = "not_attempted",
                  status: str = "active",
                  stale: int = 0,
@@ -94,6 +95,7 @@ class Article:
         self.paywalled_counts = paywalled_counts or {}
         self.lis_reasons = lis_reasons or []
         self.lis_comparison = lis_comparison or []
+        self.lis_versions = lis_versions or []
         self.lis_reasons_status = lis_reasons_status or "not_attempted"
         
         # Attachments validation (check duplicates)
@@ -145,6 +147,7 @@ class Article:
             "paywalled_counts": self.paywalled_counts,
             "lis_reasons": self.lis_reasons,
             "lis_comparison": self.lis_comparison,
+            "lis_versions": self.lis_versions,
             "lis_reasons_status": self.lis_reasons_status,
             "status": self.status,
             "stale": self.stale,

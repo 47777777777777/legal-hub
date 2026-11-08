@@ -1,3 +1,4 @@
+
 """
 scripts/verify_integrity.py
 
@@ -71,15 +72,14 @@ def check_moj_content_consistency(conn, chlaw_path, chorder_path=None):
     acts = cur.fetchall()
     
     mismatches = []
-    checked_count = 0
-    checked_forewords = 0
+    checked_law_articles = 0
+    checked_order_articles = 0
+    checked_law_forewords = 0
+    checked_order_forewords = 0
     matched_acts_count = 0
+    matched_orders_acts_count = 0
     non_chlaw_acts_count = 0
     non_chlaw_articles_count = 0
-    
-    matched_orders_acts_count = 0
-    checked_orders_count = 0
-    checked_orders_forewords = 0
 
     for act_row in acts:
         act_id, act_name, act_pcode = act_row["id"], act_row["name"], (act_row["pcode"] or "")
@@ -113,7 +113,10 @@ def check_moj_content_consistency(conn, chlaw_path, chorder_path=None):
                 print(f"    DB:  {db_foreword[:60]}...")
                 print(f"    MOJ: {moj_foreword_clean[:60]}...")
                 return False
-            checked_forewords += 1
+            if is_order:
+                checked_order_forewords += 1
+            else:
+                checked_law_forewords += 1
 
         # Build map of MOJ article content
         moj_articles = {}
@@ -131,7 +134,10 @@ def check_moj_content_consistency(conn, chlaw_path, chorder_path=None):
             db_arts_map[art_no] = db_content
             if art_no in moj_articles:
                 moj_content = moj_articles[art_no].replace("\r\n", "\n")
-                checked_count += 1
+                if is_order:
+                    checked_order_articles += 1
+                else:
+                    checked_law_articles += 1
                 if db_content != moj_content:
                     mismatches.append((act_id, art_no, db_content[:40], moj_content[:40]))
                     if len(mismatches) <= 5:
@@ -158,18 +164,28 @@ def check_moj_content_consistency(conn, chlaw_path, chorder_path=None):
                     print(f"  FAIL: Missing chapter heading in database for {act_id}: '{norm_mc}'!")
                     return False
                         
+    total_verified = checked_law_articles + checked_order_articles
     if mismatches:
-        print(f"  Total content mismatches found: {len(mismatches)} / {checked_count} checked")
+        print(f"  Total content mismatches found: {len(mismatches)} / {total_verified} checked")
+        return False
+
+    # Check 1 Assertion: ChLaw.json and ChOrder.json must each verify > 0 articles when provided
+    if checked_law_articles == 0:
+        print(f"  FAIL: ChLaw.json verified 0 articles! (Must verify > 0)")
+        return False
+    if chorder_path and os.path.exists(chorder_path) and checked_order_articles == 0:
+        print(f"  FAIL: ChOrder.json verified 0 articles! (Must verify > 0)")
         return False
         
     print(f"  Sub-corpus 1 (中央法規 - ChLaw.json):")
     print(f"    - Acts: {matched_acts_count} acts")
-    print(f"    - Articles: {checked_count} articles verified 100% bidirectional against ChLaw.json")
-    print(f"    - Forewords: {checked_forewords} official forewords verified verbatim")
+    print(f"    - Articles: {checked_law_articles} articles verified 100% bidirectional against ChLaw.json")
+    print(f"    - Forewords: {checked_law_forewords} official forewords verified verbatim")
     print(f"  Sub-corpus 2 (法規命令 - ChOrder.json):")
     print(f"    - Acts: {matched_orders_acts_count} acts")
-    print(f"    - Articles: {total_db_articles - checked_count} articles verified 100% bidirectional against ChOrder.json")
-    print(f"  PASSED: Full DB {total_db_articles:,} articles audited. Bidirectional 100% fidelity.")
+    print(f"    - Articles: {checked_order_articles} articles verified 100% bidirectional against ChOrder.json")
+    print(f"    - Forewords: {checked_order_forewords} official forewords verified verbatim")
+    print(f"  PASSED: Full DB {total_db_articles:,} articles audited ({checked_law_articles:,} Law + {checked_order_articles:,} Order). Bidirectional 100% fidelity.")
     return True
 
 def check_article_structure_invariant(conn):
@@ -519,10 +535,11 @@ def check_lis_data_authenticity(conn: sqlite3.Connection) -> bool:
             else:
                 with open(raw_path, "r", encoding="utf-8", errors="ignore") as f:
                     raw_html = f.read()
-            raw_cache[raw_path] = re.sub(r'\s+', '', re.sub(r'<[^>]+>', '', raw_html))
+            import html as html_lib
+            raw_cache[raw_path] = re.sub(r'\s+', '', html_lib.unescape(re.sub(r'<[^>]+>', '', raw_html)))
         
         clean_raw = raw_cache[raw_path]
-        clean_reason = re.sub(r'\s+', '', reason)
+        clean_reason = re.sub(r'\s+', '', html_lib.unescape(reason))
         if clean_reason and clean_reason not in clean_raw:
             violations.append(f"article_reasons id={rid} (act={act_id}, art={art_no}, date={v_date}): reason text is not a verbatim substring of raw file {raw_path}")
 
@@ -552,10 +569,11 @@ def check_lis_data_authenticity(conn: sqlite3.Connection) -> bool:
             else:
                 with open(raw_path, "r", encoding="utf-8", errors="ignore") as f:
                     raw_html = f.read()
-            raw_cache[raw_path] = re.sub(r'\s+', '', re.sub(r'<[^>]+>', '', raw_html))
+            import html as html_lib
+            raw_cache[raw_path] = re.sub(r'\s+', '', html_lib.unescape(re.sub(r'<[^>]+>', '', raw_html)))
         
         clean_raw = raw_cache[raw_path]
-        clean_reason = re.sub(r'\s+', '', reason)
+        clean_reason = re.sub(r'\s+', '', html_lib.unescape(reason))
         if clean_reason and clean_reason not in clean_raw:
             violations.append(f"article_comparison id={cid} (act={act_id}, art={art_no}, date={new_date}): reason text is not a verbatim substring of raw file {raw_path}")
 

@@ -18,7 +18,7 @@ TEST_ARTICLES = [
     ("company_act", "9", "公司法 第 9 條"),
     ("civil_procedure_code", "244", "民事訴訟法 第 244 條"),
     ("criminal_procedure_code", "160", "刑事訴訟法 第 160 條"),
-    ("a0030154", "2", "懲治走私條例 第 2 條"),
+    ("a0030154", "2", "行政訴訟法 第 2 條"),
     ("constitution", "1", "中華民國憲法 第 1 條"),
     ("criminal_code", "5", "刑法 第 5 條"),
     ("criminal_code", "6", "刑法 第 6 條"),

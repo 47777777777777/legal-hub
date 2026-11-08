@@ -1366,3 +1366,128 @@ mark.search-hl {
   border-radius: 2px;
   padding: 0 1px;
 }
+
+/* Prompt 4J 自製修正對照表樣式 */
+.diff-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+}
+.diff-disclaimer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+.diff-columns-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+@media (max-width: 768px) {
+  .diff-columns-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.diff-col {
+  display: flex;
+  flex-direction: column;
+}
+.diff-col-left {
+  border-right: 1px solid var(--border-color);
+}
+@media (max-width: 768px) {
+  .diff-col-left {
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+}
+.diff-col-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-surface-elevated);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+.diff-col-body {
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text-main);
+  white-space: pre-wrap;
+  flex: 1;
+}
+.diff-ins {
+  background-color: rgba(234, 179, 8, 0.18);
+  color: #fef08a;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  border-radius: 3px;
+  padding: 1px 3px;
+  font-weight: 600;
+}
+.diff-del {
+  background-color: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  border-radius: 3px;
+  padding: 1px 3px;
+  opacity: 0.85;
+}
+.diff-none-note {
+  color: var(--text-dim);
+  font-style: italic;
+  font-size: 0.85rem;
+}
+.diff-deleted-note {
+  color: #f87171;
+  font-weight: 700;
+}
+.diff-copy-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.diff-copy-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.08);
+}
+.diff-table-pre {
+  font-family: monospace;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  overflow-x: auto;
+  white-space: pre;
+  margin: 0;
+  padding: 0.5rem;
+}
+.diff-card-reason {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid var(--border-color);
+  font-size: 0.88rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}

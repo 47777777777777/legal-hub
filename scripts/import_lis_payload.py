@@ -90,7 +90,53 @@ def main():
             c.get("col_headers_json"), c.get("cells_json")
         ))
 
-    # 3. UPSERT update_runs
+    # 3. UPSERT article_versions
+    versions = data.get("article_versions", [])
+    for v in versions:
+        cur.execute("""
+            INSERT INTO article_versions (
+                act_id, article_no, version_date, action_type, content,
+                source, source_url, fetched_at, raw_path, date_label_raw, date_raw,
+                article_no_at_the_time, source_mode
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(act_id, article_no, version_date) DO UPDATE SET
+                action_type = excluded.action_type,
+                content = excluded.content,
+                source = excluded.source,
+                source_url = excluded.source_url,
+                fetched_at = excluded.fetched_at,
+                raw_path = excluded.raw_path,
+                date_label_raw = excluded.date_label_raw,
+                date_raw = excluded.date_raw,
+                article_no_at_the_time = excluded.article_no_at_the_time,
+                source_mode = excluded.source_mode
+        """, (
+            v.get("act_id"), v.get("article_no"), v.get("version_date"),
+            v.get("action_type"), v.get("content"), v.get("source"),
+            v.get("source_url"), v.get("fetched_at"), v.get("raw_path"),
+            v.get("date_label_raw"), v.get("date_raw"),
+            v.get("article_no_at_the_time"), v.get("source_mode")
+        ))
+
+    # 4. UPSERT source_attempts
+    attempts = data.get("source_attempts", [])
+    if attempts:
+        # group by (source, act_id) and clean up before inserting to prevent infinite buildup
+        seen_acts = set((a.get("source"), a.get("act_id")) for a in attempts if a.get("act_id"))
+        for s, a_id in seen_acts:
+            cur.execute("DELETE FROM source_attempts WHERE source = ? AND act_id = ?", (s, a_id))
+        for att in attempts:
+            cur.execute("""
+                INSERT INTO source_attempts (
+                    source, act_id, article_no, status, error_reason, duration_ms, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                att.get("source"), att.get("act_id"), att.get("article_no"),
+                att.get("status"), att.get("error_reason"), att.get("duration_ms"),
+                att.get("created_at") or "datetime('now')"
+            ))
+
+    # 5. UPSERT update_runs
     runs = data.get("update_runs", [])
     for rn in runs:
         cur.execute("""
@@ -113,12 +159,16 @@ def main():
     conn.commit()
 
     cnt_reasons = cur.execute("SELECT count(*) FROM article_reasons").fetchone()[0]
+    cnt_versions = cur.execute("SELECT count(*) FROM article_versions").fetchone()[0]
+    cnt_attempts = cur.execute("SELECT count(*) FROM source_attempts WHERE source = 'lis'").fetchone()[0]
     cnt_comps = cur.execute("SELECT count(*) FROM article_comparison").fetchone()[0]
     cnt_runs = cur.execute("SELECT count(*) FROM update_runs WHERE source = 'lis'").fetchone()[0]
     conn.close()
 
     print("Remote UPSERT Complete:")
     print(f"  article_reasons count on remote:    {cnt_reasons}")
+    print(f"  article_versions count on remote:   {cnt_versions}")
+    print(f"  source_attempts count on remote:    {cnt_attempts}")
     print(f"  article_comparison count on remote: {cnt_comps}")
     print(f"  update_runs (lis) on remote:        {cnt_runs}")
 

@@ -587,6 +587,16 @@ class LegalHubApp {
         if (!e.target.closest(".nav-search")) {
           hideDropdown();
         }
+        const copyBtn = e.target.closest(".diff-copy-btn");
+        if (copyBtn) {
+          const text = copyBtn.getAttribute("data-copy");
+          if (text) {
+            navigator.clipboard.writeText(text);
+            const orig = copyBtn.innerText;
+            copyBtn.innerText = "已複製✓";
+            setTimeout(() => { copyBtn.innerText = orig; }, 1200);
+          }
+        }
       });
     }
 
@@ -2121,14 +2131,142 @@ class LegalHubApp {
 
   // ---------------- Tab 4: 立法理由與沿革 ----------------
   renderLegislativeHtml(art) {
+    const lisVersions = art.lis_versions || [];
     const lisReasons = art.lis_reasons || [];
-    const lisComp = art.lis_comparison || [];
 
-    if (lisReasons.length > 0 || lisComp.length > 0) {
-      const fetchedAt = (lisReasons[0] && lisReasons[0].fetched_at) || (lisComp[0] && lisComp[0].fetched_at) || "";
+    if (lisVersions.length > 0) {
+      const fetchedAt = (lisVersions[0] && lisVersions[0].fetched_at) || (lisReasons[0] && lisReasons[0].fetched_at) || "";
       const sourceDateStr = fetchedAt ? fetchedAt.substring(0, 10) : "";
       const sourceLabel = sourceDateStr ? `立法院法律系統 (抓取於 ${sourceDateStr})` : "立法院法律系統";
 
+      const versionCardsHtml = lisVersions.map((v, vIdx) => {
+        const title = v.date_label_raw ? v.date_label_raw : "";
+
+        let compBodyHtml = "";
+        if (v.is_table) {
+          compBodyHtml = `
+            <div class="diff-columns-grid">
+              <div class="diff-col diff-col-left">
+                <div class="diff-col-header">
+                  <span>${esc(v.col_new_title)}</span>
+                  <button class="diff-copy-btn" data-copy="${esc(v.new_plain || "")}">複製純文字</button>
+                </div>
+                <div class="diff-col-body">${v.new_html || ""}</div>
+              </div>
+              <div class="diff-col">
+                <div class="diff-col-header">
+                  <span>${esc(v.col_old_title)}</span>
+                  <button class="diff-copy-btn" data-copy="${esc(v.old_plain || "")}">複製純文字</button>
+                </div>
+                <div class="diff-col-body">${v.old_html || ""}</div>
+              </div>
+            </div>`;
+        } else if (v.status === "enacted") {
+          compBodyHtml = `
+            <div class="diff-columns-grid">
+              <div class="diff-col diff-col-left">
+                <div class="diff-col-header">
+                  <span>${esc(v.col_new_title)}</span>
+                  <button class="diff-copy-btn" data-copy="${esc(v.new_plain || "")}">複製純文字</button>
+                </div>
+                <div class="diff-col-body">${esc(v.new_plain || "").replace(/\n/g, "<br>")}</div>
+              </div>
+              <div class="diff-col">
+                <div class="diff-col-header">
+                  <span>${esc(v.col_old_title)}</span>
+                </div>
+                <div class="diff-col-body"><span class="diff-none-note">（未制定）</span></div>
+              </div>
+            </div>`;
+        } else if (v.status === "deleted") {
+          compBodyHtml = `
+            <div class="diff-columns-grid">
+              <div class="diff-col diff-col-left">
+                <div class="diff-col-header">
+                  <span>${esc(v.col_new_title)}</span>
+                </div>
+                <div class="diff-col-body"><span class="diff-deleted-note">（刪除）</span></div>
+              </div>
+              <div class="diff-col">
+                <div class="diff-col-header">
+                  <span>${esc(v.col_old_title)}</span>
+                  <button class="diff-copy-btn" data-copy="${esc(v.old_plain || "")}">複製純文字</button>
+                </div>
+                <div class="diff-col-body">${v.old_html || ""}</div>
+              </div>
+            </div>`;
+        } else if (v.paragraphs && v.paragraphs.length > 0) {
+          compBodyHtml = `
+            <div class="diff-columns-grid">
+              <div class="diff-col diff-col-left">
+                <div class="diff-col-header">
+                  <span>${esc(v.col_new_title)}</span>
+                  <button class="diff-copy-btn" data-copy="${esc(v.new_plain || "")}">複製純文字</button>
+                </div>
+                <div class="diff-col-body">
+                  ${v.paragraphs.map(p => `<div class="diff-para-row" style="margin-bottom:0.5rem;">${p.new_html || ""}</div>`).join("")}
+                </div>
+              </div>
+              <div class="diff-col">
+                <div class="diff-col-header">
+                  <span>${esc(v.col_old_title)}</span>
+                  <button class="diff-copy-btn" data-copy="${esc(v.old_plain || "")}">複製純文字</button>
+                </div>
+                <div class="diff-col-body">
+                  ${v.paragraphs.map(p => `<div class="diff-para-row" style="margin-bottom:0.5rem;">${p.old_html || ""}</div>`).join("")}
+                </div>
+              </div>
+            </div>`;
+        } else {
+          compBodyHtml = `
+            <div class="diff-columns-grid">
+              <div class="diff-col diff-col-left">
+                <div class="diff-col-header">
+                  <span>${esc(v.col_new_title)}</span>
+                  <button class="diff-copy-btn" data-copy="${esc(v.new_plain || "")}">複製純文字</button>
+                </div>
+                <div class="diff-col-body">${v.new_html || ""}</div>
+              </div>
+              <div class="diff-col">
+                <div class="diff-col-header">
+                  <span>${esc(v.col_old_title)}</span>
+                  <button class="diff-copy-btn" data-copy="${esc(v.old_plain || "")}">複製純文字</button>
+                </div>
+                <div class="diff-col-body">${v.old_html || ""}</div>
+              </div>
+            </div>`;
+        }
+
+        const reasonHtml = v.reason ? `
+          <div class="diff-card-reason">
+            <strong style="color:#a1a1aa;">修正理由：</strong>
+            <div style="margin-top:0.25rem;">${esc(v.reason)}</div>
+          </div>` : "";
+
+        return `
+          <div class="card" style="margin-bottom:1.25rem;">
+            <div class="card-title accent" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+              <span>${esc(title)}</span>
+              <span class="diff-disclaimer-pill">系統比對標示（非立法院原文）</span>
+            </div>
+            <div class="diff-container">
+              ${compBodyHtml}
+            </div>
+            ${reasonHtml}
+          </div>`;
+      }).join("");
+
+      return `
+        <section>
+          ${sectionHeading("file", "立法理由與沿革 (立法院法律系統)", String(lisVersions.length), sourceLabel)}
+          ${versionCardsHtml}
+        </section>`;
+    }
+
+    if (lisReasons.length > 0) {
+      const fetchedAt = (lisReasons[0] && lisReasons[0].fetched_at) || "";
+      const sourceDateStr = fetchedAt ? fetchedAt.substring(0, 10) : "";
+      const sourceLabel = sourceDateStr ? `立法院法律系統 (抓取於 ${sourceDateStr})` : "立法院法律系統";
       const formatRoc = (rawDate) => {
         if (!rawDate) return "";
         const s = String(rawDate).trim();
@@ -2141,103 +2279,20 @@ class LegalHubApp {
         return s;
       };
 
-      const highlightDiff = (newText, oldText) => {
-        if (!oldText || !newText || oldText === newText) {
-          return {
-            newHtml: esc(newText || "").replace(/\n/g, "<br>"),
-            oldHtml: esc(oldText || "").replace(/\n/g, "<br>")
-          };
-        }
-        let prefix = 0;
-        while (prefix < oldText.length && prefix < newText.length && oldText[prefix] === newText[prefix]) {
-          prefix++;
-        }
-        let suffix = 0;
-        while (suffix < (oldText.length - prefix) && suffix < (newText.length - prefix) && 
-               oldText[oldText.length - 1 - suffix] === newText[newText.length - 1 - suffix]) {
-          suffix++;
-        }
-        const pre = esc(oldText.slice(0, prefix)).replace(/\n/g, "<br>");
-        const post = suffix > 0 ? esc(oldText.slice(oldText.length - suffix)).replace(/\n/g, "<br>") : "";
-        const midOld = esc(oldText.slice(prefix, suffix > 0 ? oldText.length - suffix : undefined)).replace(/\n/g, "<br>");
-        const midNew = esc(newText.slice(prefix, suffix > 0 ? newText.length - suffix : undefined)).replace(/\n/g, "<br>");
+      const reasonsHtml = lisReasons.map((v) => {
+        const dateStr = formatRoc(v.version_date);
+        const actionText = v.action_type ? v.action_type : "";
+        const title = v.date_label_raw ? v.date_label_raw : `${dateStr} ${actionText}`;
+        return `
+          <div class="card" style="margin-bottom:1rem;">
+            <div class="card-title accent">${esc(title)}</div>
+            <div class="card-body" style="white-space:pre-wrap;">${esc(v.reason)}</div>
+          </div>`;
+      }).join("");
 
-        const newHtml = `${pre}${midNew ? `<mark style="background-color:rgba(234,179,8,0.25); color:#fde047; padding:2px 4px; border-radius:3px; font-weight:600; text-decoration:underline;">${midNew}</mark>` : ""}${post}`;
-        const oldHtml = `${pre}${midOld ? `<del style="background-color:rgba(239,68,68,0.2); color:#fca5a5; padding:2px 4px; border-radius:3px; text-decoration:line-through;">${midOld}</del>` : ""}${post}`;
-        return { newHtml, oldHtml };
-      };
-
-      // Set of dates already rendered with comparison tables to prevent duplicate reason cards
-      const compDates = new Set(lisComp.map(c => String(c.new_version_date || "").trim()).filter(Boolean));
-
-      let compHtml = "";
-      if (lisComp.length > 0) {
-        compHtml = lisComp.map((c) => {
-          const newDateStr = formatRoc(c.new_version_date);
-          const oldDateStr = formatRoc(c.old_version_date);
-          const subTitle = oldDateStr ? ` (修正前：${oldDateStr})` : "";
-          const actionText = c.action_type ? c.action_type : "";
-          const title = c.date_label_raw ? `${c.date_label_raw} 對照表${subTitle}` : `${newDateStr} ${actionText} 對照表${subTitle}`;
-          
-          let tableRowsHtml = "";
-          if (c.table_data && Array.isArray(c.table_data) && c.table_data.length > 0) {
-            tableRowsHtml = `
-              <div style="overflow-x:auto; margin:0.75rem 0;">
-                <table style="width:100%; border-collapse:collapse; border:1px solid #3f3f46; font-size:0.875rem;">
-                  <tbody>
-                    ${c.table_data.filter(row => !row[0] || !String(row[0]).trim().startsWith("理由")).map((row) => {
-                      const isArticleRow = row[0] && (String(row[0]).includes("條") || String(row[0]).includes("修正"));
-                      const diffResult = (isArticleRow && row.length >= 3) ? highlightDiff(row[1], row[2]) : null;
-                      return `
-                      <tr style="border-bottom:1px solid #27272a;">
-                        ${row.map((cell, idx) => {
-                          let cellContent = esc(cell || "").replace(/\n/g, '<br>');
-                          if (diffResult && idx === 1) cellContent = diffResult.newHtml;
-                          if (diffResult && idx === 2) cellContent = diffResult.oldHtml;
-                          return `
-                          <td style="padding:8px 12px; border-right:1px solid #27272a; vertical-align:top; ${idx === 0 ? 'width:120px; font-weight:600; color:#a1a1aa;' : ''}">
-                            ${cellContent}
-                          </td>`;
-                        }).join("")}
-                      </tr>`;
-                    }).join("")}
-                  </tbody>
-                </table>
-              </div>`;
-          }
-
-          const reasonBody = c.reason ? `<div class="card-body" style="white-space:pre-wrap; margin-top:0.5rem;"><strong style="color:#a1a1aa;">修正理由：</strong>\n${esc(c.reason)}</div>` : "";
-
-          return `
-            <div class="card" style="margin-bottom:1.25rem;">
-              <div class="card-title accent">${esc(title)}</div>
-              ${tableRowsHtml}
-              ${reasonBody}
-            </div>`;
-        }).join("");
-      }
-
-      let reasonsHtml = "";
-      // Only render reasons for versions NOT already shown in comparison cards above
-      const standaloneReasons = lisReasons.filter(v => !compDates.has(String(v.version_date || "").trim()));
-      if (standaloneReasons.length > 0) {
-        reasonsHtml = standaloneReasons.map((v) => {
-          const dateStr = formatRoc(v.version_date);
-          const actionText = v.action_type ? v.action_type : "";
-          const title = v.date_label_raw ? v.date_label_raw : `${dateStr} ${actionText}`;
-          return `
-            <div class="card" style="margin-bottom:1rem;">
-              <div class="card-title accent">${esc(title)}</div>
-              <div class="card-body" style="white-space:pre-wrap;">${esc(v.reason)}</div>
-            </div>`;
-        }).join("");
-      }
-
-      const countStr = String(lisReasons.length);
       return `
         <section>
-          ${sectionHeading("file", "立法理由與沿革 (立法院法律系統)", countStr, sourceLabel)}
-          ${compHtml}
+          ${sectionHeading("file", "立法理由與沿革 (立法院法律系統)", String(lisReasons.length), sourceLabel)}
           ${reasonsHtml}
         </section>`;
     }
