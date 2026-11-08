@@ -52,10 +52,11 @@ def is_table_line(line: str) -> bool:
     """判斷該行是否包含製表框線字元"""
     return any(c in BOX_DRAWING_CHARS for c in line)
 
-def unwrap_text(text: str) -> str:
+def unwrap_text(text: str, is_standard_article: bool = True) -> str:
     """
     顯示層接續行合併 (Display-layer Unwrap)：
     僅依據來源本身的明確續行證據（行首縮排、行首標點、前行末尾逗號/分號）合併。
+    非標準條號法規（如動員戡亂時期臨時條款）來源每行硬折行，非款非目行一律自動續行。
     表格行（含框線字元）絕對不合併，保持逐行原樣。
     """
     if not text:
@@ -90,7 +91,8 @@ def unwrap_text(text: str) -> str:
             (
                 (has_spaces and not is_sub) or
                 starts_with_punct or
-                prev_is_continuation
+                prev_is_continuation or
+                (not is_standard_article and not is_sub)
             )
         )
         
@@ -145,7 +147,8 @@ def parse_article_structure(content: str, is_standard_article: bool = True) -> L
             (
                 (has_spaces and not is_sub) or
                 starts_with_punct or
-                prev_is_continuation
+                prev_is_continuation or
+                (not is_standard_article and not is_sub)
             )
         )
 

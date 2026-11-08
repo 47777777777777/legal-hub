@@ -40,5 +40,23 @@
     "line_hash": "000cd3432f22111b",
     "value": "啟動採集失敗",
     "reason": "Harvest start failed alert prompt"
+  },
+  {
+    "file": "static/js/app.js",
+    "line_hash": "lis_not_attempted",
+    "value": "立法院法律系統：尚未查詢",
+    "reason": "LIS status not_attempted indicator"
+  },
+  {
+    "file": "static/js/app.js",
+    "line_hash": "lis_source_has_none",
+    "value": "立法院法律系統無此條資料",
+    "reason": "LIS status source_has_none indicator"
+  },
+  {
+    "file": "static/js/app.js",
+    "line_hash": "lis_not_applicable",
+    "value": "此類別法規不適用立法院法律系統（如行政命令）",
+    "reason": "LIS status not_applicable indicator"
   }
 ]

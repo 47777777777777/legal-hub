@@ -545,6 +545,11 @@ mark {
   border-radius: 5px;
   letter-spacing: 0.02em;
 }
+.article-card-no.non-standard-card-no {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
 .article-card-title {
   font-size: 0.9rem;
   font-weight: 700;

@@ -51,3 +51,4 @@ def test_cross_act_citation_resolution():
     assert ref_10["ref_act_id"] == "criminal_code"
     assert ref_10["ref_article_no"] == "10"
     assert ref_10["ref_type"] == "host"
+

@@ -45,7 +45,7 @@ function parseChnNumber(str) {
   return val + temp;
 }
 
-window.ENABLE_CITATION_HOVER = false; // Prompt 4G: 立即停用現有懸停，直到後端 citations.py 完成
+window.ENABLE_CITATION_HOVER = true;
 
 // Convert citations like "第二百二十一條" or "第 185-3 條" or ranges like "第一百二十一條至第一百二十三條" into interactive hover/tap links
 function linkifyArticleRefs(text, q) {
@@ -55,7 +55,7 @@ function linkifyArticleRefs(text, q) {
   }
 
   // 1. Range citations: e.g. "第一百二十一條至第一百二十三條" or "第二百零一條至第二百零二條" (支援零、〇)
-  const rangeRegex = /(?:第\s*)?([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[零〇一二三四五六七八九十百千]+(?:\s*之\s*[零〇一二三四五六七八九十百]+)?)\s*條\s*至\s*(?:第\s*)?([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[零〇一二三四五六七八九十百千]+(?:\s*之\s*[零〇一二三四五六七八九十百]+)?)\s*條/g;
+  const rangeRegex = /(?:第\s*)?([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[零〇一二三四五六七八九十百千]+(?:\s*之\s*[零〇一二三四五六七八九十百千]+)?)\s*條\s*至\s*(?:第\s*)?([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[零〇一二三四五六七八九十百千]+(?:\s*之\s*[零〇一二三四五六七八九十百千]+)?)\s*條/g;
 
   safe = safe.replace(rangeRegex, (match, rawStart, rawEnd) => {
     const cleanStart = cleanRawNo(rawStart);
@@ -64,7 +64,7 @@ function linkifyArticleRefs(text, q) {
   });
 
   // 2. Single citations: e.g. "第一百二十五條" or "第二百零一條"
-  const singleRegex = /(第\s*([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[零〇一二三四五六七八九十百千]+(?:\s*之\s*[零〇一二三四五六七八九十百]+)?)\s*條)/g;
+  const singleRegex = /(第\s*([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[零〇一二三四五六七八九十百千]+(?:\s*之\s*[零〇一二三四五六七八九十百千]+)?)\s*條)/g;
   safe = safe.replace(singleRegex, (match, full, rawNo) => {
     const cleanNo = cleanRawNo(rawNo);
     return `<span class="article-ref-link" data-ref-no="${cleanNo}">${full}</span>`;
@@ -1250,9 +1250,23 @@ class LegalHubApp {
   }
 
   renderToolbarMeta() {
+    const isStandardAct = (this.currentAct && this.currentAct.is_standard !== 0) && (this.currentAct.articles || []).some((a) => Boolean(a.label_raw && a.label_raw.trim()));
     const n = (this.currentAct.articles || []).length;
     const badge = document.getElementById("search-count-badge");
-    if (badge) badge.textContent = `${n} 條`;
+    if (badge) badge.textContent = isStandardAct ? `${n} 條` : `${n} 條文`;
+
+    const lisArticles = (this.currentAct.articles || []).filter(a => (a.lis_reasons && a.lis_reasons.length > 0));
+    const lisCount = lisArticles.length;
+    let covBadge = document.getElementById("act-lis-coverage-badge");
+    if (!covBadge && badge && badge.parentElement) {
+      covBadge = document.createElement("span");
+      covBadge.id = "act-lis-coverage-badge";
+      covBadge.style.cssText = "font-size:0.75rem; padding:2px 8px; border-radius:4px; margin-left:8px; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); font-weight:600;";
+      badge.parentElement.appendChild(covBadge);
+    }
+    if (covBadge) {
+      covBadge.textContent = `立法理由：${lisCount} / ${n} 條`;
+    }
 
     const chapterIndicator = document.getElementById("active-chapter-name");
     if (chapterIndicator && this.currentAct) {
@@ -1380,60 +1394,41 @@ class LegalHubApp {
         </div>`;
     }
 
-    if (!isStandardAct) {
-      // Non-standard act without "第 N 條" structure (e.g. 動員戡亂時期臨時條款):
-      // The entire act is ONE single enactment/article; all items (款 一、二、三...) are rendered together inside ONE single card!
-      const firstArt = articles[0] || {};
-      const marked = this.isBookmarked(this.currentActId, firstArt.article_no || "1");
-      const itemsHtml = articles.map((art) => renderArticleBody(art, q)).join("");
+    let lastChapter = "";
+    articles.forEach((art) => {
+      if (isStandardAct && art.chapter && art.chapter !== '本法' && art.chapter !== lastChapter && !q) {
+        lastChapter = art.chapter;
+        html += `
+          <div class="stream-chapter-divider" style="padding: 1rem 0.5rem 0.5rem 0.5rem; font-weight: 700; font-size: 0.95rem; color: #a1a1aa; border-bottom: 1px solid rgba(255,255,255,0.08); margin: 1.5rem 0 1rem 0;">
+            ${esc(art.chapter)}
+          </div>`;
+      }
+      const marked = this.isBookmarked(this.currentActId, art.article_no);
+      const artLabelHtml = (isStandardAct && art.label_raw) ? `<span>${hl(art.label_raw, q)}</span>` : "";
+      const hasHeaderLabel = isStandardAct && (art.label_raw || art.title);
 
       html += `
-        <article class="stream-article-card active" id="article-card-1" data-article-no="${esc(firstArt.article_no || '1')}">
+        <article class="stream-article-card ${this.selectedArticleNo === art.article_no ? 'active' : ''}" id="article-card-${esc(art.article_no)}" data-article-no="${esc(art.article_no)}" data-chapter="${esc(art.chapter || '')}">
           <div class="article-card-header">
-            <div class="article-card-no">
-              <span class="article-card-title">${esc(this.currentAct ? this.currentAct.name : "")} 全文</span>
-              <span class="card-bookmark-mark ${marked ? "" : "hidden"}" title="已收藏">${icon("bookmark-filled", 13)}</span>
-            </div>
-            <div class="article-card-actions">
-              ${(firstArt.lis_reasons && firstArt.lis_reasons.length > 0) ? `<span class="article-history-badge" style="font-size:0.75rem; padding:2px 6px; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); border-radius:4px; margin-right:6px;">沿革 ${firstArt.lis_reasons.length} 版</span>` : ""}
-              <button class="article-study-btn" data-article-no="${esc(firstArt.article_no || '1')}">研析</button>
-            </div>
-          </div>
-          <div class="article-card-content">
-            <div class="article-body non-standard-act-body">
-              ${itemsHtml}
-            </div>
-          </div>
-        </article>`;
-    } else {
-      let lastChapter = "";
-      articles.forEach((art) => {
-        if (art.chapter && art.chapter !== '本法' && art.chapter !== lastChapter && !q) {
-          lastChapter = art.chapter;
-          html += `
-            <div class="stream-chapter-divider" style="padding: 1rem 0.5rem 0.5rem 0.5rem; font-weight: 700; font-size: 0.95rem; color: #a1a1aa; border-bottom: 1px solid rgba(255,255,255,0.08); margin: 1.5rem 0 1rem 0;">
-              ${esc(art.chapter)}
-            </div>`;
-        }
-        const marked = this.isBookmarked(this.currentActId, art.article_no);
-        const artLabelHtml = art.label_raw ? `<span>${hl(art.label_raw, q)}</span>` : "";
-        html += `
-          <article class="stream-article-card ${this.selectedArticleNo === art.article_no ? 'active' : ''}" id="article-card-${esc(art.article_no)}" data-article-no="${esc(art.article_no)}" data-chapter="${esc(art.chapter || '')}">
-            <div class="article-card-header">
-              ${(art.label_raw || art.title) ? '<div class="article-card-no">' : '<div class="article-card-no-blank" style="display:flex;align-items:center;">'}
+            ${hasHeaderLabel ? `
+              <div class="article-card-no">
                 ${artLabelHtml}
                 ${art.title ? `<span class="article-card-title">${hl(art.title, q)}</span>` : ""}
                 <span class="card-bookmark-mark ${marked ? "" : "hidden"}" title="已收藏">${icon("bookmark-filled", 13)}</span>
               </div>
-              <div class="article-card-actions">
-                ${(art.lis_reasons && art.lis_reasons.length > 0) ? `<span class="article-history-badge" style="font-size:0.75rem; padding:2px 6px; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); border-radius:4px; margin-right:6px;">沿革 ${art.lis_reasons.length} 版</span>` : ""}
-                <button class="article-study-btn" data-article-no="${esc(art.article_no)}">研析</button>
+            ` : `
+              <div class="article-card-no non-standard-card-no" style="display:flex;align-items:center;">
+                <span class="card-bookmark-mark ${marked ? "" : "hidden"}" title="已收藏">${icon("bookmark-filled", 13)}</span>
               </div>
+            `}
+            <div class="article-card-actions">
+              ${(art.lis_reasons && art.lis_reasons.length > 0) ? `<span class="article-history-badge" style="font-size:0.75rem; padding:2px 6px; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); border-radius:4px; margin-right:6px;">沿革 ${art.lis_reasons.length} 版</span>` : ""}
+              <button class="article-study-btn" data-article-no="${esc(art.article_no)}">研析</button>
             </div>
-            <div class="article-card-content">${renderArticleBody(art, q)}</div>
-          </article>`;
-      });
-    }
+          </div>
+          <div class="article-card-content">${renderArticleBody(art, q)}</div>
+        </article>`;
+    });
 
     list.innerHTML = html;
 
@@ -1480,7 +1475,21 @@ class LegalHubApp {
       popover.addEventListener("mouseleave", () => {
         this._popoverHideTimer = setTimeout(() => {
           popover.classList.add("hidden");
-        }, 200);
+        }, 150);
+      });
+
+      const closeBtn = document.getElementById("popover-close-btn");
+      if (closeBtn) {
+        closeBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          popover.classList.add("hidden");
+        });
+      }
+
+      document.addEventListener("click", (e) => {
+        if (!popover.contains(e.target) && !e.target.closest(".article-ref-link")) {
+          popover.classList.add("hidden");
+        }
       });
     }
 
@@ -1505,12 +1514,14 @@ class LegalHubApp {
 
           popTitle.textContent = `${this.currentAct.name} 第 ${startNo} 條至第 ${endNo} 條 (共 ${matchedArts.length} 條)`;
           if (matchedArts.length > 0) {
-            popBody.innerHTML = matchedArts.map(a => `
-              <div class="popover-article-item" style="margin-bottom:0.65rem; padding-bottom:0.5rem; border-bottom:1px solid rgba(255,255,255,0.08);">
-                <div style="font-weight:700; color:#60a5fa; margin-bottom:0.25rem; font-size:0.88rem;">第 ${esc(a.article_no)} 條 ${esc(a.title || "")}</div>
+            popBody.innerHTML = matchedArts.map(a => {
+              const itemLabel = a.label_raw || a.article_no;
+              return `
+              <div class="popover-article-item" style="margin-bottom:0.45rem; padding-bottom:0.35rem; border-bottom:1px solid rgba(255,255,255,0.08);">
+                <div style="font-weight:700; color:#60a5fa; margin-bottom:0.25rem; font-size:0.88rem;">${itemLabel}</div>
                 ${renderArticleBody(a, "")}
-              </div>
-            `).join("");
+              </div>`;
+            }).join("");
             popJump.textContent = `跳至第 ${startNo} 條`;
             popJump.onclick = () => {
               popover.classList.add("hidden");
@@ -1528,7 +1539,8 @@ class LegalHubApp {
           const art = (this.currentAct.articles || []).find((a) => a.article_no === targetNo);
           popJump.textContent = "跳至該條";
           if (art) {
-            popTitle.textContent = `${this.currentAct.name} 第 ${targetNo} 條 ${art.title || ""}`;
+            const label = art.label_raw || targetNo;
+            popTitle.textContent = `${this.currentAct.name} ${label}`;
             popBody.innerHTML = renderArticleBody(art, "");
             popJump.onclick = () => {
               popover.classList.add("hidden");
@@ -1550,9 +1562,13 @@ class LegalHubApp {
 
         popover.style.top = `${top}px`;
         popover.style.left = `${left}px`;
-        popover.style.maxHeight = "360px";
-        popover.style.overflowY = "auto";
         popover.classList.remove("hidden");
+        popBody.scrollTop = 0;
+        popover.scrollTop = 0;
+        requestAnimationFrame(() => {
+          popBody.scrollTop = 0;
+          popover.scrollTop = 0;
+        });
       };
 
       link.addEventListener("mouseenter", showPopover);
@@ -1560,7 +1576,7 @@ class LegalHubApp {
       link.addEventListener("mouseleave", () => {
         this._popoverHideTimer = setTimeout(() => {
           popover.classList.add("hidden");
-        }, 200);
+        }, 150);
       });
     });
   }
@@ -2167,8 +2183,16 @@ class LegalHubApp {
         </section>`;
     }
 
+    const cat = (this.currentAct && this.currentAct.category) || "";
+    const isOrder = cat.includes("命令") || cat.includes("規則") || cat.includes("細則") || cat.includes("辦法");
+    let fallbackText = "立法院法律系統：尚未查詢";
+    if (isOrder) {
+      fallbackText = "此類別法規不適用立法院法律系統（如行政命令）";
+    } else if (art.lis_reasons_status === "source_has_none") {
+      fallbackText = "立法院法律系統無此條資料";
+    }
     return `<div style="padding:1.5rem 0.5rem; text-align:center; color:#71717a; font-size:0.9rem;">
-      立法院法律系統無此條資料
+      ${fallbackText}
     </div>`;
   }
 

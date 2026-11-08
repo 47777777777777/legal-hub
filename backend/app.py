@@ -250,6 +250,10 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                     label_raw = getattr(art, "label_raw", "") or ""
                     act_name = getattr(act, "name", "") if act else ""
                     title_str = f"{act_name} {label_raw}".strip() if (act_name or label_raw) else act_name
+                    from backend.article_structure import parse_article_structure
+                    blocks = getattr(art, "blocks", None)
+                    if not blocks:
+                        blocks = parse_article_structure(art.content, is_standard_article=bool(label_raw))
                     preview_data = {
                         "act_id": act_id,
                         "act_name": act_name,
@@ -258,7 +262,8 @@ class LegalApiHandler(BaseHTTPRequestHandler):
                         "title": title_str,
                         "article_title": getattr(art, "title", "") or "",
                         "content": art.content,
-                        "structure": getattr(art, "structure", []) or []
+                        "blocks": blocks,
+                        "structure": blocks
                     }
                     self.send_json(200, {"success": True, "data": preview_data})
                     return

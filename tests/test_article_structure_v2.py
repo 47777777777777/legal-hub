@@ -102,3 +102,4 @@ def test_invariant_content_equality():
         clean_orig = re.sub(r'\s+', '', s)
         clean_recon = re.sub(r'\s+', '', reconstructed)
         assert clean_orig == clean_recon, f"不變量破壞: {clean_orig} vs {clean_recon}"
+
