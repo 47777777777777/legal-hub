@@ -47,27 +47,27 @@ function parseChnNumber(str) {
 
 window.ENABLE_CITATION_HOVER = true;
 
-// Convert citations like "第二百二十一條" or "第 185-3 條" or ranges like "第一百二十一條至第一百二十三條" into interactive hover/tap links
+// Convert citations like "第二百二十一條" or "第 185-3 條" or "第二百九十六條之一" into interactive hover/tap links
 function linkifyArticleRefs(text, q) {
   let safe = hl(text, q);
   if (!window.ENABLE_CITATION_HOVER) {
     return safe; // 停用超連結輸出，文字完整照常顯示
   }
 
-  // 1. Range citations: e.g. "第一百二十一條至第一百二十三條" or "第二百零一條至第二百零二條" (支援零、〇)
-  const rangeRegex = /(?:第\s*)?([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[零〇一二三四五六七八九十百千]+(?:\s*之\s*[零〇一二三四五六七八九十百千]+)?)\s*條\s*至\s*(?:第\s*)?([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[零〇一二三四五六七八九十百千]+(?:\s*之\s*[零〇一二三四五六七八九十百千]+)?)\s*條/g;
+  // 1. Range citations: e.g. "第一百二十一條至第一百二十三條" or "第一百八十五條之一至第一百八十五條之二"
+  const rangeRegex = /(?:第\s*)?([0-9０-９零〇一二三四五六七八九十百千]+(?:\s*-\s*[0-9０-９]+)?)\s*條(?:\s*之\s*([0-9０-９零〇一二三四五六七八九十百千]+))?\s*至\s*(?:第\s*)?([0-9０-９零〇一二三四五六七八九十百千]+(?:\s*-\s*[0-9０-９]+)?)\s*條(?:\s*之\s*([0-9０-９零〇一二三四五六七八九十百千]+))?/g;
 
-  safe = safe.replace(rangeRegex, (match, rawStart, rawEnd) => {
-    const cleanStart = cleanRawNo(rawStart);
-    const cleanEnd = cleanRawNo(rawEnd);
+  safe = safe.replace(rangeRegex, (match, startMain, startSub, endMain, endSub) => {
+    const cleanStart = cleanRawNo(startMain, startSub);
+    const cleanEnd = cleanRawNo(endMain, endSub);
     return `§§RANGE_${cleanStart}_${cleanEnd}_${encodeURIComponent(match)}§§`;
   });
 
-  // 2. Single citations: e.g. "第一百二十五條" or "第二百零一條"
-  const singleRegex = /(第\s*([0-9０-９]+(?:\s*之\s*[0-9０-９]+|-?[0-9]+)?|[零〇一二三四五六七八九十百千]+(?:\s*之\s*[零〇一二三四五六七八九十百千]+)?)\s*條)/g;
-  safe = safe.replace(singleRegex, (match, full, rawNo) => {
-    const cleanNo = cleanRawNo(rawNo);
-    return `<span class="article-ref-link" data-ref-no="${cleanNo}">${full}</span>`;
+  // 2. Single citations: e.g. "第一百二十五條" or "第二百九十六條之一" or "第 185 條之 3" or "第 185-3 條"
+  const singleRegex = /(?:第\s*)?([0-9０-９零〇一二三四五六七八九十百千]+(?:\s*-\s*[0-9０-９]+)?)\s*條(?:\s*之\s*([0-9０-９零〇一二三四五六七八九十百千]+))?/g;
+  safe = safe.replace(singleRegex, (match, mainNo, subNo) => {
+    const cleanNo = cleanRawNo(mainNo, subNo);
+    return `<span class="article-ref-link" data-ref-no="${cleanNo}">${match}</span>`;
   });
 
   // 3. Restore range placeholders
@@ -80,16 +80,37 @@ function linkifyArticleRefs(text, q) {
   return safe;
 }
 
-function cleanRawNo(raw) {
-  if (/[零〇一二三四五六七八九十百千]/.test(raw)) {
-    const parts = raw.split(/之/);
-    const main = parseChnNumber(parts[0]);
-    if (parts.length > 1) {
-      return `${main}-${parseChnNumber(parts[1])}`;
-    }
-    return String(main);
+function cleanRawNo(rawMain, rawSub) {
+  let mainStr = rawMain ? String(rawMain).trim() : "";
+  let subStr = rawSub ? String(rawSub).trim() : "";
+
+  if (!subStr && mainStr.includes("之")) {
+    const parts = mainStr.split("之");
+    mainStr = parts[0];
+    subStr = parts[1];
+  } else if (!subStr && mainStr.includes("-")) {
+    const parts = mainStr.split("-");
+    mainStr = parts[0];
+    subStr = parts[1];
   }
-  return raw.replace(/\s+/g, "").replace(/之/, "-");
+
+  let main = mainStr;
+  if (/[零〇一二三四五六七八九十百千]/.test(mainStr)) {
+    main = String(parseChnNumber(mainStr));
+  } else {
+    main = mainStr.replace(/\s+/g, "");
+  }
+
+  if (subStr) {
+    let sub = subStr;
+    if (/[零〇一二三四五六七八九十百千]/.test(subStr)) {
+      sub = String(parseChnNumber(subStr));
+    } else {
+      sub = subStr.replace(/\s+/g, "");
+    }
+    return `${main}-${sub}`;
+  }
+  return main;
 }
 
 function hl(text, q) {
