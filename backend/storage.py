@@ -334,10 +334,25 @@ class LegalStorage:
                 "source_mode": c_row["source_mode"] or "fullpage"
             })
 
+        cur.execute("SELECT count(*) FROM source_attempts WHERE act_id = ? AND source = 'lis'", (row["id"],))
+        has_lis_attempt = (cur.fetchone()[0] > 0) or (len(reasons_by_art) > 0)
+        cat = (row["category"] or "").strip()
+        is_order = ("命令" in cat) or ("行政規則" in cat) or ("規則" in cat) or ("細則" in cat) or ("辦法" in cat)
+
         conn.close()
 
         articles = []
         for a in art_rows:
+            art_reasons = reasons_by_art.get(a["article_no"], [])
+            if art_reasons:
+                lis_status = "present"
+            elif is_order:
+                lis_status = "not_applicable"
+            elif has_lis_attempt:
+                lis_status = "source_has_none"
+            else:
+                lis_status = "not_attempted"
+
             articles.append({
                 "article_no": a["article_no"],
                 "label_raw": a["label_raw"] if "label_raw" in a.keys() and a["label_raw"] else "",
@@ -366,8 +381,9 @@ class LegalStorage:
                 "fetched_at": a["fetched_at"] if "fetched_at" in a.keys() and a["fetched_at"] else "",
                 "article_hash": a["article_hash"] if "article_hash" in a.keys() and a["article_hash"] else "",
                 "paywalled_counts": json.loads(a["paywalled_counts_json"] or "{}") if "paywalled_counts_json" in a.keys() and a["paywalled_counts_json"] else {},
-                "lis_reasons": reasons_by_art.get(a["article_no"], []),
+                "lis_reasons": art_reasons,
                 "lis_comparison": comp_by_art.get(a["article_no"], []),
+                "lis_reasons_status": lis_status,
                 "status": a["status"] if "status" in a.keys() and a["status"] else "active",
                 "stale": a["stale"] if "stale" in a.keys() and a["stale"] else 0
             })

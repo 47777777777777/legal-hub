@@ -473,7 +473,7 @@ def check_lis_data_authenticity(conn: sqlite3.Connection) -> bool:
         print("  PASSED: No LIS records populated yet in article_reasons / article_comparison (ready for seed).")
         return True
         
-    forbidden_terms = ["在牆內", "解鎖", "會員專屬", "可能為", "推測", "本條尚未收錄"]
+    forbidden_terms = ["在牆內", "解鎖", "會員專屬", "本條尚未收錄", "模擬", "範例"]
     violations = []
     raw_cache = {}
     
@@ -512,8 +512,13 @@ def check_lis_data_authenticity(conn: sqlite3.Connection) -> bool:
             if term in reason:
                 violations.append(f"article_reasons id={rid}: contains forbidden term '{term}'")
         if raw_path not in raw_cache:
-            with open(raw_path, "r", encoding="utf-8", errors="ignore") as f:
-                raw_html = f.read()
+            if raw_path.endswith(".gz"):
+                import gzip
+                with gzip.open(raw_path, "rt", encoding="utf-8", errors="ignore") as f:
+                    raw_html = f.read()
+            else:
+                with open(raw_path, "r", encoding="utf-8", errors="ignore") as f:
+                    raw_html = f.read()
             raw_cache[raw_path] = re.sub(r'\s+', '', re.sub(r'<[^>]+>', '', raw_html))
         
         clean_raw = raw_cache[raw_path]
@@ -540,8 +545,13 @@ def check_lis_data_authenticity(conn: sqlite3.Connection) -> bool:
             if reason and term in reason:
                 violations.append(f"article_comparison id={cid}: contains forbidden term '{term}'")
         if raw_path not in raw_cache:
-            with open(raw_path, "r", encoding="utf-8", errors="ignore") as f:
-                raw_html = f.read()
+            if raw_path.endswith(".gz"):
+                import gzip
+                with gzip.open(raw_path, "rt", encoding="utf-8", errors="ignore") as f:
+                    raw_html = f.read()
+            else:
+                with open(raw_path, "r", encoding="utf-8", errors="ignore") as f:
+                    raw_html = f.read()
             raw_cache[raw_path] = re.sub(r'\s+', '', re.sub(r'<[^>]+>', '', raw_html))
         
         clean_raw = raw_cache[raw_path]

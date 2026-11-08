@@ -2141,6 +2141,35 @@ class LegalHubApp {
         return s;
       };
 
+      const highlightDiff = (newText, oldText) => {
+        if (!oldText || !newText || oldText === newText) {
+          return {
+            newHtml: esc(newText || "").replace(/\n/g, "<br>"),
+            oldHtml: esc(oldText || "").replace(/\n/g, "<br>")
+          };
+        }
+        let prefix = 0;
+        while (prefix < oldText.length && prefix < newText.length && oldText[prefix] === newText[prefix]) {
+          prefix++;
+        }
+        let suffix = 0;
+        while (suffix < (oldText.length - prefix) && suffix < (newText.length - prefix) && 
+               oldText[oldText.length - 1 - suffix] === newText[newText.length - 1 - suffix]) {
+          suffix++;
+        }
+        const pre = esc(oldText.slice(0, prefix)).replace(/\n/g, "<br>");
+        const post = suffix > 0 ? esc(oldText.slice(oldText.length - suffix)).replace(/\n/g, "<br>") : "";
+        const midOld = esc(oldText.slice(prefix, suffix > 0 ? oldText.length - suffix : undefined)).replace(/\n/g, "<br>");
+        const midNew = esc(newText.slice(prefix, suffix > 0 ? newText.length - suffix : undefined)).replace(/\n/g, "<br>");
+
+        const newHtml = `${pre}${midNew ? `<mark style="background-color:rgba(234,179,8,0.25); color:#fde047; padding:2px 4px; border-radius:3px; font-weight:600; text-decoration:underline;">${midNew}</mark>` : ""}${post}`;
+        const oldHtml = `${pre}${midOld ? `<del style="background-color:rgba(239,68,68,0.2); color:#fca5a5; padding:2px 4px; border-radius:3px; text-decoration:line-through;">${midOld}</del>` : ""}${post}`;
+        return { newHtml, oldHtml };
+      };
+
+      // Set of dates already rendered with comparison tables to prevent duplicate reason cards
+      const compDates = new Set(lisComp.map(c => String(c.new_version_date || "").trim()).filter(Boolean));
+
       let compHtml = "";
       if (lisComp.length > 0) {
         compHtml = lisComp.map((c) => {
@@ -2156,15 +2185,22 @@ class LegalHubApp {
               <div style="overflow-x:auto; margin:0.75rem 0;">
                 <table style="width:100%; border-collapse:collapse; border:1px solid #3f3f46; font-size:0.875rem;">
                   <tbody>
-                    ${c.table_data.map((row) => `
+                    ${c.table_data.filter(row => !row[0] || !String(row[0]).trim().startsWith("理由")).map((row) => {
+                      const isArticleRow = row[0] && (String(row[0]).includes("條") || String(row[0]).includes("修正"));
+                      const diffResult = (isArticleRow && row.length >= 3) ? highlightDiff(row[1], row[2]) : null;
+                      return `
                       <tr style="border-bottom:1px solid #27272a;">
-                        ${row.map((cell, idx) => `
+                        ${row.map((cell, idx) => {
+                          let cellContent = esc(cell || "").replace(/\n/g, '<br>');
+                          if (diffResult && idx === 1) cellContent = diffResult.newHtml;
+                          if (diffResult && idx === 2) cellContent = diffResult.oldHtml;
+                          return `
                           <td style="padding:8px 12px; border-right:1px solid #27272a; vertical-align:top; ${idx === 0 ? 'width:120px; font-weight:600; color:#a1a1aa;' : ''}">
-                            ${esc(cell).replace(/\n/g, '<br>')}
-                          </td>
-                        `).join("")}
-                      </tr>
-                    `).join("")}
+                            ${cellContent}
+                          </td>`;
+                        }).join("")}
+                      </tr>`;
+                    }).join("")}
                   </tbody>
                 </table>
               </div>`;
@@ -2182,8 +2218,10 @@ class LegalHubApp {
       }
 
       let reasonsHtml = "";
-      if (lisReasons.length > 0) {
-        reasonsHtml = lisReasons.map((v) => {
+      // Only render reasons for versions NOT already shown in comparison cards above
+      const standaloneReasons = lisReasons.filter(v => !compDates.has(String(v.version_date || "").trim()));
+      if (standaloneReasons.length > 0) {
+        reasonsHtml = standaloneReasons.map((v) => {
           const dateStr = formatRoc(v.version_date);
           const actionText = v.action_type ? v.action_type : "";
           const title = v.date_label_raw ? v.date_label_raw : `${dateStr} ${actionText}`;

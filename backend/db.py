@@ -509,6 +509,21 @@ def init_database(db_path: str = DB_FILE):
         )
     """)
 
+    # 18. Source attempts table (Prompt 4H & 4I)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS source_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source TEXT NOT NULL,
+            act_id TEXT NOT NULL,
+            article_no TEXT NOT NULL,
+            status TEXT NOT NULL,
+            error_reason TEXT,
+            duration_ms INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_source_attempts_act ON source_attempts(act_id, source)")
+
     conn.commit()
     conn.close()
 
